@@ -375,7 +375,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - `python -m src.main --help` exits 0 (test via `subprocess` with `.venv` python or by calling `main(["--help"])`).
   - `src.main` missing required env -> exits non-zero with message listing missing vars (tested by calling `main()` with an empty env mapping injected).
 
-### T12 [ ] Source: Lever
+### T12 [x] Source: Lever
 - `src/sources/lever.py`: GET `https://api.lever.co/v0/postings/{company}?mode=json` for `config.toml [sources.lever].companies` (public postings API). Map id, text, categories.location/commitment, hostedUrl, descriptionPlain, createdAt (ms epoch). Candidate companies verified at implementation time; record kept list in DECISIONS.md. Register; `/sources` picks it up from the registry automatically.
 - Files: `src/sources/lever.py`, `config.toml`, `tests/fixtures/lever_postings.json`, `tests/test_source_lever.py`.
 - Acceptance: fixture parses N>=2 postings with correct url/title/posted_at (UTC aware); `commitment: Intern` -> INTERNSHIP; empty list, malformed JSON, HTTP 500 each -> `[]`; registered in `REGISTRY`.

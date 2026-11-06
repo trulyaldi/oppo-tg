@@ -42,7 +42,7 @@ Hard filters (applied before the LLM): obvious spam, unpaid "exposure" roles, se
 
 ## Sources (start small, add later)
 
-- ATS JSON endpoints (Greenhouse, Lever, Ashby) for a company watchlist. (implemented: greenhouse in src/sources/greenhouse.py)
+- ATS JSON endpoints (Greenhouse, Lever, Ashby) for a company watchlist. (implemented: greenhouse in src/sources/greenhouse.py; lever in src/sources/lever.py)
 - Hacker News "Who is hiring".
 - YC Work at a Startup.
 - hh.kz.

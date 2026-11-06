@@ -20,7 +20,13 @@ scaleai = "Scale AI"
 
 [sources.lever]
 enabled = true
-companies = []
+# Lever company slugs (api.lever.co/v0/postings/<slug>)
+companies = ["palantir", "spotify", "weride"]
+
+[sources.lever.names]
+palantir = "Palantir"
+spotify = "Spotify"
+weride = "WeRide"
 
 [sources.ashby]
 enabled = true
