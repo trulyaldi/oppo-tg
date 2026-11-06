@@ -356,3 +356,32 @@ def last_source_runs(conn: sqlite3.Connection) -> list[sqlite3.Row]:
         "SELECT * FROM source_runs WHERE id IN (SELECT MAX(id) FROM source_runs GROUP BY source)"
         " ORDER BY source"
     ).fetchall()
+
+
+# --- retention ------------------------------------------------------------
+
+
+def prune(
+    conn: sqlite3.Connection,
+    now: datetime,
+    cache_days: int = 7,
+    posting_days: int = 60,
+) -> dict[str, int]:
+    """Delete stale cache rows and old filtered/duplicate postings; scored rows are kept."""
+    from datetime import timedelta
+
+    cache_cut = _iso(now - timedelta(days=cache_days))
+    post_cut = _iso(now - timedelta(days=posting_days))
+    with conn:
+        http = conn.execute("DELETE FROM http_cache WHERE fetched_at < ?", (cache_cut,)).rowcount
+        robots = conn.execute(
+            "DELETE FROM robots_cache WHERE fetched_at < ?", (cache_cut,)
+        ).rowcount
+        postings = conn.execute(
+            "DELETE FROM postings WHERE status IN ('filtered','duplicate') AND first_seen_at < ?"
+            " AND id NOT IN (SELECT posting_id FROM scores)"
+            " AND id NOT IN (SELECT posting_id FROM deliveries)"
+            " AND id NOT IN (SELECT posting_id FROM reactions)",
+            (post_cut,),
+        ).rowcount
+    return {"http_cache": http, "robots_cache": robots, "postings": postings}

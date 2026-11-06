@@ -615,7 +615,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - Paused -> nothing sent, nothing recorded.
   - Message starts with `<b>ALERT</b>` and has the feedback keyboard.
 
-### T24 [ ] Scheduler and unattended `run` mode
+### T24 [x] Scheduler and unattended `run` mode
 - Build `src/scheduler.py` (`build_scheduler(deps) -> AsyncIOScheduler`, `safe_job`), `src/main.py run` (starts scheduler + aiogram polling in one loop, graceful shutdown on SIGINT/SIGTERM), `prune` job.
 - Files: `src/scheduler.py`, `src/main.py`, `src/db.py` (prune functions), `tests/test_scheduler.py`.
 - Acceptance:
