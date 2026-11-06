@@ -901,3 +901,5 @@ Filed by the third reviewer pass. It re-checked FIX-11..FIX-13 against their acc
   - Through `apply_filters`, `Ученик повара` and `Ученик продавца-консультанта` are `irrelevant`. `Учёный-физик` and `Ученый по данным` pass `relevance_ok`, or DECISIONS records why not.
   - If the optional `стаж` narrowing is done, `hard_filter` returns `senior_only` for `Senior Data Scientist (стаж от 5 лет)`.
   - Existing FIX-04 and FIX-11 filter tests stay green, `tests/test_source_count.py` is unaffected, all tests are green and ruff is clean.
+
+REVIEW PASSED 2026-11-06
