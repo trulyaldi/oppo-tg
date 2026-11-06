@@ -124,7 +124,6 @@ enabled = false  # dropped: WAF returns 403 for query-string requests (D-59)
 [sources.kaggle]
 # dropped: Kaggle terms page unreadable, so no fetching code (D-68)
 enabled = false
-categories = ["featured", "research"]
 
 [sources.telegram_channels]
 enabled = true

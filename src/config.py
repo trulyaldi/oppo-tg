@@ -42,8 +42,6 @@ ENV_VARS: list[EnvVar] = [
         "Email or URL placed in the HTTP User-Agent",
     ),
     EnvVar("HH_ACCESS_TOKEN", False, None, "hh.kz API token, if required"),
-    EnvVar("KAGGLE_USERNAME", False, None, "Kaggle username (enables Kaggle source)"),
-    EnvVar("KAGGLE_KEY", False, None, "Kaggle API key (enables Kaggle source)"),
     EnvVar("TG_API_ID", False, None, "Telegram API id for Telethon channel reading"),
     EnvVar("TG_API_HASH", False, None, "Telegram API hash for Telethon channel reading"),
     EnvVar("TG_SESSION_PATH", False, "data/telethon.session", "Telethon session file path"),
@@ -65,8 +63,6 @@ class Settings:
     log_level: str = "INFO"
     http_contact: str = "https://github.com/oppo-tg"
     hh_access_token: str | None = None
-    kaggle_username: str | None = None
-    kaggle_key: str | None = None
     tg_api_id: str | None = None
     tg_api_hash: str | None = None
     tg_session_path: str = "data/telethon.session"
@@ -112,8 +108,6 @@ class Settings:
             log_level=val("LOG_LEVEL"),
             http_contact=val("HTTP_CONTACT"),
             hh_access_token=get("HH_ACCESS_TOKEN"),
-            kaggle_username=get("KAGGLE_USERNAME"),
-            kaggle_key=get("KAGGLE_KEY"),
             tg_api_id=get("TG_API_ID"),
             tg_api_hash=get("TG_API_HASH"),
             tg_session_path=val("TG_SESSION_PATH"),

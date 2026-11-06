@@ -61,8 +61,6 @@ in `src/config.py`; this table is checked against it by a test.
 | `LOG_LEVEL` | no | `INFO` | Python logging level |
 | `HTTP_CONTACT` | no | `https://github.com/oppo-tg` | Email or URL placed in the HTTP User-Agent (set your own) |
 | `HH_ACCESS_TOKEN` | no | - | hh.kz API token, if required (unlocks the hh source) |
-| `KAGGLE_USERNAME` | no | - | Unused: the Kaggle source was dropped (D-68) |
-| `KAGGLE_KEY` | no | - | Unused: the Kaggle source was dropped (D-68) |
 | `TG_API_ID` | no | - | Telegram API id for Telethon channel reading |
 | `TG_API_HASH` | no | - | Telegram API hash for Telethon channel reading |
 | `TG_SESSION_PATH` | no | `data/telethon.session` | Telethon session file path |
@@ -139,14 +137,12 @@ Only you can do these.
    LOG_LEVEL=INFO
    HTTP_CONTACT=
    HH_ACCESS_TOKEN=
-   KAGGLE_USERNAME=
-   KAGGLE_KEY=
    TG_API_ID=
    TG_API_HASH=
    TG_SESSION_PATH=data/telethon.session
    ```
 
-   `KAGGLE_*` are unused (the source was dropped, D-68); drop those two lines if you prefer.
+   If your `.env` still has `KAGGLE_USERNAME`/`KAGGLE_KEY` lines (the Kaggle source was dropped, D-68), they are ignored; you can delete them.
    Empty optional values fall back to their defaults.
 2. Put real values for `TELEGRAM_BOT_TOKEN` (from @BotFather), `TELEGRAM_CHAT_ID` and
    `ANTHROPIC_API_KEY` in `.env`. To get the chat id: send any message to your bot, then open

@@ -105,10 +105,10 @@ Nothing reads the environment, the wall clock, or the network at import time. In
   - Optional: `SCORING_MODEL` (default per D-12), `DB_PATH` (default `data/oppo.db`), `OPPO_CONFIG` (default `config.toml`),
     `TIMEZONE` (default `Asia/Almaty`), `DIGEST_TIME` (default `09:00`), `COLLECT_CRON_HOURS` (default `3`),
     `MAX_SCORES_PER_RUN` (default `150`), `LOG_LEVEL` (default `INFO`), `HTTP_CONTACT` (email/URL put in UA; default repo URL placeholder),
-    `HH_ACCESS_TOKEN` (optional), `KAGGLE_USERNAME`, `KAGGLE_KEY`, `TG_API_ID`, `TG_API_HASH`, `TG_SESSION_PATH` (default `data/telethon.session`).
+    `HH_ACCESS_TOKEN` (optional), `TG_API_ID`, `TG_API_HASH`, `TG_SESSION_PATH` (default `data/telethon.session`).
   - `ENV_VARS: list[EnvVar(name, required, default, description)]` is the canonical list; README table is tested against it.
 - `AppConfig` from `config.toml` (stdlib `tomllib`): `[sources.<name>] enabled = true/false` + per-source lists
-  (greenhouse/lever/ashby boards, hh queries + area, rss feeds, pagewatch urls, telegram channels, kaggle categories),
+  (greenhouse/lever/ashby boards, hh queries + area, rss feeds, pagewatch urls, telegram channels),
   `[filters]` keyword lists, `[thresholds] digest_min_score = 5.0, digest_max_items = 10, digest_min_items = 5,
   alert_score = 9.0, alert_deadline_days = 7, alert_deadline_min_score = 0.0`.
 
@@ -695,8 +695,6 @@ Only the user can do these. Agents cannot do them, and they do not block the tas
    LOG_LEVEL=INFO
    HTTP_CONTACT=
    HH_ACCESS_TOKEN=
-   KAGGLE_USERNAME=
-   KAGGLE_KEY=
    TG_API_ID=
    TG_API_HASH=
    TG_SESSION_PATH=data/telethon.session
@@ -705,7 +703,6 @@ Only the user can do these. Agents cannot do them, and they do not block the tas
 2. Put real `TELEGRAM_BOT_TOKEN` (from @BotFather), `TELEGRAM_CHAT_ID`, `ANTHROPIC_API_KEY` in `.env`.
 3. Optional credentials. These unlock extra sources; they are not needed for the 6-source minimum (D-52):
    - `HH_ACCESS_TOKEN`: RECOMMENDED. hh.kz is the only Kazakhstan job source, because anonymous access gets 403 (D-47). No credential-free Kazakhstan source passed its robots and terms checks (D-57). Get it by registering an application at https://dev.hh.ru.
-   - `KAGGLE_USERNAME`/`KAGGLE_KEY`.
    - `TG_API_ID`/`TG_API_HASH`, then run `.venv/bin/python -m src.tools.telethon_login` once (Kazakh Telegram job channels).
 4. Fill SPEC.md [EDIT] items: extra target companies -> `config.toml` ATS boards; Kazakh Telegram channels -> `config.toml [sources.telegram_channels].channels`.
 5. Check the live sources with `.venv/bin/python -m src.main probe`; it should exit 0 with >= 6 counted families. Then verify the real digest with `.venv/bin/python -m src.main once`, check that `/sources` shows the counted families with ok runs, and start unattended mode (`run`, systemd unit from README).
@@ -794,7 +791,7 @@ Evidence from the review: 275 tests pass, `ruff check` and `ruff format --check`
   - With a fake client, `login` creates the session's parent directory and calls `start`, `get_me` and `disconnect`.
   - README keeps "telegram_channels never run live" in Verification status.
 
-### FIX-08 [ ] Kaggle leftovers in ENV_VARS/Settings contradict D-68
+### FIX-08 [x] Kaggle leftovers in ENV_VARS/Settings contradict D-68
 - Problem: `src/config.py` ENV_VARS still describes `KAGGLE_USERNAME`/`KAGGLE_KEY` as "(enables Kaggle source)", while README says "Unused: the Kaggle source was dropped (D-68)" (the README test compares names only, not descriptions). `Settings` still has `kaggle_username`/`kaggle_key`. PLAN section 3 item 3 still lists `KAGGLE_USERNAME`/`KAGGLE_KEY` as optional credentials, and `config.toml [sources.kaggle]` keeps an unused `categories` key.
 - Build: remove `KAGGLE_*` from `ENV_VARS`, `Settings`, the README env table and the README `.env.example` block, and from PLAN section 3 items 1 and 3 (text edit only; the user action itself is unchanged). Remove `categories` from `[sources.kaggle]` and keep `enabled = false` with the D-68 comment. `.env.example` is not touched (D-03). If the user's file has the lines, unknown vars are harmless; say so in README.
 - Files: `src/config.py`, `README.md`, `PLAN.md` (section 3 text), `config.toml`, `tests/test_config.py` and `tests/test_readme.py` if they reference Kaggle, `DECISIONS.md` (D-68 addendum superseding the D-71 note).

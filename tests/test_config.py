@@ -26,10 +26,14 @@ def test_defaults():
     assert s.hh_access_token is None
 
 
+def test_stray_kaggle_env_ignored():
+    s = Settings.from_env({**REQUIRED, "KAGGLE_KEY": "x"})
+    assert not hasattr(s, "kaggle_key")
+
+
 def test_overrides():
-    s = Settings.from_env({**REQUIRED, "MAX_SCORES_PER_RUN": "5", "KAGGLE_KEY": "x"})
+    s = Settings.from_env({**REQUIRED, "MAX_SCORES_PER_RUN": "5"})
     assert s.max_scores_per_run == 5
-    assert s.kaggle_key == "x"
 
 
 def test_env_vars_cover_settings():
