@@ -643,7 +643,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Files: `SPEC.md`, `config.toml` (only if the flag is missing).
 - Acceptance: `config.toml` loads with `[sources.yc] enabled = false`; `"yc" not in REGISTRY`; SPEC bullet carries the dropped note; all tests green.
 
-### T28 [ ] Eval set and eval runner
+### T28 [x] Eval set and eval runner
 - Build `evals/labeled.jsonl` (>= 20 lines: posting dict + `expected_min`, `expected_max`, `note`; mix: IMC/Optiver quant intern (8-10), senior C++ trader role (filtered or <=3), Kazakh ML startup remote (6-9), unrelated marketing job (0-2), strong hackathon with deadline (7-9), unpaid "exposure" (filtered), PhD-track research internship (6-9), etc.) and `src/evals/run.py`: loads set, runs hard filters then real `Scorer` (only when invoked explicitly, needs `ANTHROPIC_API_KEY`), prints per-item pass/fail and summary (pass rate, mean abs error to range), writes `evals/last_run.json`.
 - Files: `evals/labeled.jsonl`, `src/evals/__init__.py`, `src/evals/run.py`, `tests/test_evals_runner.py`.
 - Acceptance: every JSONL line validates (Posting fields + range 0<=min<=max<=10); runner with a fake client returning fixed scores computes the right pass/fail counts and summary; runner refuses to run without `ANTHROPIC_API_KEY` (clear message, non-zero exit); no test calls the real API.

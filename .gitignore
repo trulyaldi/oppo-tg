@@ -7,3 +7,4 @@ __pycache__/
 *.session
 .claude/settings.local.json
 .claude/.stop-block-count
+evals/last_run.json
