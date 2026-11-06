@@ -1820,3 +1820,191 @@ Per-type guidance in `draft.md`:
   - `--help` lists `--max-scores`.
   - DECISIONS has the smoke result or the user-action record.
   - Full suite, `ruff check` and `ruff format --check` are clean.
+
+## 9. Review fixes (outreach-and-weights review)
+
+Filed 2026-11-06 by the reviewer for branch `feature/outreach-and-weights` (S1-S5, W1-W7, C1-C5, P1-P7, N1-N7, F1; F2 not run on purpose and out of scope). Handle these tasks like the earlier ones: one commit per task, marked done in the same commit, a DECISIONS entry where a choice is made, the full suite green and ruff clean. FIX-15 and FIX-16 are blocking. The others are non-blocking.
+
+Verified with evidence, no FIX needed:
+- 668 tests pass. `ruff check` and `ruff format --check` are clean.
+- The conftest network guard blocks AF_INET/AF_INET6 sockets in every test.
+- `git log -p main..HEAD` has no keys, tokens or personal data. The only match is the public `nu.edu.kz` domain in the KZ watchlist.
+- `git ls-files data` lists only `data/.gitkeep`. Every `tests/fixtures/cv_*` and `tests/fixtures/contacts/*` file carries `FAKE FIXTURE`, except `cv_parse_reply.json`, which is exempt under D-138.
+- No logging call in `src/bot`, `src/outreach`, `src/contacts`, `src/cv` or `src/llm` emits CV, contact, pasted or model text. FIX-16 covers the third-party SDK loggers.
+- Migrations v2-v7 ran on a scratch copy of the real `data/oppo.db` (v1, 443 scores, 35 reactions). The result is `user_version` 7. All 443 rows have base == adjusted == the old score, the reactions are intact, `migrate` is idempotent and `foreign_key_check` is empty.
+- `config/weights.yaml` and `config/watchlists/*` are byte-identical to `tests/fixtures/weights_snapshot/`. So the "bad KZ cannot outrank good intl" test really runs on the shipped defaults.
+- Weights logic matches SPEC: the clamp, base-score alerts and digest floor, quotas with fall-through, and recompute on every YAML version change.
+- Every new handler and callback (`pr:`, `dr:`, `ac:`, text, document) sits behind the outer `WhitelistMiddleware`. The model gets no `tools`. Blocked hosts are refused before any robots fetch.
+- The README claim "the Hacker News comment for `hn` items" is accurate. The hn source's `external_id` is the comment id (`src/sources/hn.py:97`), and `fetch_hn_contacts` fetches `hn.algolia.com/api/v1/items/<external_id>`.
+
+### FIX-15 [ ] Verifier lets invented employers, schools, degrees and ask numbers through (no-fabrication guarantee broken)
+- Severity: BLOCKING (SPEC "Prepare and draft" hard rule: "Every factual claim about the user must trace to the CV text").
+- Problem:
+  - The deterministic verifier only checks numbers, inflation stems and skill terms. A sentence that invents an employer, institution or degree and has none of those passes untouched.
+  - Reproduced with `tests/fixtures/cv_fake.txt` (CV employers: Sample Labs; school: Example University of Technology). `verify_draft` returns `ok=True, removed=0` for these bodies:
+    - "I interned at Citadel Securities last summer building trading systems. I also studied at MIT."
+    - "During my previous internship at Acme Fake I built a latency benchmark harness in Python. I hold an MSc from Stanford University." Here Acme Fake is the posting's own company.
+  - `verify_tailoring` keeps the following with `removed=0`, because V1 only checks that the evidence quote is real, not that the text is supported by it:
+    - fit point "Your internship at Jane Street is directly relevant" (evidence: the real Sample Labs line);
+    - emphasize item "Highlight your Optiver trading internship";
+    - gap `how_to_address` "Mention your MIT coursework in low-latency systems".
+  - D-136 shows the P5 acceptance ("no Jane Street") passed only because the fixture sentence also contained "led".
+  - Second hole: `verify_draft` allows every number found in `ask` anywhere in the body. The ask "Having built trading systems for 5 years, could we have a short call?" passes with an invented "5 years".
+- Build (mechanism is the implementer's choice; record it in DECISIONS):
+  - Proper-noun/entity grounding in `src/outreach/verify.py`. Extract capitalized multi-word names, acronyms of 2+ capitals (MIT, IMO, ETH), CamelCase words and Cyrillic capitalized words. Exclude sentence-initial common words, "I", weekdays and months, and the skill lexicon.
+  - Tailoring texts (fit, emphasize, cut, reorder): every entity must appear whole-word in `norm(cv_text)`, or in the item's `cv_evidence`.
+  - Gap `how_to_address`: every entity must appear in CV ∪ posting.
+  - Draft body sentences: every entity must appear in CV ∪ posting ∪ contact block.
+  - First-person past or completed experience claims that name an entity found only in the posting or contact, not in the CV, are dropped. Examples: "interned/worked/studied/was ... at X", "my internship at X", "my MSc from X". The rule targets completed claims, not intent or questions: "I would love to join ... at X" and "Could I learn more about ... at X?" are not claims.
+  - Narrow the ask number exemption to call-length phrasing only (for example `\d+\s*-?\s*min(ute)?s?`).
+  - Same whole-word helper, folded in here: C2 CV-section grounding (`src/cv/parse.py` `_Grounder.ok`) uses a raw substring, so an invented "MIT" or "Go" is grounded by "submitted" or "algorithms". Switch the name and skill fields to whole-word matching.
+- Files: `src/outreach/verify.py`, `src/outreach/lexicon.py` (stop list), `src/cv/parse.py`, `tests/test_verify.py`, `tests/test_draft_service.py`, `tests/test_cv_parse.py`, new fixtures as needed (fictional, `FAKE FIXTURE`), `DECISIONS.md`.
+- Acceptance:
+  - Use new fixtures whose fabricated sentences contain NO number, NO inflation stem and NO skill term, so they are caught by the entity rule alone.
+  - Each probe above is removed or dropped, and the stored or returned result contains none of "Citadel", "MIT", "Stanford", "Jane Street", "Optiver" or "5 years":
+    - draft bodies 1 and 2;
+    - the three tailoring items;
+    - the ask with "5 years".
+  - "During my previous internship at Acme Fake ..." is dropped when Acme Fake is only in the posting. If the implementer decides otherwise, DECISIONS records it as residual risk with the reason.
+  - Cyrillic: a draft sentence "Я стажировался в Яндексе." against a CV without Яндекс is dropped.
+  - These legitimate sentences still pass:
+    - "Hi Sam," with Sam in the contact block;
+    - "I am excited about Acme Fake's work on research tooling." with Acme Fake as the posting company;
+    - "I would love to join the research team at Acme Fake." and the ask "Could I learn more about internships at Acme Fake?" (posting company only, intent and question, not claims);
+    - "I was a research intern at Sample Labs.";
+    - "Could we have a 15-minute call?";
+    - the existing `draft_reply_ok.json` and `tailor_reply_honest.json` (nothing removed).
+  - C2: a canned parse reply with skill "Go" and institution "MIT" against `cv_fake.txt` drops both.
+  - All existing P1/P2/P5/P7 tests stay green.
+
+### FIX-16 [ ] `LOG_LEVEL=DEBUG` makes the Anthropic SDK log the full request: CV, posting and contact text
+- Severity: BLOCKING (SPEC Privacy: "CV text, contacts, pasted profiles and drafts are never logged"; README documents `LOG_LEVEL` as a user knob, and the systemd and nohup examples write logs to the journal or `data/run.log`).
+- Problem:
+  - `src/main.py:216` calls `logging.basicConfig(level=settings.log_level)`.
+  - Reproduced offline: a real `AsyncAnthropic` on `httpx2.MockTransport`, with `call_json` and user text `<cv>CANARY-CV-TEXT</cv>` at DEBUG. The log line `DEBUG:anthropic._base_client:Request options: {...}` contains the canary.
+  - The API key was not in the logs. The httpx/httpx2 debug loggers can also log request lines.
+  - The P7 sweep missed this because it uses the signature-bound fake, not the SDK.
+- Build:
+  - In `main()` after `basicConfig`, or in one `configure_logging()` helper, pin the `anthropic`, `httpx`, `httpx2`, `httpcore`, `aiogram.event` and `telethon` loggers to WARNING (or higher) whatever `LOG_LEVEL` says.
+  - Alternatively, attach a filter that drops records from those loggers below WARNING.
+  - Mention it in README next to `LOG_LEVEL`.
+- Files: `src/main.py` (or a small `src/logging_setup.py`), `tests/test_privacy_sweep.py` or a new test, `README.md`, `DECISIONS.md` (D-111 addendum).
+- Acceptance:
+  - A test runs the real `AsyncAnthropic` client on `httpx2.MockTransport` through `call_json`, after applying the app's logging setup with `LOG_LEVEL=DEBUG`. Neither `CANARY-CV` (input) nor the reply canary appears in the captured log output.
+  - The same holds for a `prepare()` run with the real client.
+  - App DEBUG logs (for example `src.*`) still appear at DEBUG.
+
+### FIX-17 [ ] `/draft` output does not say how many statements were removed
+- Severity: non-blocking (SPEC "Prepare and draft": "...and the output says how many statements were removed").
+- Problem:
+  - `run_draft` sends `render_draft(name, type, body)`, and `DraftResult.removed` is never shown.
+  - `/prepare` shows the count, `/draft` does not.
+- Build: when `removed > 0`, add a line `Removed N unsupported statements.` outside the `<pre>` block. Keep the 4000-char clip and the P6 header text.
+- Files: `src/outreach/render.py`, `src/bot/outreach_handlers.py`, `tests/test_bot_draft.py`, `DECISIONS.md` (amend D-137).
+- Acceptance:
+  - A draft whose verdict removed 1 sentence renders the header, then the `<pre>` body, then "Removed 1 unsupported statements.", in one message of at most 4000 chars.
+  - With `removed == 0` the output is exactly as today.
+
+### FIX-18 [ ] README, SPEC and D-103 say `/contacts` looks contacts up; the code only lists stored ones
+- Severity: non-blocking.
+- Problem:
+  - SPEC "Contacts": "looked up on demand when the user asks (`/prepare`, `/contacts`)".
+  - D-103: "Discovery runs only when the user runs `/prepare` or `/contacts`".
+  - README "Contacts": "Contacts are found only on demand ... when you run `/prepare` or `/contacts`".
+  - But `cmd_contacts` (`src/bot/outreach_handlers.py:323`) never calls `discover_contacts`. PLAN 8.1.14 has it list stored contacts only.
+- Build: either option (record the choice in DECISIONS):
+  - (a) call `discover_contacts` from `/contacts` with the same caps, rediscovery window and unreachable note as `/prepare`;
+  - (b) correct README and D-103 to say discovery runs at `/prepare`, and `/contacts` shows what is stored.
+- Files: `src/bot/outreach_handlers.py` and `tests/test_bot_contacts.py` (a), or `README.md` and `DECISIONS.md` (b).
+- Acceptance:
+  - (a) `/contacts` on a posting at `https://acme-fake.test/jobs/1` (MockTransport) fetches robots.txt and `/team` once and lists the people. A second `/contacts` within 7 days makes 0 requests.
+  - (b) No README sentence claims `/contacts` discovers anything.
+
+### FIX-19 [ ] `/saved` and `/applied` can exceed Telegram's 4096-char limit
+- Severity: non-blocking (largely pre-existing; this branch made it worse).
+- Problem:
+  - `render_reaction_list` puts up to 20 items in one message (title up to 200, company up to 100, an unclipped URL), and P4 added ` /prepare_<16hex>` (26 chars) per line.
+  - On a scratch copy of the real DB, the 20 postings with the longest title+company+url render to 5245 chars. About 4725 of those would already render without this branch.
+  - Telegram rejects such a message with "message is too long", and the handler raises, so the user gets no reply.
+- Build: split with `chunk_lines(lines, 4000)` from `src/outreach/render.py`, one message per chunk. Keep each item's lines together.
+- Files: `src/bot/handlers.py`, `tests/test_bot_commands.py`.
+- Acceptance:
+  - 20 saved items with 200-char titles, 100-char companies and 300-char URLs produce 2 or more messages. Each is at most 4000 chars, has balanced tags and contains every `/prepare_<id>`.
+  - The existing `/saved` fixture output (short list) is unchanged.
+
+### FIX-20 [ ] Schema migration v2 is not atomic: an interrupted upgrade leaves the DB unmigratable
+- Severity: non-blocking (the real DB upgraded cleanly; the failure needs an interruption or an unexpected column).
+- Problem:
+  - Python's sqlite3 (legacy transaction control) does not open a transaction before DDL, so each `ALTER TABLE` in `SCHEMA_2` commits on its own inside `with conn:`.
+  - Reproduced: on a v1 DB with an extra pre-existing `employer_is_startup` column, `migrate` fails at that ALTER. The DB is left at `user_version` 1 with `score` already renamed to `base_score`.
+  - Every later `migrate` then fails on `RENAME COLUMN score`, so the bot cannot start. The same applies to a kill or disk error mid-upgrade.
+- Build: run each migration step in an explicit transaction, for example `conn.execute("BEGIN")` ... `COMMIT`/`ROLLBACK` with `isolation_level=None` for the migration. Optionally, copy the DB file with the sqlite backup API before a v<2 upgrade, as `oppo.db.pre-v2`, which is gitignored by `data/*`.
+- Files: `src/db.py`, `tests/test_migration_v2.py`, `DECISIONS.md`.
+- Acceptance:
+  - The repro above leaves the DB exactly at v1 with the `score` column intact. After dropping the extra column, `migrate` succeeds.
+  - Existing migration tests stay green.
+
+### FIX-21 [ ] `[outreach]` config errors surface only when a command runs, and values are untyped
+- Severity: non-blocking.
+- Problem:
+  - `AppConfig.from_dict({"outreach": {"daily_llm_cap": 5}})` loads fine. `OutreachConfig.from_cfg` raises `ValueError` only inside each handler, so every outreach command fails with no reply while digests keep working.
+  - `daily_llm_call_cap = "40"` (a string) is accepted and later raises `TypeError` in `LlmBudget.reserve`.
+  - README says "unknown keys are rejected", but nothing rejects them at startup.
+- Build:
+  - Validate `[outreach]` (unknown keys, int/str types, positive limits) in `AppConfig.from_dict` or at the start of `run`/`once`, and fail fast with a clear message naming the key.
+  - Alternatively, have outreach handlers reply "config error in [outreach]: <key>" instead of raising.
+- Files: `src/config.py`, `tests/test_config.py`, `README.md` if wording changes.
+- Acceptance:
+  - An unknown key and a string `daily_llm_call_cap` each raise a `ValueError` naming the key at config load (or produce that reply).
+  - The snapshot config still loads.
+
+### FIX-22 [ ] Draft verifier does not enforce "no emails, phone numbers or links"
+- Severity: non-blocking (prompt-injection hardening; nothing is sent automatically).
+- Problem:
+  - `draft.md` forbids emails, phones and links, but `verify_draft` does not check them.
+  - Reproduced: a body sentence "Contact me at evil@phish.example or https://phish.example/cv." passes (`ok=True, removed=0`).
+  - Injected posting or page text could plant a phishing link or address in a message the user copies and sends.
+- Build: in `verify_draft`, drop any sentence containing a URL, email, phone number (7+ digits) or `@handle`, and count it in `removed`.
+- Files: `src/outreach/verify.py`, `tests/test_verify.py`.
+- Acceptance:
+  - The repro sentence is dropped and counted. A body that falls below 3 sentences as a result triggers the existing regenerate path.
+  - `draft_reply_ok.json` is unchanged.
+
+### FIX-23 [ ] PID lock can block `run` forever after a reboot (PID reuse), and stale takeover races
+- Severity: non-blocking (the risk is recorded in D-86, but README's systemd example turns it into a loop).
+- Problem:
+  - `InstanceLock` trusts `os.kill(pid, 0)`. After `wsl --shutdown` or a reboot, the old PID is often reused by an unrelated process, so `run` exits 3 with "already running".
+  - Under the README unit (`Restart=on-failure`, `RestartSec=30`) this repeats forever and no digest is sent.
+  - Two starters that both see a stale lock can both unlink and recreate it, so both run.
+- Build: hold an `fcntl.flock(LOCK_EX | LOCK_NB)` on the lock file for the process lifetime. The kernel releases it on death, so no PID-alive check is needed. Keep writing the PID for the error message.
+- Files: `src/lock.py`, `tests/test_lock.py`, `DECISIONS.md` (amend D-86).
+- Acceptance:
+  - A lock file containing the PID of a live unrelated process (for example the test runner's parent) but no flock holder is acquired.
+  - A second `InstanceLock` in the same test, while the first is held, raises `AlreadyRunning`.
+  - Release then re-acquire works. Existing lock tests stay green or are updated with a reason.
+
+### FIX-24 [ ] Contact discovery can be pointed at loopback, private or link-local addresses by posting data
+- Severity: non-blocking (personal bot, response content is only parsed for names; still, posting data should not steer where the bot connects).
+- Problem:
+  - For hackathon and competition postings, `_page_targets` fetches the posting URL itself (http allowed). For other kinds it fetches `https://<posting host>/team` and `/about`.
+  - The URLs come from third-party feeds (MLH, RSS).
+  - Neither `PoliteClient` nor `discover.py` refuses `localhost`, IP literals, private (10/8, 172.16/12, 192.168/16), loopback, link-local (169.254/16, including cloud metadata) or IPv6 equivalents, or non-default ports.
+- Build: in `discover.py` (or `PoliteClient`, for redirect hops too), refuse targets whose host is an IP literal or `localhost`, or resolves to a non-global address, and targets with an explicit non-default port. Count them as unreachable.
+- Files: `src/contacts/discover.py` and/or `src/http.py`, `tests/test_contacts_discover.py`.
+- Acceptance (MockTransport, no DNS in tests: IP literals and `localhost` are enough):
+  - A hackathon posting with URL `http://127.0.0.1:8080/event`, `http://169.254.169.254/latest` or `http://[::1]/` makes 0 requests and is reported unreachable.
+  - A posting on `https://acme-fake.test/jobs/1` still fetches `/team`.
+
+### FIX-25 [ ] The scoring profile still credits Kazakhstan employers, contradicting the region-blind rubric (double count)
+- Severity: non-blocking.
+- Problem:
+  - `src/scoring/profile.md:11` (goal 3) says "Early-stage startups, in Kazakhstan or remote". The new rubric section says "Do not raise or lower `score` because of the employer's home country".
+  - The model gets both instructions. For a KZ startup it may raise the base score for being Kazakh, and code then adds `kz_startup` +1.0. That is the double count D-92 set out to avoid.
+- Build:
+  - Add one clarifying rubric line: goal 3's "in Kazakhstan" is about where the work happens (Accessibility) and the startup stage, not extra credit for a Kazakhstan HQ, which code adds.
+  - Do not edit SPEC goals.
+  - Record the prompt_version bump. The eval re-run stays a user action.
+- Files: `src/scoring/rubric.md`, `tests/test_scorer.py` (prompt_version constant), `DECISIONS.md` (D-92 addendum).
+- Acceptance:
+  - The rubric text contains the clarification.
+  - The `prompt_version` test is updated. PLAN section 3 / README user action 6 still asks for the eval re-run.
