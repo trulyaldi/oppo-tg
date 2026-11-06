@@ -104,3 +104,54 @@ def test_fail_closed_cost_is_recorded():
     # "I noticed the posting mentions 3 years of C++." is dropped: first person plus a
     # posting-only number. Documented in D-157.
     assert not kept("I noticed the posting mentions 3 years of C++.")
+
+
+# ---- FIX-36: imperative gap tips (D-162) ----
+
+TAILOR_POSTING = (
+    "Acme Fake is hiring a research tooling intern. We need 2+ years of Python experience "
+    "and 3 years with C++. The program runs for 10 weeks in Summer 2026 and serves thousands "
+    "of analysts."
+)
+
+
+def _gap_kept(how):
+    reply = {
+        "gaps": [
+            {"requirement": "Python experience", "posting_evidence": "", "how_to_address": how}
+        ],
+    }
+    v, removed = verify_tailoring(reply, CV, TAILOR_POSTING, SKILLS)
+    return bool(v["gaps"]) and removed == 0
+
+
+@pytest.mark.parametrize(
+    "how",
+    [
+        "Mention 2+ years of Python experience.",
+        "Stress 2+ years of Python experience.",
+        "Highlight 2+ years of Python across the internship and projects.",
+        "Note 3 years of C++ from projects and internship.",
+        "Show 2+ years of Python through the harness and engine.",
+        "Claim 3 years of C++ experience.",
+        "Point to two years of Python work at Sample Labs.",
+        "Present the Sample Labs internship as 10 weeks long.",
+        "Frame the harness as serving thousands of analysts.",
+        "Mention 2+ years of Python, since the role asks for it.",
+    ],
+)
+def test_imperative_gap_with_posting_number_removed(how):
+    assert not _gap_kept(how)
+
+
+@pytest.mark.parametrize(
+    "how",
+    [
+        "The role asks for 3 years of C++; point to the C++ parser.",
+        "Your CV shows one internship; the role wants 2+ years, so stress project depth.",
+        "Point to the C++ parser that cut replay time by 30%.",
+        "Highlight the Summer 2025 internship at Sample Labs.",
+    ],
+)
+def test_attributed_or_cv_numbers_in_gap_kept(how):
+    assert _gap_kept(how)

@@ -2288,7 +2288,7 @@ Fourth review pass, 2026-11-06. The reviewer re-checked FIX-31..FIX-35 (commits 
 
 Probe posting used by FIX-36 and FIX-37, verbatim: "Acme Fake is hiring a research tooling intern. We build research tooling for analysts and care about clean data pipelines. We need 2+ years of Python experience and 3 years with C++. Our founders are ex-Google and Jane Street engineers. The program runs for 10 weeks in Summer 2026 and serves thousands of analysts." Contact: "Sam Doe, Engineering Manager at Acme Fake". CV: `tests/fixtures/cv_fake.txt`.
 
-### FIX-36 [ ] Imperative gap tips restate posting numbers as the user's own experience
+### FIX-36 [x] Imperative gap tips restate posting numbers as the user's own experience
 - Severity: BLOCKING. This is the same mirroring failure as FIX-32. Gap tips are imperative by default, so the FIX-32 second-person test ("you", "your") misses the usual shape.
 - Problem:
   - `verify_tailoring` checks a gap `how_to_address` against CV ∪ posting numbers. `gap_claims_posting_number` only fires in a clause with a second-person marker.

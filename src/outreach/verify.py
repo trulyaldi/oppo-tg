@@ -405,12 +405,38 @@ def ungrounded_own_numbers(
     }
 
 
+_IMPERATIVE = re.compile(
+    r"^\W*(?:mention|stress|highlight|claim|point\s+to|present|frame|note|show|state|say|tell|"
+    r"emphasi[sz]e|underline|cite|quote|describe|position|portray|call|list|add|include|write|"
+    r"use|lead\s+with|open\s+with|talk\s+about|refer\s+to|focus\s+on|play\s+up|sell|pitch|"
+    r"reference|spotlight|showcase|demonstrate|explain)(?!\w)"
+)
+# "the role asks/wants/requires ...": the number is the posting's, not the user's (FIX-36).
+_ATTRIB = re.compile(
+    r"(?<!\w)(?:role|posting|job|program|programme|team|they|it|listing|description|company|"
+    r"employer|ad|vacancy|internship|position)\s+(?:also\s+|only\s+)?(?:asks|wants|requires|"
+    r"needs|mentions|expects|lists|says|states|seeks|specifies|prefers|requests|looks)(?!\w)"
+)
+
+
 def gap_claims_posting_number(how: str, cv_nums: set[str]) -> bool:
-    """A gap tip that tells the user "you have/your N ..." for an N that is not in the CV."""
+    """A gap tip that presents a number absent from the CV as the user's own (FIX-32, FIX-36).
+
+    A clause is flagged when it has such a number and either speaks to the user ("you",
+    "your") or is imperative ("Mention 2+ years ...", "Point to ten weeks ..."), unless an
+    attribution ("the role asks/wants/requires ...") precedes the number in the clause.
+    """
     for clause in re.split(r"[;:.!?]", how):
         cn = norm(clause)
-        if _SECOND.search(cn) and ungrounded_own_numbers(cn, cv_nums):
-            return True
+        if not (_SECOND.search(cn) or _IMPERATIVE.search(cn)):
+            continue
+        bad = ungrounded_own_numbers(cn, cv_nums)
+        if not bad:
+            continue
+        m = _ATTRIB.search(cn)
+        if m and not ungrounded_own_numbers(cn[: m.start()], cv_nums):
+            continue
+        return True
     return False
 
 
