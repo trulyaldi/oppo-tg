@@ -556,7 +556,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - Adding `HH_ACCESS_TOKEN` to the env leaves `counted` unchanged, because credential-gated sources never count.
 - Write a DECISIONS entry with the computed table: counted families with their modules, the module total, credential-gated sources with the env vars they need, and disabled sources with reasons.
 
-### T19e [ ] `probe` CLI: live check of working sources (no secrets)
+### T19e [x] `probe` CLI: live check of working sources (no secrets)
 - Add `src/main.py probe [--db PATH]` (default `data/probe.db`), which works as follows:
   - It reads optional env such as `HTTP_CONTACT` and `OPPO_CONFIG`, but does NOT require the three Telegram/Claude secrets. Use a non-raising settings constructor, e.g. `Settings.from_env(environ, require_secrets=False)`, or equivalent. The flag MUST default to the raising behaviour: `Settings.from_env({})` still raises `MissingConfig` and the T02 tests stay green. Only `probe` passes `require_secrets=False`. `data/probe.db` is already gitignored (`*.db`).
   - It builds the client with `build_client` on the probe DB, so robots and caching stay active, and the pagewatch snapshots never touch the real DB.

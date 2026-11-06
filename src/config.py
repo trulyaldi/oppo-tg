@@ -85,13 +85,13 @@ class Settings:
         return self.max_scores_per_run
 
     @classmethod
-    def from_env(cls, environ: Mapping[str, str]) -> Settings:
+    def from_env(cls, environ: Mapping[str, str], *, require_secrets: bool = True) -> Settings:
         def get(name: str) -> str | None:
             value = environ.get(name)
             return value.strip() if value and value.strip() else None
 
         missing = [v.name for v in ENV_VARS if v.required and get(v.name) is None]
-        if missing:
+        if missing and require_secrets:
             raise MissingConfig(missing)
         defaults = {v.name: v.default for v in ENV_VARS}
 
