@@ -287,7 +287,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - `html_to_text("<p>a &amp; b</p><br>c")` == `"a & b\nc"`; `truncate` never exceeds the limit.
   - Importing `src.config` does not read `os.environ` (test monkeypatches environ with a sentinel and asserts no effect until `from_env` is called).
 
-### T03 [ ] SQLite schema and repository
+### T03 [x] SQLite schema and repository
 - Build `src/db.py`: `connect(path)`, `migrate(conn)` (schema 1.7, `user_version=1`), and repository functions: `upsert_posting(conn, p, fingerprint, now) -> bool(new)`, `set_status`, `pending_for_scoring(limit)`, `save_score`, `record_score_error`, `undelivered_scored()`, `record_delivery`, `is_delivered`, `set_reaction(posting_id, action, now) -> dict[action,bool]`, `active_reactions(posting_id)`, `list_by_reaction(action, limit)`, `recent_feedback_examples(action, limit=20)`, `get_state/set_state`, `start_source_run/finish_source_run/last_source_runs()`.
 - Files: `src/db.py`, `tests/test_db.py`.
 - Acceptance (`tests/test_db.py`, tmp DB):
