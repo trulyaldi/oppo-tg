@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import SourceContext, register
+from src.sources.base import RequestTally, SourceContext, register
 from src.text import html_to_text
 
 INTERN_RE = re.compile(r"\bintern(?:ship)?s?\b", re.IGNORECASE)
@@ -73,13 +73,16 @@ class PageWatchSource:
         return cfg.source_enabled("pagewatch") and bool(_pages(cfg))
 
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
+        tally = RequestTally()
         items: list[Posting] = []
         for page in _pages(ctx.cfg):
             try:
                 html = await ctx.http.get_text(page["url"], ttl_s=CACHE_TTL_S)
                 if html is None:
                     ctx.log.warning("pagewatch %s: no data", page["name"])
+                    tally.failure()
                     continue
+                tally.success()
                 text = extract_text(html, page["css_selector"] or None)
                 if not text.strip():
                     ctx.log.warning("pagewatch %s: no text", page["name"])
@@ -114,4 +117,6 @@ class PageWatchSource:
                 )
             except Exception:  # noqa: BLE001 - one bad page must not stop the others
                 ctx.log.exception("pagewatch %s failed", page["name"])
+                tally.failure()
+        tally.raise_if_all_failed()
         return items

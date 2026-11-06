@@ -110,6 +110,15 @@ async def test_selector_ignores_changes_outside():
 async def test_http_error_returns_empty():
     h = Harness(_cfg(), status=500)
     r = await _fetch(h)
+    assert not r.ok and r.error and r.items == []
+    r = await _fetch(Harness(_cfg(), status=403))
+    assert not r.ok and r.error and r.items == []
+
+
+async def test_unchanged_page_is_ok_and_empty():
+    h = Harness(_cfg())
+    assert (await _fetch(h)).ok
+    r = await _fetch(h)
     assert r.ok and r.items == []
 
 
@@ -133,7 +142,8 @@ async def test_robots_disallow_skips_page():
 
     ctx = h.run()
     ctx.http = build_client(h.conn, h.clock, transport=httpx.MockTransport(handler), sleep=nosleep)
-    assert await PageWatchSource().fetch(ctx) == []
+    res = await run_source(PageWatchSource(), ctx)
+    assert not res.ok and res.error and res.items == []
 
 
 def test_registered_and_enabled():

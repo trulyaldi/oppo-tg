@@ -730,7 +730,7 @@ Evidence from the review: 275 tests pass, `ruff check` and `ruff format --check`
   - The README no longer suggests that `HH_ACCESS_TOKEN` restores the counted total.
   - All tests green, ruff clean.
 
-### FIX-02 [ ] A source whose every request fails is recorded as ok (no failure signal in /sources or probe)
+### FIX-02 [x] A source whose every request fails is recorded as ok (no failure signal in /sources or probe)
 - Problem: every multi-request source (greenhouse, lever, ashby, hn, rss, pagewatch, mlh, jobicy, hh) catches per-request failures, logs them and returns `[]`. `run_source` then records `ok=1, n_items=0`. Reproduced offline: pagewatch with every page answering HTTP 403 gives `ok True items 0`. So `/sources` shows "ok, 0 items" for a source that is completely blocked (403, robots disallow, DNS down), and README step 5 ("check that /sources shows ok runs") cannot detect breakage. With zero spare families (D-60), a silent total failure is the main risk to the 6-source goal.
 - Build: when ALL sub-requests of a run fail (get_json/get_text returned None or raised), the source raises a clear exception, e.g. `SourceUnavailable("all 7 pages failed: no data")`, so `run_source` records `ok=False` with an error string. Partial failure stays ok. "Fetched fine but nothing new" (pagewatch unchanged pages, an empty feed) stays ok. Put the "all failed" logic in a shared helper in `src/sources/base.py` rather than copying it per source.
 - Files: `src/sources/base.py`, the source modules above, their `tests/test_source_<name>.py`, `DECISIONS.md`.

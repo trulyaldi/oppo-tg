@@ -11,7 +11,7 @@ import feedparser
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import SourceContext, register
+from src.sources.base import RequestTally, SourceContext, register
 from src.text import html_to_text
 
 INTERN_RE = re.compile(r"\bintern(?:ship)?s?\b", re.IGNORECASE)
@@ -107,6 +107,7 @@ class RssSource:
         return cfg.source_enabled("rss") and bool(_feeds(cfg))
 
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
+        tally = RequestTally()
         items: list[Posting] = []
         for feed in _feeds(ctx.cfg):
             try:
@@ -114,8 +115,12 @@ class RssSource:
                 text = await ctx.http.get_text(feed["url"], ttl_s=CACHE_TTL_S)
                 if text is None:
                     ctx.log.warning("rss feed %s: no data", feed["name"])
+                    tally.failure()
                     continue
+                tally.success()
                 items.extend(parse_feed(text, feed["name"], feed["kind"]))
             except Exception:  # noqa: BLE001 - one bad feed must not stop the others
                 ctx.log.exception("rss feed %s failed", feed["name"])
+                tally.failure()
+        tally.raise_if_all_failed()
         return items

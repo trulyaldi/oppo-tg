@@ -8,7 +8,7 @@ from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import SourceContext, register
+from src.sources.base import RequestTally, SourceContext, register
 from src.text import html_to_text
 
 API = "https://jobicy.com/api/jobs"
@@ -92,6 +92,7 @@ class JobicySource:
         return cfg.source_enabled("jobicy") and bool(_queries(cfg))
 
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
+        tally = RequestTally()
         seen: set[str] = set()
         items: list[Posting] = []
         for query in _queries(ctx.cfg):
@@ -101,11 +102,15 @@ class JobicySource:
                 )
                 if data is None:
                     ctx.log.warning("jobicy %s: no data", query)
+                    tally.failure()
                     continue
+                tally.success()
                 for p in parse_jobs(data):
                     if p.external_id not in seen:
                         seen.add(p.external_id)
                         items.append(p)
             except Exception:  # noqa: BLE001 - one bad query must not stop the others
                 ctx.log.exception("jobicy %s failed", query)
+                tally.failure()
+        tally.raise_if_all_failed()
         return items

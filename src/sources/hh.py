@@ -8,7 +8,7 @@ from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import SourceContext, register
+from src.sources.base import RequestTally, SourceContext, register
 from src.text import html_to_text
 
 API = "https://api.hh.ru/vacancies"
@@ -95,6 +95,7 @@ class HHSource:
         headers = {"HH-User-Agent": ctx.http.user_agent}
         if ctx.settings.hh_access_token:
             headers["Authorization"] = f"Bearer {ctx.settings.hh_access_token}"
+        tally = RequestTally()
         seen: dict[str, Posting] = {}
         for query in _queries(ctx.cfg):
             try:
@@ -111,9 +112,13 @@ class HHSource:
                 )
                 if data is None:
                     ctx.log.warning("hh query %r: no data", query)
+                    tally.failure()
                     continue
+                tally.success()
                 for p in parse_vacancies(data):
                     seen.setdefault(p.external_id, p)
             except Exception:  # noqa: BLE001 - one bad query must not stop the others
                 ctx.log.exception("hh query %r failed", query)
+                tally.failure()
+        tally.raise_if_all_failed()
         return list(seen.values())

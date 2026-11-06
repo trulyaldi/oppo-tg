@@ -93,19 +93,23 @@ async def test_empty_response():
 async def test_malformed_json():
     ctx, _ = _ctx({"x": httpx.Response(200, text="<html>not json")}, _cfg(["x"]))
     res = await run_source(GreenhouseSource(), ctx)
-    assert res.ok and res.items == []
+    assert not res.ok and res.error and res.items == []
 
 
 async def test_http_error():
     ctx, _ = _ctx({"x": httpx.Response(500)}, _cfg(["x"]))
     res = await run_source(GreenhouseSource(), ctx)
-    assert res.ok and res.items == []
+    assert not res.ok and res.error and res.items == []
+    ctx, _ = _ctx({"x": httpx.Response(403)}, _cfg(["x"]))
+    res = await run_source(GreenhouseSource(), ctx)
+    assert not res.ok and res.error and res.items == []
 
 
 async def test_one_bad_board_does_not_block_other():
     routes = {"bad": httpx.Response(500), "good": httpx.Response(200, text=FIXTURE)}
     ctx, _ = _ctx(routes, _cfg(["bad", "good"]))
     res = await run_source(GreenhouseSource(), ctx)
+    assert res.ok
     assert len(res.items) >= 3
     assert all(p.external_id.startswith("good:") for p in res.items)
 

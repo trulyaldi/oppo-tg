@@ -99,7 +99,10 @@ async def test_empty_list():
 async def test_malformed_json():
     ctx, _ = _ctx({"palantir": httpx.Response(200, text="{not json")}, _cfg(["palantir"]))
     res = await run_source(LeverSource(), ctx)
-    assert res.items == []
+    assert not res.ok and res.error and res.items == []
+    ctx, _ = _ctx({"bad": httpx.Response(403, text="no")}, _cfg(["bad"]))
+    res = await run_source(LeverSource(), ctx)
+    assert not res.ok and res.error and res.items == []
 
 
 async def test_malformed_shape_and_entries():
@@ -116,13 +119,16 @@ async def test_http_500_and_isolation():
         _cfg(["bad", "palantir"]),
     )
     res = await run_source(LeverSource(), ctx)
-    assert len(res.items) == 5
+    assert res.ok and len(res.items) == 5
 
 
 async def test_http_500_only():
     ctx, _ = _ctx({"bad": httpx.Response(500, text="boom")}, _cfg(["bad"]))
     res = await run_source(LeverSource(), ctx)
-    assert res.items == []
+    assert not res.ok and res.error and res.items == []
+    ctx, _ = _ctx({"bad": httpx.Response(403, text="no")}, _cfg(["bad"]))
+    res = await run_source(LeverSource(), ctx)
+    assert not res.ok and res.error and res.items == []
 
 
 def test_registered_and_enabled():

@@ -76,14 +76,19 @@ async def test_fetch_dedupes_across_industries_and_params():
 async def test_empty_malformed_and_http_error():
     for resp in (
         httpx.Response(200, json={"jobs": []}),
-        httpx.Response(200, text="{not json"),
         httpx.Response(200, json=["x"]),
+    ):
+        ctx, _ = _ctx(lambda r, x=resp: x)
+        res = await run_source(JobicySource(), ctx)
+        assert res.ok and res.items == []
+    for resp in (
+        httpx.Response(200, text="{not json"),
         httpx.Response(500, text="boom"),
         httpx.Response(403, text="no"),
     ):
         ctx, _ = _ctx(lambda r, x=resp: x)
         res = await run_source(JobicySource(), ctx)
-        assert res.ok and res.items == []
+        assert not res.ok and res.error and res.items == []
 
 
 async def test_one_failing_query_keeps_the_other():

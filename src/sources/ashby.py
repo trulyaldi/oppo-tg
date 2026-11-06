@@ -8,7 +8,7 @@ from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import SourceContext, register
+from src.sources.base import RequestTally, SourceContext, register
 from src.text import html_to_text
 
 API = "https://api.ashbyhq.com/posting-api/job-board/{board}"
@@ -82,6 +82,7 @@ class AshbySource:
         return cfg.source_enabled("ashby") and bool(_boards(cfg))
 
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
+        tally = RequestTally()
         items: list[Posting] = []
         for board, company in _boards(ctx.cfg):
             try:
@@ -92,8 +93,12 @@ class AshbySource:
                 )
                 if data is None:
                     ctx.log.warning("ashby board %s: no data", board)
+                    tally.failure()
                     continue
+                tally.success()
                 items.extend(parse_board(data, board, company))
             except Exception:  # noqa: BLE001 - one bad board must not stop the others
                 ctx.log.exception("ashby board %s failed", board)
+                tally.failure()
+        tally.raise_if_all_failed()
         return items

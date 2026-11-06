@@ -108,6 +108,9 @@ async def test_empty_malformed_and_errors():
         ctx, _ = _ctx(resp, _cfg())
         res = await run_source(HHSource(), ctx)
         assert res.items == []
+        assert res.ok == (resp.status_code == 200 and resp.text != "{not json")
+        if not res.ok:
+            assert res.error
     assert parse_vacancies({"items": [{"id": "1"}, "junk", None]}) == []
 
 

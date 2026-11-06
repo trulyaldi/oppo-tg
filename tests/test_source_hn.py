@@ -136,9 +136,13 @@ def test_malformed_shapes():
 async def test_http_500():
     ctx, _ = _ctx(httpx.Response(500, text="boom"), httpx.Response(500, text="boom"))
     res = await run_source(HnSource(), ctx)
-    assert res.items == []
+    assert not res.ok and res.error and res.items == []
+    ctx, _ = _ctx(httpx.Response(403, text="no"), httpx.Response(403, text="no"))
+    res = await run_source(HnSource(), ctx)
+    assert not res.ok and res.error and res.items == []
     ctx, _ = _ctx(httpx.Response(200, text=SEARCH), httpx.Response(500, text="boom"))
-    assert (await run_source(HnSource(), ctx)).items == []
+    res = await run_source(HnSource(), ctx)
+    assert not res.ok and res.error and res.items == []
 
 
 def test_registered_and_enabled():

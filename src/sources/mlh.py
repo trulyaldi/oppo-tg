@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup, Tag
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import SourceContext, register
+from src.sources.base import SourceContext, SourceUnavailable, register
 
 CACHE_TTL_S = 3600.0
 EVENT_TYPE = "https://schema.org/Event"
@@ -104,13 +104,12 @@ class MLHSource:
         return cfg.source_enabled("mlh")
 
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
-        try:
-            today = ctx.clock.now().astimezone(ZoneInfo(ctx.settings.timezone)).date()
-            html = await ctx.http.get_text(season_url(today), ttl_s=CACHE_TTL_S)
-            items = parse_events(html, today)
-            if not items:
-                ctx.log.warning("mlh: no event cards parsed (markup changed or season empty)")
-            return items
-        except Exception:  # noqa: BLE001 - a failing source must not crash the pipeline
-            ctx.log.exception("mlh failed")
-            return []
+        # FIX-02: a failed request raises SourceUnavailable so run_source records ok=False.
+        today = ctx.clock.now().astimezone(ZoneInfo(ctx.settings.timezone)).date()
+        html = await ctx.http.get_text(season_url(today), ttl_s=CACHE_TTL_S)
+        if html is None:
+            raise SourceUnavailable("mlh season page request failed: no data")
+        items = parse_events(html, today)
+        if not items:
+            ctx.log.warning("mlh: no event cards parsed (markup changed or season empty)")
+        return items

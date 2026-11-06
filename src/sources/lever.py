@@ -8,7 +8,7 @@ from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import SourceContext, register
+from src.sources.base import RequestTally, SourceContext, register
 from src.text import html_to_text
 
 API = "https://api.lever.co/v0/postings/{company}"
@@ -85,6 +85,7 @@ class LeverSource:
         return cfg.source_enabled("lever") and bool(_companies(cfg))
 
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
+        tally = RequestTally()
         items: list[Posting] = []
         for slug, company in _companies(ctx.cfg):
             try:
@@ -93,8 +94,12 @@ class LeverSource:
                 )
                 if data is None:
                     ctx.log.warning("lever company %s: no data", slug)
+                    tally.failure()
                     continue
+                tally.success()
                 items.extend(parse_postings(data, slug, company))
             except Exception:  # noqa: BLE001 - one bad company must not stop the others
                 ctx.log.exception("lever company %s failed", slug)
+                tally.failure()
+        tally.raise_if_all_failed()
         return items

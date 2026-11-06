@@ -97,7 +97,7 @@ async def test_http_errors_return_empty():
     for status in (403, 404, 429, 500):
         ctx, _ = _ctx(lambda r, s=status: httpx.Response(s, text="nope"))
         res = await run_source(MLHSource(), ctx)
-        assert res.ok and res.items == []
+        assert not res.ok and res.error and res.items == []
 
 
 async def test_robots_disallow_skips_fetch():

@@ -129,7 +129,10 @@ async def test_garbage_xml_returns_empty():
 async def test_http_500_returns_empty():
     ctx = _ctx({"a.example": httpx.Response(500, text="boom")}, _cfg([_feed("a.example")]))
     res = await run_source(RssSource(), ctx)
-    assert res.ok and res.items == []
+    assert not res.ok and res.error and res.items == []
+    ctx = _ctx({"a.example": httpx.Response(403, text="no")}, _cfg([_feed("a.example")]))
+    res = await run_source(RssSource(), ctx)
+    assert not res.ok and res.error and res.items == []
 
 
 def test_registered_and_enabled():

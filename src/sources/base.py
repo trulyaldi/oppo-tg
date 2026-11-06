@@ -47,6 +47,32 @@ class SourceResult:
     error: str | None = None
 
 
+class SourceUnavailable(Exception):
+    """Every request of a run failed (blocked, down, robots-disallowed): FIX-02."""
+
+
+@dataclass
+class RequestTally:
+    """Counts sub-request outcomes so a total failure is not recorded as ok (FIX-02).
+
+    Partial failure stays ok; "fetched but nothing new" counts as success.
+    """
+
+    total: int = 0
+    failed: int = 0
+
+    def success(self) -> None:
+        self.total += 1
+
+    def failure(self) -> None:
+        self.total += 1
+        self.failed += 1
+
+    def raise_if_all_failed(self) -> None:
+        if self.total and self.failed == self.total:
+            raise SourceUnavailable(f"all {self.total} requests failed: no data")
+
+
 REGISTRY: dict[str, Callable[[], Source]] = {}
 
 

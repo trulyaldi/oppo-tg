@@ -8,7 +8,7 @@ from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import SourceContext, register
+from src.sources.base import SourceContext, SourceUnavailable, register
 from src.text import html_to_text
 
 SEARCH_URL = "https://hn.algolia.com/api/v1/search_by_date"
@@ -120,21 +120,19 @@ class HnSource:
         return cfg.source_enabled("hn")
 
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
-        try:
-            search = await ctx.http.get_json(
-                SEARCH_URL,
-                params={"tags": "story,author_whoishiring", "hitsPerPage": "10"},
-                ttl_s=CACHE_TTL_S,
-            )
-            story_id = pick_story_id(search)
-            if story_id is None:
-                ctx.log.warning("hn: no 'Who is hiring' story found")
-                return []
-            data = await ctx.http.get_json(ITEM_URL.format(id=story_id), ttl_s=CACHE_TTL_S)
-            if data is None:
-                ctx.log.warning("hn story %s: no data", story_id)
-                return []
-            return parse_item(data)
-        except Exception:  # noqa: BLE001 - a failing source must not crash the pipeline
-            ctx.log.exception("hn failed")
+        # FIX-02: a failed request raises SourceUnavailable so run_source records ok=False.
+        search = await ctx.http.get_json(
+            SEARCH_URL,
+            params={"tags": "story,author_whoishiring", "hitsPerPage": "10"},
+            ttl_s=CACHE_TTL_S,
+        )
+        if search is None:
+            raise SourceUnavailable("hn search request failed: no data")
+        story_id = pick_story_id(search)
+        if story_id is None:
+            ctx.log.warning("hn: no 'Who is hiring' story found")
             return []
+        data = await ctx.http.get_json(ITEM_URL.format(id=story_id), ttl_s=CACHE_TTL_S)
+        if data is None:
+            raise SourceUnavailable(f"hn story {story_id} request failed: no data")
+        return parse_item(data)
