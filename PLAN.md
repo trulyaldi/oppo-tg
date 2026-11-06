@@ -2083,7 +2083,7 @@ Second review pass, 2026-11-06. The reviewer re-checked FIX-15..FIX-25 (commits 
   - Every FIX-15 legitimate sentence still passes, including "I would love to join the research team at Acme Fake." and "Could I learn more about internships at Acme Fake?". So does "Previously I was a research intern at Sample Labs.".
   - "Я работал в Яндекс Маркете" against a CV that has only "маркетинг" and "Яндекс" is dropped.
 
-### FIX-28 [ ] Entity and contact-info rules drop honest text (more regenerations and removed counts)
+### FIX-28 [x] Entity and contact-info rules drop honest text (more regenerations and removed counts)
 - Severity: non-blocking. The verifier fails closed, but this costs a second draft call and makes honest fit points disappear.
 - Problem (reproduced with `cv_fake.txt` and `entity_probes.json`):
   - The draft sentence "I was impressed by the work at Acme Fake." is dropped as a past claim. `was` is a past verb, and the mid text "impressed by the work" is not in the `_INTENT` exemption. Common outreach phrasing ("I was inspired by ...", "I was struck by ... at X") hits the same rule.

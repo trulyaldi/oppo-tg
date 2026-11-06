@@ -258,3 +258,58 @@ def test_fix27_cyrillic_stem_is_bounded():
             ["Python"],
         )
         assert v.ok and v.removed == removed, s
+
+
+# ---- FIX-28: honest text is no longer dropped (D-153) ----
+
+
+def test_fix28_impressed_inspired_struck_kept_at_posting_company():
+    for s in (
+        "I was impressed by the work at Acme Fake.",
+        "I was inspired by the tooling at Acme Fake.",
+        "I was struck by the research at Acme Fake.",
+    ):
+        v = run([P["greeting"], s, P["legit"]["was_intern"], P["legit"]["intent"], ASK])
+        assert v.ok and v.removed == 0, s
+    bad = "I worked at Acme Fake."
+    v = run([P["greeting"], bad, P["legit"]["was_intern"], P["legit"]["intent"], ASK])
+    assert v.ok and v.removed == 1
+
+
+def test_fix28_fit_points_may_name_posting_company_and_role():
+    ev = "Sample Labs - Research Intern, Summer 2025"
+    pts = [
+        {
+            "text": "Your Sample Labs work fits the Research Tooling Intern role at Acme Fake",
+            "cv_evidence": ev,
+        },
+        {
+            "text": "Your Sample Labs internship matches Acme Fake's tooling focus",
+            "cv_evidence": ev,
+        },
+        {"text": "Your internship at Acme Fake is relevant", "cv_evidence": ev},
+        {"text": "Your Jane Street work fits Acme Fake", "cv_evidence": ev},
+    ]
+    out, removed = verify_tailoring({"fit": {"level": "partial", "points": pts}}, CV, POST, [])
+    assert removed == 2 and len(out["fit"]["points"]) == 2
+    # emphasize/cut/reorder stay CV-only
+    out, removed = verify_tailoring({"emphasize": pts[:1]}, CV, POST, [])
+    assert removed == 1
+
+
+def test_fix28_bare_domain_in_cv_kept_otherwise_dropped():
+    from src.outreach.verify import has_contact_info
+
+    cv = CV + "\nBuilt a parser with Socket.IO and ASP.NET\n"
+    for s in ("I built a parser with Socket.IO.", "I have used ASP.NET before."):
+        sents = [P["greeting"], s, P["legit"]["was_intern"], P["legit"]["intent"], ASK]
+        ok = verify_draft(draft(sents), cv, POST, CONTACT, ["Python"])
+        assert ok.ok and ok.removed == 0, s
+        no = run(sents)
+        assert no.ok and no.removed == 1 and "contact-info" in no.unsupported, s
+    from src.outreach.verify import norm
+
+    assert has_contact_info(
+        "Contact me at evil@phish.example or https://phish.example/cv.", norm(cv)
+    )
+    assert has_contact_info("See evil.com", norm(cv))

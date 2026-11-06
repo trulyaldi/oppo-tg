@@ -187,7 +187,10 @@ _ROLE = (
     r"fellow|trainee|apprentice|associate|assistant|contractor|consultant|volunteer|"
     r"resident|scientist|programmer|designer|alumnus|alumna"
 )
-_INTENT = re.compile(r"\b(?:to|excited|eager|thrilled|glad|happy|keen|hoping|would|could)\b")
+_INTENT = re.compile(
+    r"\b(?:to|excited|eager|thrilled|glad|happy|keen|hoping|would|could|impressed|inspired|struck|"
+    r"fascinated|intrigued|drawn|interested|curious|following|follow(?:ed)?|admire[d]?|motivated)\b"
+)
 
 
 def _ent_pat(e: str) -> str:
@@ -291,8 +294,14 @@ def call_length_numbers(ask: str) -> set[str]:
     return set(_CALL_LEN.findall(norm(ask)))
 
 
-def claim_ok(text: Any, evidence: Any, cv_text: str, cv_skills: list[str]) -> bool:
-    """V1-V4 for one statement about the candidate."""
+def claim_ok(
+    text: Any, evidence: Any, cv_text: str, cv_skills: list[str], posting_text: str = ""
+) -> bool:
+    """V1-V5 for one statement about the candidate.
+
+    With posting_text (fit points only, D-153) names found there are allowed, unless the
+    text tells the user they have experience at that name ("your internship at X").
+    """
     if not isinstance(text, str) or not text.strip() or len(text) > MAX_TEXT:
         return False
     if not v1(evidence, cv_text):
@@ -304,7 +313,12 @@ def claim_ok(text: Any, evidence: Any, cv_text: str, cv_skills: list[str]) -> bo
         return False
     if not skill_terms(t, cv_skills) <= skill_terms(cv, cv_skills):  # V4
         return False
-    return not ungrounded_entities(text, cv, cv_skills)  # V5: names appear in the CV
+    bad = ungrounded_entities(text, cv, cv_skills)  # V5: names appear in the CV
+    if bad and posting_text:
+        post = norm(posting_text)
+        if all(has_word(e, post) for e in bad):
+            return not is_second_person_claim(text, bad)
+    return not bad
 
 
 def _skills_in(text_norm: str, cv_skills: list[str]) -> set[str]:
@@ -326,11 +340,13 @@ def verify_tailoring(
     removed = 0
     result = result if isinstance(result, dict) else {}
 
-    def keep_claims(raw: Any, cap: int) -> list[dict]:
+    def keep_claims(raw: Any, cap: int, posting: str = "") -> list[dict]:
         nonlocal removed
         out: list[dict] = []
         for it in _items(raw, cap):
-            if len(out) < cap and claim_ok(it.get("text"), it.get("cv_evidence"), cv_text, skills):
+            if len(out) < cap and claim_ok(
+                it.get("text"), it.get("cv_evidence"), cv_text, skills, posting
+            ):
                 out.append({"text": it["text"], "cv_evidence": it["cv_evidence"]})
             else:
                 removed += 1
@@ -341,7 +357,7 @@ def verify_tailoring(
     verified: dict = {
         "fit": {
             "level": level if level in ("strong", "partial", "weak") else "weak",
-            "points": keep_claims(fit_raw.get("points"), CAPS["points"]),
+            "points": keep_claims(fit_raw.get("points"), CAPS["points"], posting_text),
         },
         "emphasize": keep_claims(result.get("emphasize"), CAPS["emphasize"]),
         "cut": keep_claims(result.get("cut"), CAPS["cut"]),
@@ -463,9 +479,12 @@ class DraftVerdict:
     reason: str = ""
 
 
-_URL = re.compile(
-    r"(?i)(?:https?://|www\.|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}/\S|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|org|net|io|co|ai|dev|app|me|kz|ru|"
-    r"info|biz|xyz|site|online|link|ly|gl)\b)"
+_URL = re.compile(  # scheme, www. or a path: always contact info
+    r"(?i)(?:https?://|www\.|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}/\S)"
+)
+_BARE = re.compile(  # bare domain on a common TLD: skipped when the CV itself names it
+    r"(?i)\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|org|net|io|co|ai|dev|app|me|kz|ru|"
+    r"info|biz|xyz|site|online|link|ly|gl)\b"
 )
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _HANDLE = re.compile(r"(?<![\w@])@\w{2,}")
@@ -473,10 +492,16 @@ _PHONE = re.compile(r"\+?\d[\d ()\-]{5,}\d")
 _YEARS = re.compile(r"\d{4}\s*-\s*\d{4}")
 
 
-def has_contact_info(sentence: str) -> bool:
-    """URL, email, @handle or a phone-like run of 7+ digits."""
+def has_contact_info(sentence: str, cv_n: str = "") -> bool:
+    """URL, email, @handle or a phone-like run of 7+ digits.
+
+    A bare domain ("Socket.IO", "ASP.NET") is let through when the CV names it (D-153).
+    """
     if _URL.search(sentence) or _EMAIL.search(sentence) or _HANDLE.search(sentence):
         return True
+    for m in _BARE.finditer(sentence):
+        if not (cv_n and has_term(m.group(), cv_n)):
+            return True
     for m in _PHONE.finditer(sentence):
         if sum(c.isdigit() for c in m.group()) >= 7 and not _YEARS.fullmatch(m.group().strip()):
             return True
@@ -526,7 +551,7 @@ def verify_draft(
     bad: set[str] = set()
     for s in sents:
         sn = norm(s)
-        if has_contact_info(s):
+        if has_contact_info(s, cv_n):
             removed += 1
             bad.add("contact-info")
             continue
