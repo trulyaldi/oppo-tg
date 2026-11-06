@@ -1,0 +1,16 @@
+<b>Prepare: Quant Research Intern</b> — Demo Trading
+Fit: partial
+• Python and SQL data work
+<b>Emphasize</b>
+• Data internship with forecasting experiments
+• Team research on forecasting
+<b>Reorder</b>
+• Move the Python project up
+<b>Keywords (in your CV and the posting)</b>
+• Python
+<b>Gaps and how to address</b>
+• C++ and kdb+: Not in your CV; consider a small low-latency side project.
+<b>Contacts</b>
+• recruiter (90%): Ann Fake, Recruiter FAKE FIXTURE https://example.com/team?a=1&amp;b=2 /draft_7
+• engineer (55%): Bob Fake /draft_8
+Nothing is sent anywhere; drafts are for you to copy.

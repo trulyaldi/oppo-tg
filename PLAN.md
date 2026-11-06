@@ -1562,7 +1562,7 @@ Per-type guidance in `draft.md`:
   - The sent kwargs contain no `tools`, and `model == "claude-sonnet-4-6"` from the snapshot config.
   - caplog has no CV or posting text.
 
-### P3 [ ] Compact prepare rendering and chunking
+### P3 [x] Compact prepare rendering and chunking
 - Depends on: P2.
 - Build: `src/outreach/render.py`:
   - `render_prepare(posting, result, contacts, links, removed, unreachable) -> list[str]` (HTML chunks) plus a keyboard builder. Sections in order:
