@@ -1,0 +1,3 @@
+workable_account.json is HAND-WRITTEN from the documented response shape (DECISIONS.md D-173 and
+Workable's help-centre article 115012771647). It was NOT captured from a live response. A real-response
+check is deferred to the final smoke test or to the user (see the FC-18 decision in DECISIONS.md).

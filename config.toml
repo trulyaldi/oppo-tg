@@ -38,6 +38,13 @@ cohere = "Cohere"
 perplexity = "Perplexity"
 ramp = "Ramp"
 
+[sources.workable]
+enabled = true
+# Workable account slugs (www.workable.com/api/accounts/<slug>); discovered boards add more
+accounts = []
+
+[sources.workable.names]
+
 [sources.hn]
 enabled = true
 

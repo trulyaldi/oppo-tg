@@ -45,6 +45,7 @@ Hard filters (applied before the LLM): obvious spam, unpaid "exposure" roles, se
 ## Sources (start small, add later)
 
 - ATS JSON endpoints (Greenhouse, Lever, Ashby) for a company watchlist. (implemented: greenhouse in src/sources/greenhouse.py; lever in src/sources/lever.py; ashby in src/sources/ashby.py)
+- Workable public accounts API for a company watchlist and discovered boards. (implemented: workable in src/sources/workable.py, see D-173, D-215)
 - Hacker News "Who is hiring". (implemented: hn in src/sources/hn.py)
 - YC Work at a Startup. (dropped: see D-54; YC startups are covered via HN Who is hiring, hnrss HN Jobs feed and Ashby/Lever boards)
 - hh.kz. (implemented: hh in src/sources/hh.py; needs HH_ACCESS_TOKEN, disabled without it)

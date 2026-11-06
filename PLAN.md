@@ -2757,7 +2757,7 @@ Each migration gets a test that starts from the previous version with sample row
   - A hostile company name is escaped.
   - Messages from another chat are ignored.
 
-### FC-18 [ ] Workable source (watchlist and discoverable)
+### FC-18 [x] Workable source (watchlist and discoverable)
 - Build (D-173), following the section 0 source rules:
   - Record the robots check of `/api/accounts/{slug}` in DECISIONS.
   - Capture one real response from one account, trimmed, as `tests/fixtures/workable_account.json`.

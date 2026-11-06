@@ -1,0 +1,61 @@
+{
+  "name": "Acme Robotics",
+  "description": "Acme builds warehouse robots.",
+  "jobs": [
+    {
+      "title": "Machine Learning Engineer",
+      "shortcode": "A1B2C3D4E5",
+      "code": "",
+      "employment_type": "Full-time",
+      "telecommuting": false,
+      "department": "Engineering",
+      "url": "https://apply.workable.com/j/A1B2C3D4E5",
+      "shortlink": "https://apply.workable.com/j/A1B2C3D4E5",
+      "application_url": "https://apply.workable.com/j/A1B2C3D4E5/apply",
+      "published_on": "2026-10-20",
+      "created_at": "2026-10-18",
+      "country": "Kazakhstan",
+      "city": "Almaty",
+      "state": "",
+      "education": "Bachelor's Degree",
+      "experience": "Mid-Senior level",
+      "function": "Engineering",
+      "industry": "Computer Software",
+      "description": "<p>Build <b>ML</b> models for robots.</p><ul><li>Python</li></ul>",
+      "locations": [{"country": "Kazakhstan", "countryCode": "KZ", "city": "Almaty", "region": "", "hidden": false}]
+    },
+    {
+      "title": "Data Science Intern",
+      "shortcode": "F6G7H8I9J0",
+      "code": "",
+      "employment_type": "Internship",
+      "telecommuting": true,
+      "department": "Data",
+      "url": "https://apply.workable.com/j/F6G7H8I9J0",
+      "shortlink": "https://apply.workable.com/j/F6G7H8I9J0",
+      "application_url": "https://apply.workable.com/j/F6G7H8I9J0/apply",
+      "published_on": "",
+      "created_at": "2026-10-25",
+      "country": "",
+      "city": "",
+      "state": "",
+      "description": "<p>Summer internship.</p>"
+    },
+    {
+      "title": "Backend Engineer",
+      "shortcode": "K1L2M3N4O5",
+      "employment_type": "Full-time",
+      "telecommuting": false,
+      "department": "Engineering",
+      "url": "https://apply.workable.com/acme-robotics/j/K1L2M3N4O5/",
+      "published_on": "2026-10-30",
+      "created_at": "2026-10-29",
+      "country": "Germany",
+      "city": "Berlin",
+      "description": "<p>APIs.</p>"
+    },
+    {
+      "title": "Broken entry without url or code"
+    }
+  ]
+}

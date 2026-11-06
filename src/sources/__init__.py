@@ -12,4 +12,5 @@ from src.sources import (
     pagewatch,  # noqa: F401  (registers "pagewatch")
     rss,  # noqa: F401  (registers "rss")
     telegram_channels,  # noqa: F401  (registers "telegram_channels")
+    workable,  # noqa: F401  (registers "workable")
 )

@@ -203,6 +203,7 @@ in `src/config.py`; this table is checked against it by a test.
 | greenhouse | ats | counted (no credentials) | Public boards API (boards-api.greenhouse.io); company watchlist in config.toml |
 | lever | ats | counted (no credentials) | Public postings API (api.lever.co) |
 | ashby | ats | counted (no credentials) | Public job-board API (api.ashbyhq.com) |
+| workable | ats | counted once an account or discovered board exists | Public accounts API (www.workable.com/api/accounts), hand-written fixture pending real-response check (D-215) |
 | hn | hn | counted (no credentials) | Hacker News "Who is hiring" via the Algolia API |
 | rss | rss | counted (no credentials) | RSS/Atom feeds listed in config.toml |
 | pagewatch | pagewatch | counted (no credentials) | Change detection on fellowship/internship pages, robots.txt obeyed |

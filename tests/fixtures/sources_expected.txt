@@ -9,4 +9,5 @@
 <b>pagewatch</b> [pagewatch] tier3 counted; last run: never run
 <b>rss</b> [rss] tier2 counted; last run: failed (Boom &lt;x&gt;), 2026-11-06T06:00:00+00:00
 <b>telegram_channels</b> [telegram_channels] tier2 credentials: TG_API_ID, TG_API_HASH; last run: never run
+<b>workable</b> [ats] tier1 disabled: disabled in config.toml; last run: never run
 Credential-free source families enabled: 6 (need 6)
