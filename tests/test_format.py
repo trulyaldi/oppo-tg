@@ -141,3 +141,15 @@ def test_flagged_alert_and_length():
     out = render_item(flagged(reason="x" * 5000), alert=True)
     assert out.startswith("<b>ALERT</b>\n\U0001f1f0\U0001f1ff <b>")
     assert len(out) <= MAX_ITEM_CHARS
+
+
+def test_aggregator_attribution():
+    from src.delivery.format import SOURCE_ATTRIBUTION
+
+    assert SOURCE_ATTRIBUTION == {"remoteok": "Remote OK", "jobicy": "Jobicy"}
+    out = render_item(make(source="remoteok"))
+    assert "via Remote OK" in out and "example.com" in out
+    assert out.index("via Remote OK") < out.index("https://")
+    assert "via Jobicy" in render_item(make(source="jobicy"))
+    for src in ("hn", ""):
+        assert "via " not in render_item(make(source=src))

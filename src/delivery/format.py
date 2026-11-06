@@ -18,6 +18,9 @@ ACTIONS = (("like", "Like"), ("dislike", "Dislike"), ("save", "Save"), ("applied
 ALERT_PREFIX = "<b>ALERT</b>\n"
 FRESH_PREFIX = "<b>NEW</b>\n"
 
+# Aggregators ask for a credit link back (D-178, D-191); no logos are used.
+SOURCE_ATTRIBUTION = {"remoteok": "Remote OK", "jobicy": "Jobicy"}
+
 _MAX_TITLE = 200
 _MAX_COMPANY = 100
 _MAX_FLAG = 150
@@ -38,6 +41,7 @@ class Item:
     employer_category: str = "unknown"
     adjustment_detail: str = ""
     flag: str = ""
+    source: str = ""
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> Item:
@@ -55,6 +59,7 @@ class Item:
             base_score=row["base_score"],
             employer_category=row["employer_category"],
             adjustment_detail=row["adjustment_detail"],
+            source=row["source"] if "source" in row.keys() else "",  # noqa: SIM118 - sqlite3.Row
         )
 
 
@@ -96,6 +101,9 @@ def _build(item: Item, reason: str, alert: bool, fresh: bool = False) -> str:
     flags = [_clip(f, _MAX_FLAG) for f in item.red_flags[:_MAX_FLAGS] if f.strip()]
     if flags:
         lines.append("Red flags: " + _esc("; ".join(flags)))
+    credit = SOURCE_ATTRIBUTION.get(item.source)
+    if credit:
+        lines.append(f"via {_esc(credit)}")
     url = safe_url(item.url)
     if url:
         lines.append(_esc(url))

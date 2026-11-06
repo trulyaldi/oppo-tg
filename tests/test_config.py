@@ -133,7 +133,7 @@ def test_fc06_defaults_when_sections_absent():
 def test_fc06_repo_config_documented_values():
     cfg = AppConfig.load(Path(__file__).resolve().parent.parent / "config.toml")
     assert asdict(cfg.scheduler) == asdict(SchedulerConfig())
-    assert asdict(cfg.politeness) == asdict(PolitenessConfig())
+    assert asdict(cfg.politeness) == asdict(PolitenessConfig(hosts={"remoteok.com": 5.0}))
     assert cfg.thresholds.fresh_window_hours == 48
     snap = AppConfig.load(Path(__file__).parent / "fixtures" / "config_repo_snapshot.toml")
     assert asdict(snap.scheduler) == asdict(cfg.scheduler)

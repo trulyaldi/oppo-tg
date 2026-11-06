@@ -1,0 +1,89 @@
+[
+  {
+    "legal": "HAND-WRITTEN stand-in for the legal notice. Please link back to the URL on Remote OK and mention Remote OK as a source. Do not use the Remote OK logo."
+  },
+  {
+    "slug": "remote-1001",
+    "id": "1001",
+    "epoch": 1793955600,
+    "date": "2026-11-06T09:00:00+00:00",
+    "company": "Acme",
+    "company_logo": "",
+    "position": "Senior Python Engineer",
+    "tags": [
+      "python",
+      "backend"
+    ],
+    "logo": "",
+    "description": "<p>Build <b>things</b> &amp; ship.</p>",
+    "location": "Worldwide",
+    "salary_min": 60000,
+    "salary_max": 90000,
+    "apply_url": "https://remoteok.com/l/1001",
+    "url": "https://remoteok.com/remote-jobs/remote-1001"
+  },
+  {
+    "slug": "remote-1002",
+    "id": "1002",
+    "epoch": 1793954400,
+    "date": "2026-11-06T09:00:00+00:00",
+    "company": "Beta",
+    "company_logo": "",
+    "position": "Machine Learning Intern",
+    "tags": [
+      "machine learning",
+      "intern"
+    ],
+    "logo": "",
+    "description": "<p>Build <b>things</b> &amp; ship.</p>",
+    "location": "Europe",
+    "salary_min": 60000,
+    "salary_max": 90000,
+    "apply_url": "https://remoteok.com/l/1002",
+    "url": "https://remoteok.com/remote-jobs/remote-1002"
+  },
+  {
+    "slug": "remote-1003",
+    "id": "1003",
+    "epoch": null,
+    "date": "2026-11-06T09:00:00+00:00",
+    "company": "Gamma",
+    "company_logo": "",
+    "position": "Dated Only Analyst",
+    "tags": [
+      "data"
+    ],
+    "logo": "",
+    "description": "<p>Build <b>things</b> &amp; ship.</p>",
+    "location": "Worldwide",
+    "salary_min": 60000,
+    "salary_max": 90000,
+    "apply_url": "https://remoteok.com/l/1003",
+    "url": "https://remoteok.com/remote-jobs/remote-1003"
+  },
+  {
+    "slug": "remote-1004",
+    "id": "1004",
+    "epoch": 1793954400,
+    "date": "2026-11-06T09:00:00+00:00",
+    "company": "Evil",
+    "company_logo": "",
+    "position": "Hostile Link Dev",
+    "tags": [
+      "python"
+    ],
+    "logo": "",
+    "description": "<p>Build <b>things</b> &amp; ship.</p>",
+    "location": "Worldwide",
+    "salary_min": 60000,
+    "salary_max": 90000,
+    "apply_url": "https://remoteok.com/l/1004",
+    "url": "https://evil.example/remote-jobs/x"
+  },
+  {
+    "id": "1005",
+    "position": "",
+    "url": "https://remoteok.com/remote-jobs/remote-1005"
+  },
+  "junk"
+]

@@ -209,6 +209,7 @@ in `src/config.py`; this table is checked against it by a test.
 | pagewatch | pagewatch | counted (no credentials) | Change detection on fellowship/internship pages, robots.txt obeyed |
 | mlh | mlh | counted (no credentials) | MLH season events page (www.mlh.com) |
 | jobicy | jobicy | counted (no credentials) | Jobicy public API, polled at most hourly, credit and link back to Jobicy (D-58) |
+| remoteok | remoteok | counted (no credentials) | Remote OK public API, one GET per run and at most hourly, items say "via Remote OK" and link to the Remote OK page (D-178, D-216). Hand-written fixture pending real-response check |
 | hh | hh | unlocks with HH_ACCESS_TOKEN | hh.kz, the only Kazakhstan job source: anonymous access gets 403 (D-47, D-57). Register an app at https://dev.hh.ru. Never run live yet |
 | telegram_channels | telegram_channels | unlocks with TG_API_ID, TG_API_HASH | Public Kazakh job channels via Telethon with your own account; needs the one-time login and channels in config.toml (D-69). Never run live yet |
 | devpost | devpost | dropped (D-50) | Terms forbid automated access; module kept disabled |
@@ -219,8 +220,8 @@ in `src/config.py`; this table is checked against it by a test.
 Count rule (D-52): a source family counts toward the "at least 6 sources" goal only if it is
 enabled in the committed `config.toml`, works with just the three required env vars and needs no
 credentials, and Greenhouse, Lever and Ashby together count as one family (`ats`). Credential-gated
-and dropped sources never count, so today there are exactly 6 counted families (ats, hn, rss,
-pagewatch, mlh, jobicy) and no spare margin (D-60): if one fails, `HH_ACCESS_TOKEN` adds hh coverage but does
+and dropped sources never count, so today there are 7 counted families (ats, hn, rss,
+pagewatch, mlh, jobicy, remoteok), one above the minimum (D-60, D-216): if one fails, `HH_ACCESS_TOKEN` adds hh coverage but does
 not raise the counted total (credential-gated sources never count, D-52). The only counted buffer is a new
 credential-free source that passes the D-31/D-53 checks.
 

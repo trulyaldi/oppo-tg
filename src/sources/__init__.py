@@ -10,6 +10,7 @@ from src.sources import (
     lever,  # noqa: F401  (registers "lever")
     mlh,  # noqa: F401  (registers "mlh")
     pagewatch,  # noqa: F401  (registers "pagewatch")
+    remoteok,  # noqa: F401  (registers "remoteok")
     rss,  # noqa: F401  (registers "rss")
     telegram_channels,  # noqa: F401  (registers "telegram_channels")
     workable,  # noqa: F401  (registers "workable")

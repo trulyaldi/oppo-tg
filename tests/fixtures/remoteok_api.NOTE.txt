@@ -1,0 +1,4 @@
+remoteok_api.json is HAND-WRITTEN from the documented response shape (DECISIONS.md D-178: element 0 is
+the legal notice, then job objects with id, epoch, date, company, position, tags, description, location,
+salary_min, salary_max, url, apply_url). It was NOT captured from a live response. The live robots check
+is recorded in D-178 and was not re-run. A real-response check is deferred to the final smoke test.

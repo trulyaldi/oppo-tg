@@ -2783,7 +2783,7 @@ Each migration gets a test that starts from the previous version with sample row
 ### FC-19 [-] CUT at the user's request (D-202): Record dropped sources (verdicts stay in D-174..D-177, D-180; one README note in FC-31)
 - Skip this task. Do not implement.
 
-### FC-20 [ ] Remote OK source and aggregator attribution
+### FC-20 [x] Remote OK source and aggregator attribution
 - Build (D-178, D-191):
   - `remoteok`: its own family, default tier2, `min_poll_minutes = 60`, and `[politeness.hosts] "remoteok.com" = 5.0`.
   - One GET of `https://remoteok.com/api` with robots on and no query parameters. Element 0 (the legal notice) is skipped.

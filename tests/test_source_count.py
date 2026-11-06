@@ -46,7 +46,7 @@ def test_ats_family_and_exclusions():
 def test_minimum_families():
     r = _report()
     assert len(r.counted) >= MIN_SOURCE_FAMILIES
-    assert set(r.counted) == {"ats", "hn", "rss", "pagewatch", "mlh", "jobicy"}
+    assert set(r.counted) == {"ats", "hn", "rss", "pagewatch", "mlh", "jobicy", "remoteok"}
 
 
 def test_counted_have_tests_and_no_credentials():

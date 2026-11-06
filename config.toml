@@ -128,6 +128,13 @@ enabled = true
 industries = ["data-science", "engineering"]
 tags = []
 
+[sources.remoteok]
+# https://remoteok.com/api, one GET per run, at most hourly (D-178). Items link to the Remote OK
+# job page and say "via Remote OK" (D-191). Optional local filter: keep jobs with any of these tags.
+enabled = true
+tier = "tier2"
+tags = []
+
 [sources.yc]
 # dropped: YC terms forbid scraping (D-54)
 enabled = false
@@ -198,6 +205,7 @@ backoff_max_s = 21600
 
 [politeness.hosts]
 # host suffix = minimum seconds between requests, e.g. "example.com" = 5.0
+"remoteok.com" = 5.0
 
 [ranking]
 weights_file = "config/weights.yaml"
