@@ -44,7 +44,7 @@ def test_migrate_idempotent(tmp_path):
     c = db.connect(tmp_path / "m.db")
     db.migrate(c)
     db.migrate(c)
-    assert c.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert c.execute("PRAGMA user_version").fetchone()[0] == 8
     names = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert names >= TABLES
     assert c.execute("PRAGMA foreign_keys").fetchone()[0] == 1
@@ -159,3 +159,29 @@ def test_connect_creates_missing_parent_dirs(tmp_path):
     db.migrate(conn)
     conn.close()
     assert path.is_file()
+
+
+def test_reupsert_keeps_first_seen_at(conn):
+    p = mk(1)
+    assert db.upsert_posting(conn, p, "fp", T0) is True
+    assert db.upsert_posting(conn, p, "fp", T0 + timedelta(days=3)) is False
+    row = conn.execute("SELECT first_seen_at, last_seen_at FROM postings").fetchone()
+    assert row["first_seen_at"] == T0.isoformat()
+    assert row["last_seen_at"] == (T0 + timedelta(days=3)).isoformat()
+
+
+def test_prune_uses_last_seen_at(conn):
+    now = T0 + timedelta(days=90)
+    old = (now - timedelta(days=90)).isoformat()
+    recent = (now - timedelta(days=1)).isoformat()
+    for n, last in ((1, recent), (2, old)):
+        db.upsert_posting(conn, mk(n), f"fp{n}", T0)
+        conn.execute(
+            "UPDATE postings SET status='filtered', first_seen_at=?, last_seen_at=?"
+            " WHERE external_id=?",
+            (old, last, str(n)),
+        )
+    conn.commit()
+    assert db.prune(conn, now)["postings"] == 1
+    left = [r["external_id"] for r in conn.execute("SELECT external_id FROM postings")]
+    assert left == ["1"]

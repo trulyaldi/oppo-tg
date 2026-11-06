@@ -10,7 +10,7 @@ from typing import Any
 
 from src.models import Posting, ScoreResult
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 MAX_SCORE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
 _EXCLUSIVE = {"like": "dislike", "dislike": "like"}
@@ -139,6 +139,40 @@ CREATE TABLE outreach_drafts (
 )
 """
 
+_BOARD_SOURCES = "('greenhouse','lever','ashby','rss','telegram_channels')"
+
+SCHEMA_8 = f"""
+ALTER TABLE postings ADD COLUMN target TEXT NOT NULL DEFAULT '';
+ALTER TABLE postings ADD COLUMN source_published_at TEXT;
+ALTER TABLE postings ADD COLUMN content_hash TEXT NOT NULL DEFAULT '';
+ALTER TABLE postings ADD COLUMN baseline INTEGER NOT NULL DEFAULT 0;
+UPDATE postings SET baseline=1;
+UPDATE postings SET target=substr(external_id, 1, instr(external_id, ':') - 1)
+  WHERE source IN {_BOARD_SOURCES} AND instr(external_id, ':') > 0;
+UPDATE postings SET target=url WHERE source='pagewatch';
+CREATE TABLE target_state (
+  source TEXT NOT NULL, target TEXT NOT NULL, tier TEXT NOT NULL DEFAULT '',
+  baselined_at TEXT, last_attempt_at TEXT, last_ok_at TEXT, last_error TEXT,
+  has_validators INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (source, target)
+);
+INSERT INTO target_state (source, target, baselined_at, last_ok_at)
+  SELECT source, target, MIN(first_seen_at), MAX(last_seen_at) FROM postings
+  GROUP BY source, target;
+INSERT OR IGNORE INTO target_state (source, target, baselined_at, last_ok_at)
+  SELECT 'pagewatch', url, seen_at, seen_at FROM page_snapshots;
+INSERT OR IGNORE INTO target_state (source, target, baselined_at, last_ok_at)
+  SELECT source, '', MIN(started_at), MAX(started_at) FROM source_runs WHERE ok=1
+  AND source NOT IN (SELECT source FROM target_state) GROUP BY source;
+CREATE TABLE host_state (
+  host TEXT PRIMARY KEY, failures INTEGER NOT NULL DEFAULT 0,
+  backoff_until TEXT, last_status INTEGER, updated_at TEXT
+);
+ALTER TABLE deliveries ADD COLUMN latency_s REAL;
+CREATE INDEX idx_postings_first_seen ON postings(first_seen_at);
+CREATE INDEX idx_postings_source_target ON postings(source, target)
+"""
+
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
@@ -155,7 +189,7 @@ def connect(path: str | Path) -> sqlite3.Connection:
     return conn
 
 
-_MIGRATIONS = (SCHEMA_1, SCHEMA_2, SCHEMA_3, SCHEMA_4, SCHEMA_5, SCHEMA_6, SCHEMA_7)
+_MIGRATIONS = (SCHEMA_1, SCHEMA_2, SCHEMA_3, SCHEMA_4, SCHEMA_5, SCHEMA_6, SCHEMA_7, SCHEMA_8)
 
 
 def _backup_before_v2(conn: sqlite3.Connection) -> None:
@@ -496,7 +530,7 @@ def prune(
             "DELETE FROM robots_cache WHERE fetched_at < ?", (cache_cut,)
         ).rowcount
         postings = conn.execute(
-            "DELETE FROM postings WHERE status IN ('filtered','duplicate') AND first_seen_at < ?"
+            "DELETE FROM postings WHERE status IN ('filtered','duplicate') AND last_seen_at < ?"
             " AND id NOT IN (SELECT posting_id FROM scores)"
             " AND id NOT IN (SELECT posting_id FROM deliveries)"
             " AND id NOT IN (SELECT posting_id FROM reactions)",

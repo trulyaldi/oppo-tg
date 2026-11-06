@@ -872,3 +872,10 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **How it is enforced.** A scratch copy of config.toml (passed with `OPPO_CONFIG=...` on the command line) sets `[triage] daily_call_cap = 12` and `[scoring] daily_call_cap = 8`, and the command line sets `MAX_SCORES_PER_RUN=8`.
   - **Discovery.** Web search stays disabled. Board validation is capped at 3.
   - **Database.** As in D-166, back up `data/oppo.db` outside the repo, then run against it.
+
+## 2026-11-07 — FC-01 implementation (implementer)
+
+- **D-198 Schema v8 backfill details.**
+  - **Source-run rows.** The `source_runs` backfill into `target_state` (target `''`) only covers sources that have no `target_state` row yet, so a board source such as greenhouse gets no junk `''` row next to its real boards, while credential-gated sources such as hh still get one.
+  - **Tier.** `target_state.tier` is `''` after migration (tier is assigned by config at runtime, FC-05+).
+  - **Old-migration test.** `test_migration_v5_to_v6_keeps_rows` re-runs v6 on an already-v8 database, so it now limits `_MIGRATIONS` to the first 7 steps via monkeypatch (re-running v8's ALTERs would fail).

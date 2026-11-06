@@ -150,7 +150,7 @@ def test_no_names_in_logs(conn, caplog):
     assert "Zebediah" not in caplog.text and "Quux" not in caplog.text
 
 
-def test_migration_v5_to_v6_keeps_rows(tmp_path):
+def test_migration_v5_to_v6_keeps_rows(tmp_path, monkeypatch):
     path = tmp_path / "v5.db"
     c = db.connect(path)
     c.executescript(db.SCHEMA_1)
@@ -162,7 +162,7 @@ def test_migration_v5_to_v6_keeps_rows(tmp_path):
     raw.close()
     c = db.connect(path)
     db.migrate(c)
-    assert c.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert c.execute("PRAGMA user_version").fetchone()[0] == 8
     c.execute(
         "INSERT INTO postings (id, source, external_id, title, url, fingerprint, status,"
         " first_seen_at, last_seen_at) VALUES ('p9','t','9','T','https://x.example','f9','new',?,?)",
@@ -175,6 +175,7 @@ def test_migration_v5_to_v6_keeps_rows(tmp_path):
     c.execute("DROP TABLE contacts")
     c.execute("PRAGMA user_version=5")
     c.commit()
+    monkeypatch.setattr(db, "_MIGRATIONS", db._MIGRATIONS[:7])  # v8 is already applied
     db.migrate(c)
     assert c.execute("PRAGMA user_version").fetchone()[0] == 7
     assert c.execute("SELECT COUNT(*) FROM postings").fetchone()[0] == 1

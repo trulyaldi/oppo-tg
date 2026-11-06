@@ -2429,7 +2429,7 @@ Each migration gets a test that starts from the previous version with sample row
 
 ### Part 2: freshness core
 
-### FC-01 [ ] Schema v8: freshness columns, target/host state, delivery latency; prune on last_seen_at
+### FC-01 [x] Schema v8: freshness columns, target/host state, delivery latency; prune on last_seen_at
 - Build:
   - Add `SCHEMA_8` to `src/db.py` and set `SCHEMA_VERSION = 8`. Statements (D-185):
     - postings gains `target TEXT NOT NULL DEFAULT ''`, `source_published_at TEXT`, `content_hash TEXT NOT NULL DEFAULT ''` and `baseline INTEGER NOT NULL DEFAULT 0`.
