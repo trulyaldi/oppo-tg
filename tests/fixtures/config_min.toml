@@ -1,0 +1,11 @@
+[sources.greenhouse]
+enabled = true
+boards = ["examplecorp"]
+
+[sources.kaggle]
+enabled = false
+
+[filters]
+positive_title_keywords = ["intern", "quant"]
+
+[thresholds]

@@ -1,0 +1,65 @@
+# Non-secret, user-editable configuration (D-06). Secrets live in .env.
+
+[sources.greenhouse]
+enabled = true
+# Greenhouse board tokens (boards-api.greenhouse.io/v1/boards/<token>/jobs)
+boards = ["anthropic", "databricks", "stripe", "janestreet"]
+
+[sources.lever]
+enabled = true
+companies = []
+
+[sources.ashby]
+enabled = true
+boards = []
+
+[sources.hn]
+enabled = true
+
+[sources.hh]
+enabled = true
+area = 40 # Kazakhstan
+queries = ["data scientist", "machine learning", "intern analyst"]
+
+[sources.rss]
+enabled = true
+feeds = []
+
+[sources.pagewatch]
+enabled = true
+urls = []
+
+[sources.devpost]
+enabled = true
+
+[sources.mlh]
+enabled = true
+
+[sources.kaggle]
+enabled = true
+categories = ["featured", "research"]
+
+[sources.telegram_channels]
+enabled = true
+channels = []
+
+[sources.yc]
+enabled = true
+
+[filters]
+positive_title_keywords = [
+  "intern", "quant", "research", "data", "ml", "machine learning", "ai",
+  "scientist", "analyst", "engineer", "developer", "trader",
+]
+spam_keywords = ["crypto airdrop", "get rich", "mlm", "pyramid"]
+unpaid_keywords = ["unpaid", "no compensation", "volunteer only"]
+senior_only_keywords = ["senior", "staff", "principal", "director", "head of", "lead"]
+max_age_days = 60
+
+[thresholds]
+digest_min_score = 5.0
+digest_max_items = 10
+digest_min_items = 5
+alert_score = 9.0
+alert_deadline_days = 7
+alert_deadline_min_score = 0.0

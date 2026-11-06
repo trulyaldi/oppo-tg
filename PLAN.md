@@ -276,7 +276,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - `tests/test_smoke.py::test_import` imports `src` and passes; `test_network_guard` asserts connecting a socket to `("1.1.1.1", 80)` raises `RuntimeError`.
   - `.venv/bin/python -m pytest -q`, `ruff check .`, `ruff format --check .` all pass.
 
-### T02 [ ] Config, clock and models
+### T02 [x] Config, clock and models
 - Build `src/config.py` (`Settings.from_env`, `AppConfig.load(path)`, `ENV_VARS`, `MissingConfig` error listing missing required vars), `src/clock.py` (`Clock`, `SystemClock`, `FixedClock`), `src/models.py` (`Kind`, `Posting` with `id`, `ScoreResult` pydantic model), initial `config.toml` with all sections (sources enabled flags, empty-or-candidate lists, filters, thresholds per 1.3), `src/text.py` (`html_to_text`, `truncate`).
 - Files: those above + `tests/test_config.py`, `tests/test_models.py`, `tests/test_text.py`, `tests/fixtures/config_min.toml`.
 - Acceptance:
