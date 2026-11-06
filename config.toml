@@ -114,6 +114,10 @@ enabled = true
 industries = ["data-science", "engineering"]
 tags = []
 
+[sources.yc]
+# dropped: YC terms forbid scraping (D-54)
+enabled = false
+
 [sources.euraxess]
 enabled = false  # dropped: WAF returns 403 for query-string requests (D-59)
 
@@ -124,9 +128,6 @@ categories = ["featured", "research"]
 [sources.telegram_channels]
 enabled = true
 channels = []
-
-[sources.yc]
-enabled = true
 
 [filters]
 positive_title_keywords = [

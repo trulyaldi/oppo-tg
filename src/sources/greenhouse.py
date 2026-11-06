@@ -87,6 +87,7 @@ def _boards(cfg: AppConfig) -> list[tuple[str, str]]:
 @register("greenhouse")
 class GreenhouseSource:
     name = "greenhouse"
+    family = "ats"
     description = "Greenhouse job boards for a company watchlist"
 
     def enabled(self, settings: Settings, cfg: AppConfig) -> bool:

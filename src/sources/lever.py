@@ -78,6 +78,7 @@ def _companies(cfg: AppConfig) -> list[tuple[str, str]]:
 @register("lever")
 class LeverSource:
     name = "lever"
+    family = "ats"
     description = "Lever job postings for a company watchlist"
 
     def enabled(self, settings: Settings, cfg: AppConfig) -> bool:

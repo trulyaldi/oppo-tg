@@ -74,6 +74,7 @@ def _queries(cfg: AppConfig) -> list[str]:
 @register("hh")
 class HHSource:
     name = "hh"
+    credentials = ("HH_ACCESS_TOKEN",)
     description = "hh.kz vacancies (HeadHunter API, needs HH_ACCESS_TOKEN)"
 
     def disabled_reason(self, settings: Settings, cfg: AppConfig) -> str | None:

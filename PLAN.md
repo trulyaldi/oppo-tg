@@ -536,7 +536,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Files: `DECISIONS.md` only, or `src/sources/himalayas.py`, `src/sources/__init__.py`, `config.toml`, `tests/fixtures/himalayas_jobs.json`, `tests/test_source_himalayas.py`, `SPEC.md`, `DECISIONS.md`.
 - Acceptance: either the DECISIONS "not needed" or "dropped" line exists, or the four add-source cases pass and the source is registered.
 
-### T19d [ ] Source count rule: families, credentials, count test
+### T19d [x] Source count rule: families, credentials, count test
 - Implement 1.5.1 in `src/sources/base.py`:
   - `MIN_SOURCE_FAMILIES = 6`;
   - `source_family(src) -> str`, which is `getattr(src, "family", src.name)`;

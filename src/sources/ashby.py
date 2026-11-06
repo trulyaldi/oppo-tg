@@ -75,6 +75,7 @@ def _boards(cfg: AppConfig) -> list[tuple[str, str]]:
 @register("ashby")
 class AshbySource:
     name = "ashby"
+    family = "ats"
     description = "Ashby job boards for a company watchlist"
 
     def enabled(self, settings: Settings, cfg: AppConfig) -> bool:
