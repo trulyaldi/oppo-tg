@@ -589,7 +589,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - Update from a non-whitelisted chat id -> handler not invoked (middleware test).
   - Reactions survive reconnecting to the same DB file (persistence).
 
-### T21 [ ] Feedback injection into scoring prompt
+### T21 [x] Feedback injection into scoring prompt
 - Wire `db.recent_feedback_examples` (20 liked + 20 disliked, active only, newest first) into `Scorer` -> `build_system_blocks(examples)`.
 - Files: `src/scoring/scorer.py`, `src/scoring/prompt.py`, `tests/test_feedback_injection.py`.
 - Acceptance: with 25 likes and 3 dislikes in DB, the system blocks sent to the fake client contain exactly the 20 newest liked titles and 3 disliked titles under labeled headings; a like later toggled off is excluded; static first block unchanged (same `cache_control`, same text) regardless of examples.
