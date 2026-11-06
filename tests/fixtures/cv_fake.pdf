@@ -1,0 +1,56 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 715 >>
+stream
+BT /F1 10 Tf 12 TL 50 780 Td
+(FAKE FIXTURE - fictional CV, not a real person.) Tj T*
+() Tj T*
+(Alex Example) Tj T*
+(alex@example.invalid) Tj T*
+() Tj T*
+(EDUCATION) Tj T*
+(Example University of Technology) Tj T*
+(BSc Computer Science, 2022 - 2026) Tj T*
+(- Dean's list in 2024 and 2025) Tj T*
+() Tj T*
+(EXPERIENCE) Tj T*
+(Sample Labs - Research Intern, Summer 2025) Tj T*
+(- Built a latency benchmark harness in Python for order book replay) Tj T*
+(- Reduced replay time by 30% with a C++ parser) Tj T*
+() Tj T*
+(PROJECTS) Tj T*
+(Toy Matching Engine) Tj T*
+(- Implemented a limit order book matching engine in Rust) Tj T*
+(Tech: Rust, Python) Tj T*
+() Tj T*
+(SKILLS) Tj T*
+(Python, C++, Rust, SQL) Tj T*
+() Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000001007 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1077
+%%EOF

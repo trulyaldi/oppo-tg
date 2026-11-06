@@ -1491,7 +1491,7 @@ Per-type guidance in `draft.md`:
   - caplog: after a full ingest of a CV containing `CANARY-CV-TEXT`, the canary is not in `caplog.text`.
   - Through a real dispatcher (S4 pattern, `Bot.__call__` patched), a text message from another chat with a pending `cv` state is not consumed.
 
-### C5 [ ] PDF CV ingestion
+### C5 [x] PDF CV ingestion
 - Depends on: C4, W1 (pypdf installed).
 - Build:
   - `pdf_to_text(data: bytes, max_pages)` with pypdf (in memory, `io.BytesIO`). Raises `CvInputError` for: not a PDF (magic bytes), over `cv_max_pages`, encrypted, or extracted text under 200 chars ("no text, maybe scanned").

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import sqlite3
 from typing import Any
 
@@ -9,7 +10,7 @@ from src.bot.handlers import _say
 from src.bot.pending import clear_pending, peek_pending, set_pending, take_pending
 from src.clock import Clock
 from src.config import AppConfig, OutreachConfig
-from src.cv.extract import cv_sha, normalize_cv_text
+from src.cv.extract import CvInputError, cv_sha, normalize_cv_text, pdf_to_text
 from src.cv.parse import parse_cv_sections
 from src.cv.store import current_cv, forget_cv, save_cv
 from src.llm.budget import LlmBudget
@@ -122,3 +123,43 @@ async def on_text(
     client: Any,
 ) -> None:
     await ingest_cv_text(message, conn, clock, cfg, client, message.text or "")
+
+
+UNSUPPORTED = "Only PDF or pasted text is supported."
+
+
+def _is_pdf(doc: Any) -> bool:
+    name = (getattr(doc, "file_name", None) or "").lower()
+    return getattr(doc, "mime_type", None) == "application/pdf" or name.endswith(".pdf")
+
+
+async def on_document(
+    message: Any,
+    conn: sqlite3.Connection,
+    clock: Clock,
+    cfg: AppConfig,
+    client: Any,
+    bot: Any,
+) -> None:
+    """PDF CV while a /cv is pending. Downloaded into memory only; never logged."""
+    oc = OutreachConfig.from_cfg(cfg)
+    doc = message.document
+    if not _is_pdf(doc):
+        await _say(message, UNSUPPORTED)
+        return
+    if (doc.file_size or 0) > oc.cv_max_bytes:
+        await _say(message, f"That file is too big (max {oc.cv_max_bytes // 1_000_000} MB).")
+        return
+    buf = io.BytesIO()
+    try:
+        await bot.download(doc, destination=buf)
+        text = pdf_to_text(buf.getvalue(), oc.cv_max_pages)
+    except CvInputError as e:
+        await _say(message, str(e))
+        return
+    except Exception:
+        await _say(message, "Could not download that file; try again.")
+        return
+    finally:
+        buf.close()
+    await ingest_cv_text(message, conn, clock, cfg, client, text, source_kind="pdf")

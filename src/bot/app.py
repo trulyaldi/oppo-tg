@@ -6,7 +6,7 @@ import sqlite3
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from aiogram import BaseMiddleware, Dispatcher, F
+from aiogram import BaseMiddleware, Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message, TelegramObject, Update
 
@@ -117,5 +117,11 @@ def build_dispatcher(
         m: Message, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, client: Any
     ) -> None:
         await outreach_handlers.on_text(m, conn, clock, cfg, client)
+
+    @dp.message(F.document, _pending_cv)
+    async def _document(
+        m: Message, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, client: Any, bot: Bot
+    ) -> None:
+        await outreach_handlers.on_document(m, conn, clock, cfg, client, bot)
 
     return dp

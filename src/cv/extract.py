@@ -38,3 +38,35 @@ def norm(text: str) -> str:
         t = t.replace(d, "-")
     t = re.sub(r"(^|\s)[" + re.escape(_BULLETS) + r"]+(?=\s)", r"\1", t)
     return " ".join(t.split())
+
+
+class CvInputError(ValueError):
+    """User-facing reason a CV file cannot be used. Never contains CV content."""
+
+
+MIN_PDF_TEXT_CHARS = 200
+
+
+def pdf_to_text(data: bytes, max_pages: int = 20) -> str:
+    """Extract text from PDF bytes in memory (no disk). Raises CvInputError."""
+    import io
+
+    from pypdf import PdfReader
+
+    if not data.lstrip()[:5] == b"%PDF-":
+        raise CvInputError("That file is not a PDF.")
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        if reader.is_encrypted:
+            raise CvInputError("The PDF is encrypted; send an unprotected PDF or paste the text.")
+        if len(reader.pages) > max_pages:
+            raise CvInputError(f"The PDF has more than {max_pages} pages.")
+        text = "\n".join((p.extract_text() or "") for p in reader.pages)
+    except CvInputError:
+        raise
+    except Exception as e:  # pypdf errors may echo content; keep only the type
+        raise CvInputError("Could not read that PDF.") from e
+    text = normalize_cv_text(text)
+    if len(text) < MIN_PDF_TEXT_CHARS:
+        raise CvInputError("No text found in the PDF (maybe scanned); paste the text instead.")
+    return text
