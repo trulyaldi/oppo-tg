@@ -10,7 +10,7 @@ from aiogram import BaseMiddleware, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message, TelegramObject, Update
 
-from src.bot import handlers
+from src.bot import handlers, outreach_handlers
 from src.bot.handlers import handle_feedback
 from src.clock import Clock
 from src.config import AppConfig, Settings
@@ -53,9 +53,13 @@ class WhitelistMiddleware(BaseMiddleware):
 
 
 def build_dispatcher(
-    conn: sqlite3.Connection, settings: Settings, cfg: AppConfig, clock: Clock
+    conn: sqlite3.Connection,
+    settings: Settings,
+    cfg: AppConfig,
+    clock: Clock,
+    client: Any = None,
 ) -> Dispatcher:
-    dp = Dispatcher(conn=conn, settings=settings, cfg=cfg, clock=clock)
+    dp = Dispatcher(conn=conn, settings=settings, cfg=cfg, clock=clock, client=client)
     dp.update.outer_middleware(WhitelistMiddleware(settings.telegram_chat_id))
 
     @dp.callback_query(F.data.startswith("fb:"))
@@ -91,5 +95,27 @@ def build_dispatcher(
     @dp.message(Command("resume"))
     async def _resume(m: Message, conn: sqlite3.Connection) -> None:
         await handlers.cmd_resume(m, conn)
+
+    @dp.message(Command("cv"))
+    async def _cv(m: Message, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig) -> None:
+        await outreach_handlers.cmd_cv(m, conn, clock, cfg)
+
+    @dp.message(Command("forgetcv"))
+    async def _forgetcv(m: Message, conn: sqlite3.Connection, clock: Clock) -> None:
+        await outreach_handlers.cmd_forgetcv(m, conn, clock)
+
+    @dp.message(Command("cancel"))
+    async def _cancel(m: Message, conn: sqlite3.Connection) -> None:
+        await outreach_handlers.cmd_cancel(m, conn)
+
+    async def _pending_cv(message: Message, conn: sqlite3.Connection, clock: Clock) -> bool:
+        return outreach_handlers.has_pending_cv(conn, clock)
+
+    # Non-command text is consumed only while a CV is pending; otherwise it falls through.
+    @dp.message(F.text, ~F.text.startswith("/"), _pending_cv)
+    async def _text(
+        m: Message, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, client: Any
+    ) -> None:
+        await outreach_handlers.on_text(m, conn, clock, cfg, client)
 
     return dp

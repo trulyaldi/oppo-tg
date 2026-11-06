@@ -1472,7 +1472,7 @@ Per-type guidance in `draft.md`:
   - No file other than the DB (and its WAL/SHM) exists under the tmp data dir after saves.
   - `git check-ignore` passes for `data/oppo.db` (existing test).
 
-### C4 [ ] /cv flow for pasted text, pending input, /forgetcv, /cancel, privacy notice
+### C4 [x] /cv flow for pasted text, pending input, /forgetcv, /cancel, privacy notice
 - Depends on: C3.
 - Build:
   - `src/bot/pending.py`: `set_pending(conn, kind, posting_id, now, minutes)`, `take_pending(conn, now)` (returns and clears; None if expired), `clear_pending`.

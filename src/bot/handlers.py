@@ -75,7 +75,10 @@ START_TEXT = (
     "/applied - items marked applied\n"
     "/sources - source status\n"
     "/pause - pause the digest\n"
-    "/resume - resume the digest"
+    "/resume - resume the digest\n"
+    "/cv - upload or paste your CV\n"
+    "/forgetcv - delete the stored CV\n"
+    "/cancel - cancel a pending input"
 )
 
 
