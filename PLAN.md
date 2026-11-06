@@ -265,7 +265,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 
 ## 2. Tasks
 
-### T01 [ ] Tooling: venv, requirements, pytest/ruff config, smoke test
+### T01 [x] Tooling: venv, requirements, pytest/ruff config, smoke test
 - Build, in this order (hook runs pytest when a `.py` file is written, so deps must exist first):
   1. `python3 -m venv .venv`; write `requirements.txt` (D-21): `aiogram>=3.13,<4`, `anthropic>=0.40`, `httpx>=0.27,<1`, `apscheduler>=3.10,<4`, `python-dotenv>=1.0`, `pydantic>=2.7,<3`, `beautifulsoup4>=4.12`, `feedparser>=6.0`, `telethon>=1.36,<2`, `tzdata`, `pytest>=8`, `pytest-asyncio>=0.23`, `ruff>=0.6`. Run `.venv/bin/python -m pip install -r requirements.txt`.
   2. `pyproject.toml` with `[tool.pytest.ini_options]` (`testpaths=["tests"]`, `pythonpath=["."]`, `asyncio_mode="auto"`, `addopts="-q"`) and `[tool.ruff]` (`target-version="py311"`, `line-length=100`, lint select `E,F,I,UP,B,SIM,ASYNC`, `extend-exclude=[".venv"]`).
