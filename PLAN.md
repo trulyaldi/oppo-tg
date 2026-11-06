@@ -2943,7 +2943,7 @@ Each migration gets a test that starts from the previous version with sample row
   - Baseline items are triaged after new ones.
   - `enabled=false` restores the pre-triage flow.
 
-### FC-30 [ ] Stage-aware total-failure alerts
+### FC-30 [x] Stage-aware total-failure alerts
 - Build (D-196):
   - Generalize `report_scoring_outcome` to `report_stage_outcome(stage, ...)` for `triage` and `scoring`:
     - total failure means `errors > 0` and no successes;

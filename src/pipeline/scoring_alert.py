@@ -23,6 +23,12 @@ STATE_KEY = "scoring_failure_alerted_at"
 REALERT_AFTER = timedelta(hours=6)
 
 
+_MODEL_HINT = {
+    "scoring": "SCORING_MODEL",
+    "triage": "the [triage] model in config.toml",
+}
+
+
 def is_total_failure(stats: dict[str, int]) -> bool:
     """Calls failed and nothing got scored. Skipped and capped items are not failures (D-184)."""
     return stats.get("errors", 0) > 0 and stats.get("scored", 0) == 0
@@ -39,8 +45,9 @@ def render_failure(
         "so no new items will reach your digest.\n"
         f"Model: <code>{html.escape(model)}</code>\n"
         f"Last error: <code>{error}</code>\n"
-        "Check ANTHROPIC_API_KEY, SCORING_MODEL and the Anthropic status page, "
-        "then look at the bot log. I will remind you again in 6 hours if it keeps failing."
+        f"Check ANTHROPIC_API_KEY, {_MODEL_HINT.get(stage, _MODEL_HINT['scoring'])} "
+        "and the Anthropic status page, then look at the bot log. "
+        "I will remind you again in 6 hours if it keeps failing."
     )
 
 
@@ -90,7 +97,8 @@ async def warn_cap_once(
         return False
 
 
-async def report_scoring_outcome(
+async def report_stage_outcome(
+    stage: str,
     bot: Any,
     chat_id: int | str,
     conn: sqlite3.Connection,
@@ -99,11 +107,11 @@ async def report_scoring_outcome(
     last_error: str | None,
     model: str,
     cap: int | None = None,
-    stage: str = "scoring",
 ) -> bool:
     """Alert on total failure (throttled); re-arm on success. Never raises. True if sent.
 
     `stage` is "scoring" or "triage"; each has its own throttle and cap-warning keys.
+    `stats` needs `scored` (successes), `errors` and optionally `capped`; a cap alone never alerts.
     """
     state_key = STATE_KEY if stage == "scoring" else f"{stage}_failure_alerted_at"
     if cap is not None:
@@ -118,7 +126,7 @@ async def report_scoring_outcome(
         now = clock.now()
         previous = db.get_state(conn, state_key)
         if previous and now - datetime.fromisoformat(previous) < REALERT_AFTER:
-            log.warning("scoring failing again, alert suppressed (sent recently)")
+            log.warning("%s failing again, alert suppressed (sent recently)", stage)
             return False
         await bot.send_message(
             chat_id, render_failure(stats, last_error, model, stage), parse_mode="HTML"

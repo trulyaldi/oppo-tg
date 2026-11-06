@@ -19,7 +19,7 @@ from src.http import PoliteClient
 from src.llm.budget import LlmBudget
 from src.pipeline.dedupe import fingerprint, mark_duplicates
 from src.pipeline.filters import apply_filters
-from src.pipeline.scoring_alert import report_scoring_outcome
+from src.pipeline.scoring_alert import report_stage_outcome
 from src.scoring.scorer import Scorer
 from src.scoring.triage import Triager
 from src.sources import base
@@ -284,7 +284,8 @@ async def triage_pending(
     stats = await triager.triage_pending()
     if bot is not None and chat_id is not None:
         decided = stats["yes"] + stats["no"] + stats["cached"] + stats["exempt"]
-        await report_scoring_outcome(
+        await report_stage_outcome(
+            "triage",
             bot,
             chat_id,
             conn,
@@ -293,7 +294,6 @@ async def triage_pending(
             triager.last_error,
             triager.model,
             triage_cfg.daily_call_cap,
-            stage="triage",
         )
     return stats
 
@@ -339,8 +339,8 @@ async def score_pending(
     )
     stats = await scorer.score_pending(limit if limit is not None else max_calls)
     if bot is not None and chat_id is not None:
-        await report_scoring_outcome(
-            bot, chat_id, conn, clock, stats, scorer.last_error, model, sc.daily_call_cap
+        await report_stage_outcome(
+            "scoring", bot, chat_id, conn, clock, stats, scorer.last_error, model, sc.daily_call_cap
         )
         from src.sources.hh import notify_auth_error_once
 

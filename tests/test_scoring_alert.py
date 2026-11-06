@@ -14,7 +14,7 @@ from src.pipeline.scoring_alert import (
     STATE_KEY,
     is_total_failure,
     render_failure,
-    report_scoring_outcome,
+    report_stage_outcome,
 )
 
 NOW = datetime(2026, 11, 6, 6, 0, tzinfo=UTC)
@@ -118,26 +118,30 @@ async def test_works_without_a_bot(conn):
 async def test_throttled_then_realerts_then_rearms_on_success(conn):
     bot = FakeBot()
     stats = {"scored": 0, "errors": 2}
-    assert await report_scoring_outcome(bot, 1, conn, FixedClock(NOW), stats, "e", "m")
+    assert await report_stage_outcome("scoring", bot, 1, conn, FixedClock(NOW), stats, "e", "m")
     soon = FixedClock(NOW + timedelta(hours=1))
-    assert not await report_scoring_outcome(bot, 1, conn, soon, stats, "e", "m")
+    assert not await report_stage_outcome("scoring", bot, 1, conn, soon, stats, "e", "m")
     later = FixedClock(NOW + REALERT_AFTER + timedelta(minutes=1))
-    assert await report_scoring_outcome(bot, 1, conn, later, stats, "e", "m")
+    assert await report_stage_outcome("scoring", bot, 1, conn, later, stats, "e", "m")
     assert len(bot.sent) == 2
     # a good run re-arms: the next outage alerts immediately
-    await report_scoring_outcome(bot, 1, conn, later, {"scored": 5, "errors": 0}, None, "m")
+    await report_stage_outcome(
+        "scoring", bot, 1, conn, later, {"scored": 5, "errors": 0}, None, "m"
+    )
     assert not db.get_state(conn, STATE_KEY)
-    assert await report_scoring_outcome(bot, 1, conn, later, stats, "e", "m")
+    assert await report_stage_outcome("scoring", bot, 1, conn, later, stats, "e", "m")
     assert len(bot.sent) == 3
 
 
 async def test_telegram_failure_never_raises_and_is_retried_next_run(conn):
     stats = {"scored": 0, "errors": 2}
-    ok = await report_scoring_outcome(FakeBot(fail=True), 1, conn, FixedClock(NOW), stats, "e", "m")
+    ok = await report_stage_outcome(
+        "scoring", FakeBot(fail=True), 1, conn, FixedClock(NOW), stats, "e", "m"
+    )
     assert ok is False
     assert not db.get_state(conn, STATE_KEY)  # not marked as sent
     bot = FakeBot()
-    assert await report_scoring_outcome(bot, 1, conn, FixedClock(NOW), stats, "e", "m")
+    assert await report_stage_outcome("scoring", bot, 1, conn, FixedClock(NOW), stats, "e", "m")
 
 
 def set_baseline(conn, n):
@@ -205,3 +209,30 @@ async def test_cap_only_run_is_not_a_failure_notice(conn):
     assert stats["capped"] == 3 and not is_total_failure(stats)
     assert all("ERROR: scoring failed" not in t for _, t, _ in bot.sent)
     assert len(bot.sent) == 1 and "Scoring cap reached" in bot.sent[0][1]
+
+
+async def test_stage_throttle_keys_are_independent_and_triage_names_its_model(conn):
+    bot = FakeBot()
+    stats = {"scored": 0, "errors": 3, "capped": 0}
+    clock = FixedClock(NOW)
+    assert await report_stage_outcome("triage", bot, 1, conn, clock, stats, "e<", "haiku-x")
+    assert not await report_stage_outcome("triage", bot, 1, conn, clock, stats, "e", "haiku-x")
+    assert await report_stage_outcome("scoring", bot, 1, conn, clock, stats, "e", "m")
+    text = bot.sent[0][1]
+    assert "ERROR: triage failed" in text and "haiku-x" in text and "e&lt;" in text
+    assert "[triage] model" in text and "SCORING_MODEL" not in text
+    assert "SCORING_MODEL" in bot.sent[1][1]
+    # a triage success re-arms only triage
+    await report_stage_outcome("triage", bot, 1, conn, clock, {"scored": 2, "errors": 0}, None, "h")
+    assert await report_stage_outcome("triage", bot, 1, conn, clock, stats, "e", "haiku-x")
+    assert not await report_stage_outcome("scoring", bot, 1, conn, clock, stats, "e", "m")
+
+
+async def test_cap_alone_never_alerts_any_stage(conn):
+    bot = FakeBot()
+    stats = {"scored": 0, "errors": 0, "capped": 5}
+    for stage in ("triage", "scoring"):
+        assert not await report_stage_outcome(
+            stage, bot, 1, conn, FixedClock(NOW), stats, None, "m"
+        )
+    assert all("cap reached" in m[1] for m in bot.sent)
