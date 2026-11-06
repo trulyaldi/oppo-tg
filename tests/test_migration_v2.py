@@ -1,5 +1,7 @@
 import sqlite3
 
+import pytest
+
 from src import db
 
 TS = "2026-11-01T00:00:00+06:00"
@@ -50,3 +52,24 @@ def test_fresh_db_is_v2():
     assert conn.execute("PRAGMA user_version").fetchone()[0] == 7
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(scores)")}
     assert {"base_score", "adjusted_score", "weights_version"} <= cols and "score" not in cols
+
+
+def test_failed_v2_upgrade_rolls_back_and_is_retryable(tmp_path):
+    path = tmp_path / "v1x.db"
+    _v1_file(path)
+    c = sqlite3.connect(str(path))
+    c.execute("ALTER TABLE scores ADD COLUMN employer_is_startup INTEGER")
+    c.commit()
+    c.close()
+    conn = db.connect(path)
+    with pytest.raises(sqlite3.OperationalError):
+        db.migrate(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+    cols = [r["name"] for r in conn.execute("PRAGMA table_info(scores)")]
+    assert "score" in cols and "base_score" not in cols and "adjusted_score" not in cols
+    assert (tmp_path / "v1x.db.pre-v2").exists()
+    conn.execute("ALTER TABLE scores DROP COLUMN employer_is_startup")
+    conn.commit()
+    db.migrate(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION
+    assert conn.execute("SELECT base_score FROM scores WHERE posting_id='a'").fetchone()[0] == 7.5

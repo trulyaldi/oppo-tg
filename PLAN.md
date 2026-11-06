@@ -1932,7 +1932,7 @@ Verified with evidence, no FIX needed:
   - 20 saved items with 200-char titles, 100-char companies and 300-char URLs produce 2 or more messages. Each is at most 4000 chars, has balanced tags and contains every `/prepare_<id>`.
   - The existing `/saved` fixture output (short list) is unchanged.
 
-### FIX-20 [ ] Schema migration v2 is not atomic: an interrupted upgrade leaves the DB unmigratable
+### FIX-20 [x] Schema migration v2 is not atomic: an interrupted upgrade leaves the DB unmigratable
 - Severity: non-blocking (the real DB upgraded cleanly; the failure needs an interruption or an unexpected column).
 - Problem:
   - Python's sqlite3 (legacy transaction control) does not open a transaction before DDL, so each `ALTER TABLE` in `SCHEMA_2` commits on its own inside `with conn:`.

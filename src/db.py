@@ -155,51 +155,47 @@ def connect(path: str | Path) -> sqlite3.Connection:
     return conn
 
 
+_MIGRATIONS = (SCHEMA_1, SCHEMA_2, SCHEMA_3, SCHEMA_4, SCHEMA_5, SCHEMA_6, SCHEMA_7)
+
+
+def _backup_before_v2(conn: sqlite3.Connection) -> None:
+    """Copy a file DB to `<name>.pre-v2` with the backup API before the v2 upgrade (D-146)."""
+    row = conn.execute("PRAGMA database_list").fetchone()
+    path = row[2] if row else ""
+    if not path:
+        return
+    dest = sqlite3.connect(path + ".pre-v2")
+    try:
+        conn.backup(dest)
+    finally:
+        dest.close()
+
+
 def migrate(conn: sqlite3.Connection) -> None:
-    """Apply pending migrations; idempotent."""
+    """Apply pending migrations; idempotent. Each step is one explicit transaction (D-146)."""
+    if conn.in_transaction:
+        conn.commit()
     version = conn.execute("PRAGMA user_version").fetchone()[0]
-    if version < 1:
-        with conn:
-            for stmt in SCHEMA_1.split(";"):
-                if stmt.strip():
-                    conn.execute(stmt)
-            conn.execute("PRAGMA user_version=1")
-    if version < 2:
-        with conn:
-            for stmt in SCHEMA_2.split(";"):
-                if stmt.strip():
-                    conn.execute(stmt)
-            conn.execute("PRAGMA user_version=2")
-    if version < 3:
-        with conn:
-            for stmt in SCHEMA_3.split(";"):
-                if stmt.strip():
-                    conn.execute(stmt)
-            conn.execute("PRAGMA user_version=3")
-    if version < 4:
-        with conn:
-            for stmt in SCHEMA_4.split(";"):
-                if stmt.strip():
-                    conn.execute(stmt)
-            conn.execute("PRAGMA user_version=4")
-    if version < 5:
-        with conn:
-            for stmt in SCHEMA_5.split(";"):
-                if stmt.strip():
-                    conn.execute(stmt)
-            conn.execute("PRAGMA user_version=5")
-    if version < 6:
-        with conn:
-            for stmt in SCHEMA_6.split(";"):
-                if stmt.strip():
-                    conn.execute(stmt)
-            conn.execute("PRAGMA user_version=6")
-    if version < 7:
-        with conn:
-            for stmt in SCHEMA_7.split(";"):
-                if stmt.strip():
-                    conn.execute(stmt)
-            conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+    if 1 <= version < 2:
+        _backup_before_v2(conn)
+    old_isolation = conn.isolation_level
+    conn.isolation_level = None  # manual BEGIN/COMMIT so DDL is part of the transaction
+    try:
+        for target, script in enumerate(_MIGRATIONS, 1):
+            if version >= target:
+                continue
+            conn.execute("BEGIN")
+            try:
+                for stmt in script.split(";"):
+                    if stmt.strip():
+                        conn.execute(stmt)
+                conn.execute(f"PRAGMA user_version={target}")
+            except BaseException:
+                conn.execute("ROLLBACK")
+                raise
+            conn.execute("COMMIT")
+    finally:
+        conn.isolation_level = old_isolation
 
 
 # --- postings -------------------------------------------------------------
