@@ -355,7 +355,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - `max_calls=2` with 5 pending -> exactly 2 API calls made (retries count toward the cap).
   - Calls use `temperature=0`, `max_tokens=300`, the configured model.
 
-### T10 [ ] Digest formatting
+### T10 [x] Digest formatting
 - Build `src/delivery/format.py`: `render_item(item, alert=False) -> str`, `render_digest_header(date, n)`, `feedback_keyboard(posting_id, active: dict) -> InlineKeyboardMarkup`, `safe_url(url) -> str | None`.
 - Files: `src/delivery/__init__.py`, `src/delivery/format.py`, `tests/test_format.py`, `tests/fixtures/render_item_expected.txt`.
 - Acceptance:
