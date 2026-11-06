@@ -344,7 +344,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - `prompt_version()` is 12 hex chars and changes when `rubric.md` content changes (test with tmp copies via injectable path).
   - Parser fixtures: plain JSON ok; fenced ```json ok; score "8.5" string coerced ok; score 12 -> error; missing reason -> error; multi-line reason collapsed; bad deadline "next week" -> error; trailing prose after JSON -> error.
 
-### T09 [ ] Scorer with mocked Anthropic client
+### T09 [x] Scorer with mocked Anthropic client
 - Build `src/scoring/scorer.py`: `Scorer(client, model, conn, clock, max_calls)`, `async score(posting) -> ScoreResult | None` (retry once with correction message on parse failure), `async score_pending(limit)` (semaphore 4, writes `scores` or `score_error`). Feedback examples pulled from `db.recent_feedback_examples` (empty in this task's tests is fine; injection itself is tested in T21).
 - Files: `src/scoring/scorer.py`, `src/pipeline/run.py` (`score_pending` wiring), `tests/test_scorer.py`.
 - Acceptance (fake client recording calls):
