@@ -108,3 +108,12 @@ def test_outreach_readme_mentions():
     ):
         assert needle in README, needle
     assert "digest_max_items" not in README
+
+
+def test_readme_says_claims_check_is_heuristic():
+    from pathlib import Path
+
+    text = " ".join((Path(__file__).parent.parent / "README.md").read_text().split())
+    assert "deterministic heuristic" in text
+    assert "D-161" in text
+    assert "Read every draft and tailoring tip before you use it" in text

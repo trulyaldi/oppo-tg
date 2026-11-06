@@ -85,7 +85,11 @@ Commands (only your chat, `TELEGRAM_CHAT_ID`, can use them):
 - `/forgetcv`: deletes the stored CV and what was derived from it.
 - `/prepare <id>`: tailoring advice for one posting (an id or a prefix of at least 6 characters,
   or tap the `/prepare_<id>` link or the Prepare button): keywords, what to emphasize from your CV
-  and public contacts. Every claim is checked against your CV text.
+  and public contacts. Every claim is checked against your CV text. The check is a
+  deterministic heuristic: it removes most invented employers, degrees, titles and numbers, but it
+  cannot catch everything (unnamed or lowercase employers, dates and temporal status, soft
+  inflation such as "several years"; see D-161 in DECISIONS.md). Read every draft and tailoring tip
+  before you use it.
 - `/contacts <id>`: stored contacts for a posting; `/addcontact <id> [text]`: add one from pasted
   text (see Contacts).
 - `/draft <contact id>`: a short outreach draft (3-5 sentences) for a contact shown by `/contacts`.

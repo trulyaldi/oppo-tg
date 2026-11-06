@@ -2360,7 +2360,7 @@ Probe posting used by FIX-36 and FIX-37, verbatim: "Acme Fake is hiring a resear
   - The four items above are kept.
   - These are still dropped: "I led a team of engineers at Sample Labs.", "I was the lead engineer at Sample Labs." and "I lead the research team at Sample Labs.".
 
-### FIX-39 [ ] README overstates the claims check
+### FIX-39 [x] README overstates the claims check
 - Severity: non-blocking (docs).
 - Problem:
   - README "CV, prepare and drafts" says "Every claim is checked against your CV text." It does not say the check is a deterministic heuristic with known gaps (D-161).
