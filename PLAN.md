@@ -625,7 +625,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - `collect_and_score` job calls collect -> score -> alerts in order (fakes record order).
   - `prune` deletes cache rows older than 7 days and filtered/duplicate postings older than 60 days, keeps scored ones.
 
-### T25 [ ] Source: Kaggle competitions (credential-gated)
+### T25 [x] Source: Kaggle competitions (credential-gated)
 - `src/sources/kaggle.py`: if `KAGGLE_USERNAME`/`KAGGLE_KEY` present, GET `https://www.kaggle.com/api/v1/competitions/list?sortBy=latestDeadline&page=1` with HTTP Basic auth (official API). Map ref/title, url, deadline, reward, category, kind COMPETITION. Without creds: `enabled=False`, reason "needs KAGGLE_USERNAME/KAGGLE_KEY".
 - Files: `src/sources/kaggle.py`, `tests/fixtures/kaggle_competitions.json`, `tests/test_source_kaggle.py`.
 - Set `credentials = ("KAGGLE_USERNAME", "KAGGLE_KEY")` (D-52).
