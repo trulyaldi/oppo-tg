@@ -21,6 +21,8 @@ Separately from the score, report where the employer is based. Use the employer'
 
 Do not raise or lower `score` because of the employer's home country; the job location still counts under Accessibility.
 
+The profile's goal 3 phrase "in Kazakhstan or remote" is about where the work happens (Accessibility) and the startup stage. It is not extra credit for a Kazakhstan headquarters; code adds any employer-region bonus after your score.
+
 - `employer_region`: "kz", "intl" or "unknown".
 - `region_confidence`: 0 to 1, how sure you are of `employer_region`.
 - `employer_is_startup`: true or false, or null when unknown.

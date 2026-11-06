@@ -300,3 +300,13 @@ async def test_invalid_region_triggers_retry(conn):
     client = FakeClient([bad, GOOD])
     await scorer(conn, client).score_pending(10)
     assert len(client.calls) == 2 and status(conn, pid)["status"] == "scored"
+
+
+def test_rubric_clarifies_goal3_is_not_kz_hq_credit():
+    from pathlib import Path
+
+    import src.scoring.prompt as sp
+
+    text = (Path(sp.__file__).parent / "rubric.md").read_text()
+    assert "not extra credit for a Kazakhstan headquarters" in text
+    assert len(sp.prompt_version()) == 12  # hash of profile.md + rubric.md, bumps by itself

@@ -1995,7 +1995,7 @@ Verified with evidence, no FIX needed:
   - A hackathon posting with URL `http://127.0.0.1:8080/event`, `http://169.254.169.254/latest` or `http://[::1]/` makes 0 requests and is reported unreachable.
   - A posting on `https://acme-fake.test/jobs/1` still fetches `/team`.
 
-### FIX-25 [ ] The scoring profile still credits Kazakhstan employers, contradicting the region-blind rubric (double count)
+### FIX-25 [x] The scoring profile still credits Kazakhstan employers, contradicting the region-blind rubric (double count)
 - Severity: non-blocking.
 - Problem:
   - `src/scoring/profile.md:11` (goal 3) says "Early-stage startups, in Kazakhstan or remote". The new rubric section says "Do not raise or lower `score` because of the employer's home country".
