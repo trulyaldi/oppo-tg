@@ -79,3 +79,32 @@ def test_dod_status_lists_all_spec_items():
 def test_digest_min_items_gone():
     assert "digest_min_items" not in README
     assert "digest_min_items" not in (ROOT / "config.toml").read_text()
+
+
+def test_dod_status_lists_outreach_section_items():
+    spec = (ROOT / "SPEC.md").read_text()
+    sec = spec.split("## Definition of done: outreach and weights")[1].split("\n## ")[0]
+    items = re.findall(r"^- (.+)$", sec, re.M)
+    assert items
+    status = README.split("### Definition of done status")[1].split("\n## ")[0]
+    for item in items:
+        assert item.rstrip(".") in status, item
+
+
+def test_outreach_readme_mentions():
+    for needle in (
+        "config/weights.yaml",
+        "/cv",
+        "/forgetcv",
+        "/cancel",
+        "/prepare",
+        "/contacts",
+        "/addcontact",
+        "/draft",
+        "never fetches LinkedIn",
+        "Anthropic API",
+        "digest_quotas",
+        "[outreach]",
+    ):
+        assert needle in README, needle
+    assert "digest_max_items" not in README

@@ -708,7 +708,8 @@ Only the user can do these. Agents cannot do them, and they do not block the tas
    - `TG_API_ID`/`TG_API_HASH`, then run `.venv/bin/python -m src.tools.telethon_login` once (Kazakh Telegram job channels).
 4. Fill SPEC.md [EDIT] items: extra target companies -> `config.toml` ATS boards; Kazakh Telegram channels -> `config.toml [sources.telegram_channels].channels`.
 5. Check the live sources with `.venv/bin/python -m src.main probe`; it should exit 0 with >= 6 counted families. Then verify the real digest with `.venv/bin/python -m src.main once`, check that `/sources` shows the counted families with ok runs, and start unattended mode (`run`, systemd unit from README).
-6. Run evals once: `.venv/bin/python -m src.evals.run`, and record the pass rate in DECISIONS.md.
+6. Run evals once: `.venv/bin/python -m src.evals.run`, and record the pass rate in DECISIONS.md. Re-run them after the W3 rubric change (D-92) and record the result.
+7. Outreach and weights (F1): re-run `pip install -r requirements.txt` (pyyaml, pypdf); review/extend `config/watchlists/*.yaml`; upload your real CV with `/cv` and try `/prepare` on a saved item; optionally set `SCORING_MODEL`; then run the capped live smoke run (F2) if not done by an agent.
 
 ---
 
@@ -1780,7 +1781,7 @@ Per-type guidance in `draft.md`:
   - The LinkedIn/YC hosts get 0 requests.
   - `.gitignore` still covers `data/*`.
 
-### F1 [ ] README, SPEC DoD status, user actions
+### F1 [x] README, SPEC DoD status, user actions
 - Depends on: P7.
 - Build:
   - README:

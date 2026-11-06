@@ -18,6 +18,10 @@ Read this first. Be honest about what has and has not been checked.
   thresholds in `config.toml` are untested guesses. `hh` and `telegram_channels` have never been
   run against live services (no credentials were available). The systemd unit below is an
   example that has not been tested.
+- NOT verified, outreach and weights: the CV, `/prepare`, `/contacts` and `/draft` features and the
+  LLM region fields (`employer_region` and friends) were built and tested offline only (fakes and
+  fixtures). They have never been run against the real Anthropic or Telegram APIs, and the scoring
+  rubric changed (D-92) without an eval re-run. The capped live smoke run (F2) is not done yet.
 
 ### Definition of done status
 
@@ -37,6 +41,90 @@ Each SPEC.md "Definition of done" item, classified honestly:
 - Scheduler runs unattended: verified offline only for the scheduler logic (fake clock tests);
   user-only: start `run` (systemd example below) and confirm digests arrive for a few days.
 - DECISIONS.md explains every non-obvious choice: verified by review (entries D-01 onward); judgement call.
+
+Outreach and weights (SPEC.md "Definition of done: outreach and weights"):
+
+- Employer-region adjustments, clamping, digest quotas with fall-through and YAML-only edits are covered by tests: verified offline (weights, classifier, selection and digest tests).
+- A clearly bad Kazakhstan posting cannot outrank a clearly good international one under the default weights (tested): verified offline (tested against the committed snapshot of the defaults, D-95).
+- `/cv` ingests a PDF or pasted text, stores it only under `data/`, and never logs it: verified offline (tests plus a privacy sweep with canary strings, D-138); never run with a real CV.
+- `/prepare` and `/draft` output passes the claims-vs-CV verification, including a fabrication test fixture: verified offline with a faked model; never run against the real Claude API.
+- Contacts come only from the listed public sources, expire on schedule, and LinkedIn is never fetched (tested): verified offline (the HTTP client refuses LinkedIn hosts without any request, D-104).
+- A live smoke run with at most 20 scoring calls is recorded in DECISIONS.md, or listed as a user action: listed as a user action (item 8 of "First run / user actions"); no live run has been recorded yet.
+
+## Employer-region weights
+
+The LLM base score is region-blind (D-92). Code then adds a small adjustment by employer, so
+Kazakhstan employers are not buried under big international names. All of it lives in YAML, with
+no code change needed:
+
+- `config/weights.yaml`: `adjustments` (`intl_top_tier`, `intl_other`, `kz_employer`, `kz_startup`,
+  and `intl_onsite_visa_barrier`, a modifier that stacks only with the two international categories
+  and only for on-site roles), `region_min_confidence` (LLM region guesses below it are ignored),
+  `digest_quotas` (`kz`, `intl`, `best_remaining`; their sum is the digest size, and unfilled
+  slots fall through to the best remaining items), `flags` (the emoji shown before the title; `""`
+  turns one off) and the watchlist paths.
+- `config/watchlists/intl_top_tier.yaml` and `config/watchlists/kz_employers.yaml` (the latter has a
+  `startup: true|false` flag per employer). They are starting points: extend them. Names match
+  exactly after normalization (case, punctuation and legal forms like LLC/ТОО are ignored), so list
+  spelling variants under `aliases`. Only the top-tier watchlist can make an employer top-tier.
+- `[ranking] weights_file` in `config.toml` points at the YAML file.
+
+How the score works: `adjusted = clamp(base + adjustment, 0, 10)`. Eligibility for the digest and
+for instant alerts uses the base score, so a bonus never lifts a weak posting in and never fires an
+alert (D-95, D-97); ordering uses the adjusted score. When an adjustment applies, the item shows
+`adjusted/10 (base X, ...)`. Edits to the YAML or watchlists take effect on the next digest, alert
+or `/top`, and existing items are re-ranked without any LLM call. An invalid file never stops the
+bot: it falls back to the built-in defaults and notifies you at most once a day.
+
+## CV, prepare and drafts
+
+Commands (only your chat, `TELEGRAM_CHAT_ID`, can use them):
+
+- `/cv`: the bot asks for your CV; send a PDF or paste the text within 15 minutes. `/cancel`
+  clears any pending input.
+- `/forgetcv`: deletes the stored CV and what was derived from it.
+- `/prepare <id>`: tailoring advice for one posting (an id or a prefix of at least 6 characters,
+  or tap the `/prepare_<id>` link or the Prepare button): keywords, what to emphasize from your CV
+  and public contacts. Every claim is checked against your CV text.
+- `/contacts <id>`: stored contacts for a posting; `/addcontact <id> [text]`: add one from pasted
+  text (see Contacts).
+- `/draft <contact id>`: a short outreach draft (3-5 sentences) for a contact shown by `/contacts`.
+
+Nothing is ever sent for you. Drafts are shown in your chat to copy yourself; the bot has no code
+that emails or messages anyone except you, and the model gets no tools.
+
+Privacy:
+
+- Your CV text, and for `/prepare` and `/draft` the posting and contact text, is sent to the
+  Anthropic API (the cheap model parses the CV, the tailor model writes advice and drafts). The
+  `/cv` prompt says so before anything is sent. Do not upload a CV you would not send there.
+- Stored: only in the SQLite DB (`DB_PATH`, default `data/oppo.db`, gitignored): the current CV
+  text and its parsed sections (older versions are deleted), cached tailoring results, contacts
+  and drafts. The uploaded PDF itself is read in memory and never written to disk. CV text, contact
+  names and draft bodies are never logged. `/forgetcv` removes the CV.
+- Contacts expire after `contact_ttl_days` (60) or a day after the posting deadline, whichever is
+  first, and are pruned daily with their drafts.
+- Limits: PDF or text only (no DOCX, no OCR, so a scanned PDF is refused), at most 5 MB, 20 pages
+  and 30000 characters. Outreach LLM calls are capped per day (`daily_llm_call_cap`).
+
+`[outreach]` in `config.toml` (unknown keys are rejected): `cheap_model`, `tailor_model`,
+`daily_llm_call_cap` (all outreach calls per day, retries included), `max_page_fetches_per_prepare`,
+`max_page_fetches_per_day`, `max_contacts_per_posting`, `contact_ttl_days`, `rediscover_after_days`,
+`cv_max_bytes`, `cv_max_pages`, `cv_max_chars`, `pending_input_minutes`.
+
+## Contacts
+
+Contacts are found only on demand, for one posting, when you run `/prepare` or `/contacts`; never
+during collection or in the scheduler. Sources are public only: the posting text, the Hacker News
+comment for `hn` items, the employer's own `/team` then `/about` page, and the event page for
+hackathons. robots.txt is obeyed, at most 2 page fetches per `/prepare`, and the bot stores no
+emails or phone numbers.
+
+The bot never fetches LinkedIn (nor ycombinator.com and a list of aggregators and paid contact
+finders; the HTTP client refuses them). Instead `/prepare` gives you LinkedIn people-search
+buttons to open in your own browser, and a YC companies link for HN postings. If you find a person,
+paste their name and headline (or the profile text) with `/addcontact <id>`; a pasted LinkedIn URL
+is stored but never opened.
 
 ## Requirements
 
@@ -99,7 +187,10 @@ in `src/config.py`; this table is checked against it by a test.
   Empty by default: you must fill it in, and it only works after the Telethon login below.
 - `[filters]`: title keywords, spam, unpaid and senior-only keywords, `max_age_days`.
 - `[thresholds]`: `digest_min_score`, `alert_score`,
-  `alert_deadline_days`, `alert_deadline_min_score`.
+  `alert_deadline_days`, `alert_deadline_min_score`. The digest size comes from `digest_quotas` in
+  `config/weights.yaml`.
+- `[ranking] weights_file`: path to the weights YAML (see "Employer-region weights").
+- `[outreach]`: models, daily cap and limits for CV, `/prepare` and `/draft` (see "CV, prepare and drafts").
 
 ## Sources
 
@@ -184,7 +275,16 @@ Only you can do these.
 5. Check the live sources with `.venv/bin/python -m src.main probe` (expect exit 0). Then verify the real
    digest with `.venv/bin/python -m src.main once`, send `/sources` to the bot and check that the counted
    families show ok runs, then start unattended mode with `run`.
-6. Run the evals once (below) and record the pass rate in DECISIONS.md.
+6. Run the evals once (below) and record the pass rate in DECISIONS.md. Re-run them after the
+   rubric change that made the LLM score region-blind (D-92) and record the result.
+7. Outreach and weights:
+   - re-run `.venv/bin/python -m pip install -r requirements.txt` (adds pyyaml and pypdf);
+   - review and extend `config/watchlists/*.yaml` and `config/weights.yaml`;
+   - upload your real CV with `/cv` and try `/prepare` on a saved item (the CV text goes to the
+     Anthropic API, see "CV, prepare and drafts");
+   - optional: set `SCORING_MODEL` in `.env` to choose the scoring model (empty uses `claude-haiku-4-5`).
+8. Capped live smoke run: `once` with `MAX_SCORES_PER_RUN=20` (at most 20 scoring calls), check the
+   digest and flags, and record the result in DECISIONS.md.
 
 ## Running
 
@@ -198,7 +298,9 @@ Only you can do these.
 
 `run` collects every `COLLECT_CRON_HOURS` hours, sends the daily digest at `DIGEST_TIME`
 (`TIMEZONE`), sends instant alerts and prunes old cache rows at 04:00. Bot commands: `/top`,
-`/saved`, `/applied`, `/sources`, `/pause`, `/resume`. Each item has feedback buttons.
+`/saved`, `/applied`, `/sources`, `/pause`, `/resume`, plus `/cv`, `/forgetcv`, `/cancel`,
+`/prepare`, `/contacts`, `/addcontact` and `/draft` (see "CV, prepare and drafts"). Each item has
+feedback buttons.
 
 ### Running unattended
 
