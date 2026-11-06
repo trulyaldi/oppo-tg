@@ -1645,7 +1645,7 @@ Per-type guidance in `draft.md`:
     - every URL passes `safe_url`.
   - `grep -rn "linkedin" src` shows only `links.py`, the blocklist and prompts/docs strings.
 
-### N3 [ ] Contact parser: posting text
+### N3 [x] Contact parser: posting text
 - Depends on: N1 (RawContact type, sanitizer).
 - Build: `src/contacts/parsers/posting_text.py` `parse_posting_contacts(text) -> list[RawContact(name, role, note)]`:
   - explicit patterns only: `Contact: Name (Role)`, `Contact Name, Role`, `reach out to Name, our Role`, `Hiring manager: Name`, `Recruiter: Name`, `questions? ask Name`, and Russian `Контактное лицо: Имя`, `Пишите Имя (роль)`;

@@ -1,0 +1,25 @@
+{
+  "FAKE FIXTURE": "All names are fictional.",
+  "cases": [
+    {"id": "contact_colon_role", "text": "Apply now.\nContact: Jane Roe (Technical Recruiter)", "expected": [["Jane Roe", "Technical Recruiter", ""]]},
+    {"id": "contact_comma_role", "text": "Contact Alan Smithe, Head of Quant Research.", "expected": [["Alan Smithe", "Head of Quant Research", ""]]},
+    {"id": "reach_out_our", "text": "Please reach out to Maria Test-Lopez, our Engineering Manager, with questions.", "expected": [["Maria Test-Lopez", "Engineering Manager", ""]]},
+    {"id": "hiring_manager", "text": "Hiring manager: Omar Fakeman", "expected": [["Omar Fakeman", "Hiring manager", ""]]},
+    {"id": "recruiter", "text": "Recruiter: Lena Placeholder", "expected": [["Lena Placeholder", "Recruiter", ""]]},
+    {"id": "questions_ask", "text": "Questions? Ask Tim Example", "expected": [["Tim Example", "", ""]]},
+    {"id": "ru_contact", "text": "Контактное лицо: Иван Тестов", "expected": [["Иван Тестов", "", ""]]},
+    {"id": "ru_write", "text": "Пишите Анна Вымысел (рекрутер)", "expected": [["Анна Вымысел", "рекрутер", ""]]},
+    {"id": "address_note", "text": "Contact: Jane Roe (Recruiter), jane.roe@example.invalid or @jane_roe_fake", "expected": [["Jane Roe", "Recruiter", "posting lists a direct contact address; see the posting"]]},
+    {"id": "html_input", "text": "<p>About us</p><p>Contact: <b>Jane Roe</b> (Recruiter)</p>", "expected": [["Jane Roe", "Recruiter", ""]]},
+    {"id": "dedupe", "text": "Recruiter: Jane Roe\nContact: Jane Roe (Technical Recruiter)", "expected": [["Jane Roe", "Recruiter", ""]]},
+    {"id": "neg_email_only", "text": "Contact us at jobs@x.com", "expected": []},
+    {"id": "neg_website", "text": "Apply via our website", "expected": []},
+    {"id": "neg_skills", "text": "Python, Java (required)", "expected": []},
+    {"id": "neg_generic_name", "text": "Contact: Human Resources\nReach out to Our Team", "expected": []},
+    {"id": "neg_single_word", "text": "Contact: Jane", "expected": []},
+    {"id": "neg_five_words", "text": "Contact: Jane Roe Apply Now Please", "expected": []},
+    {"id": "neg_digits", "text": "Contact: Jane Roe2 (Recruiter)", "expected": []},
+    {"id": "neg_empty", "text": "", "expected": []},
+    {"id": "neg_html_only", "text": "<div><script>x()</script><br></div>", "expected": []}
+  ]
+}
