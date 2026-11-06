@@ -114,6 +114,9 @@ enabled = true
 industries = ["data-science", "engineering"]
 tags = []
 
+[sources.euraxess]
+enabled = false  # dropped: WAF returns 403 for query-string requests (D-59)
+
 [sources.kaggle]
 enabled = true
 categories = ["featured", "research"]

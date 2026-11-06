@@ -486,7 +486,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - `[sources.jobicy] enabled = false` makes `enabled()` False.
   - Registered.
 
-### T19b [ ] Source: EURAXESS research job listings (credential-free, probe + terms gated)
+### T19b [x] Source: EURAXESS (DROPPED, D-59) research job listings (credential-free, probe + terms gated)
 - Covers research positions and PhD-track roles in Europe and worldwide (SPEC goal 4). This is a distinct channel from the hand-picked page watcher and the NSF feed.
 - **Probe first** (one request each, 2s apart, honest UA). The planner's findings from 2026-11-06 are listed below; re-confirm them:
   - `https://euraxess.ec.europa.eu/robots.txt`: 200. Disallows only admin/user/edit-type paths, `/core/`, `/profiles/`. `/jobs/search` with query strings is allowed.
