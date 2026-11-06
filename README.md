@@ -114,8 +114,8 @@ Privacy:
 
 ## Contacts
 
-Contacts are found only on demand, for one posting, when you run `/prepare` or `/contacts`; never
-during collection or in the scheduler. Sources are public only: the posting text, the Hacker News
+Contacts are found only on demand, for one posting, when you run `/prepare` (`/contacts` only lists
+what is already stored and fetches nothing); never during collection or in the scheduler. Sources are public only: the posting text, the Hacker News
 comment for `hn` items, the employer's own `/team` then `/about` page, and the event page for
 hackathons. robots.txt is obeyed, at most 2 page fetches per `/prepare`, and the bot stores no
 emails or phone numbers.

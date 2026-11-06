@@ -333,7 +333,7 @@ Log every non-obvious choice: date, choice, reason. Newest last.
   - `/cancel` clears the state.
   - It is stored in SQLite rather than aiogram FSM memory, so it survives a restart and follows the existing `state` pattern.
 - **D-103 Contacts: on demand, minimal fields, short retention.**
-  - **When.** Discovery runs only when the user runs `/prepare` or `/contacts` for one posting. It never runs in collect, the scheduler or alerts; an N6 test greps for this. That is the "no bulk collection" guarantee.
+  - **When.** Discovery runs only when the user runs `/prepare` for one posting (`/contacts` lists stored contacts and makes no requests; amended by D-143). It never runs in collect, the scheduler or alerts; an N6 test greps for this. That is the "no bulk collection" guarantee.
   - **Order.**
     1. posting text (no network);
     2. for `hn` items, the single Algolia comment item (author handle + contact lines);
@@ -478,3 +478,5 @@ Log every non-obvious choice: date, choice, reason. Newest last.
 - **D-141 FIX-16 SDK logger pin (D-111 addendum).** New `src/logging_setup.py::configure_logging(level)` does `basicConfig(level)` then sets `anthropic`, `httpx`, `httpx2`, `httpcore`, `aiogram.event` and `telethon` loggers to WARNING whatever `LOG_LEVEL` is; `main()` calls it. Logger-level pin chosen over a filter because it also skips building the record and covers child loggers (`anthropic._base_client`). `aiogram.event` only (not all of `aiogram`) as in the task, so aiogram INFO elsewhere is kept. `tests/test_logging_setup.py` uses the real `AsyncAnthropic` on `httpx2.MockTransport` at DEBUG for `call_json` and for ingest + `/prepare`, a control test proving the SDK leaks the canary without the pin, and a check that `src.*` DEBUG logs still appear. README `LOG_LEVEL` row notes the pin.
 
 - **D-142 FIX-17 /draft shows removed count (D-137 amendment).** `render_draft(..., removed=0)` appends `\nRemoved N unsupported statements.` after the `</pre>` when `removed > 0`; the clip loop includes the note in the 4000-char budget, so only the body is clipped. `run_draft` passes `DraftResult.removed` (also for cached drafts, which store it). With `removed == 0` the output is unchanged.
+
+- **D-143 FIX-18 /contacts does not discover (option b).** Chose to correct the docs, not wire discovery into `/contacts`. Reasons: `/contacts` is a cheap read of stored rows (PLAN 8.1.14, existing tests); adding network fetches there would add a second path spending the daily page-fetch cap and rediscovery window, widening the on-demand surface for no user benefit since `/prepare` already discovers and `/contacts` shows the result. README "Contacts", D-103 and SPEC "Contacts" now say discovery runs at `/prepare` only. SPEC wording changed minimally to match shipped behaviour.

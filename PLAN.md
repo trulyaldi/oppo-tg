@@ -1905,7 +1905,7 @@ Verified with evidence, no FIX needed:
   - A draft whose verdict removed 1 sentence renders the header, then the `<pre>` body, then "Removed 1 unsupported statements.", in one message of at most 4000 chars.
   - With `removed == 0` the output is exactly as today.
 
-### FIX-18 [ ] README, SPEC and D-103 say `/contacts` looks contacts up; the code only lists stored ones
+### FIX-18 [x] README, SPEC and D-103 say `/contacts` looks contacts up; the code only lists stored ones
 - Severity: non-blocking.
 - Problem:
   - SPEC "Contacts": "looked up on demand when the user asks (`/prepare`, `/contacts`)".

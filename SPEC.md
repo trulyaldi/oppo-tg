@@ -93,7 +93,7 @@ Store every reaction. Include the 20 most recent liked and disliked items as exa
 
 ## Contacts (added 2026-11-06)
 
-- Contacts come only from public sources, looked up on demand when the user asks (`/prepare`, `/contacts`), never in bulk:
+- Contacts come only from public sources, looked up on demand when the user runs `/prepare` (`/contacts` lists the stored ones), never in bulk:
   - the posting text;
   - Hacker News "Who is hiring" contact lines and posters;
   - the employer's own team or about page;
