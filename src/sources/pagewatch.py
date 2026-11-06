@@ -54,6 +54,7 @@ def _pages(cfg: AppConfig) -> list[dict[str, str]]:
         {
             "url": str(p["url"]),
             "name": str(p.get("name") or p["url"]),
+            "company": str(p.get("company") or p.get("name") or p["url"]),
             "kind": str(p.get("kind", "")),
             "css_selector": str(p.get("css_selector") or ""),
         }
@@ -106,7 +107,7 @@ class PageWatchSource:
                         source="pagewatch",
                         external_id=f"{page['url']}:{digest[:12]}",
                         title=title,
-                        company=page["name"],
+                        company=page["company"],
                         url=page["url"],
                         description=text[:MAX_DESC],
                         posted_at=ctx.clock.now(),

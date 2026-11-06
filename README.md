@@ -93,7 +93,7 @@ in `src/config.py`; this table is checked against it by a test.
 - `[sources.hh]`: `area` (40 = Kazakhstan), `period` in days and search `queries`. Needs `HH_ACCESS_TOKEN`.
 - `[[sources.rss.feeds]]`: `url`, `name`, `kind` (job, internship, research, ...).
 - `[[sources.pagewatch.pages]]`: pages to watch for changes (`url`, `name`, `kind`, optional
-  `css_selector`). Only add pages whose robots.txt allows it.
+  `css_selector`, optional `company`: the employer name used for weighting, e.g. `IMC`). Only add pages whose robots.txt allows it.
 - `[sources.jobicy]`: `industries` slugs and optional `tags`.
 - `[sources.telegram_channels] channels`: public channel handles, for example `["some_channel"]`.
   Empty by default: you must fill it in, and it only works after the Telethon login below.

@@ -1345,7 +1345,7 @@ Per-type guidance in `draft.md`:
   - `prompt_version()` differs from the pre-change value (asserted against a constant captured in the test).
   - The S1 signature-binding scorer tests stay green, and `max_tokens == 400` is sent.
 
-### W4 [ ] Employer classifier (watchlists first, LLM region fallback)
+### W4 [x] Employer classifier (watchlists first, LLM region fallback)
 - Depends on: W1 (weights + watchlists).
 - Build:
   - `src/ranking/employer.py` with `normalize_company` and `classify_employer` exactly as in 8.1.4.

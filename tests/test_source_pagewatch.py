@@ -154,3 +154,23 @@ def test_registered_and_enabled():
     assert PageWatchSource().enabled(s, _cfg())
     assert not PageWatchSource().enabled(s, _cfg(enabled=False))
     assert not PageWatchSource().enabled(s, AppConfig.from_dict({}))
+
+
+async def test_company_key_used_and_falls_back_to_name():
+    from src.ranking.employer import classify_employer
+    from src.ranking.weights import load_weights
+
+    w = load_weights(FX / "weights_snapshot" / "weights.yaml")
+    page = {"url": URL, "name": "IMC Careers", "kind": "internship", "company": "IMC"}
+    cfg = AppConfig.from_dict({"sources": {"pagewatch": {"enabled": True, "pages": [page]}}})
+    r = await _fetch(Harness(cfg))
+    assert r.items[0].company == "IMC"
+    assert classify_employer("IMC", "internship", "unknown", 0, None, w).category == (
+        "intl_top_tier"
+    )
+    del page["company"]
+    r = await _fetch(Harness(cfg))
+    assert r.items[0].company == "IMC Careers"
+    assert classify_employer("IMC Careers", "internship", "unknown", 0, None, w).category == (
+        "unknown"
+    )
