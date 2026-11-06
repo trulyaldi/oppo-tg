@@ -1672,7 +1672,7 @@ Per-type guidance in `draft.md`:
   - HTTP 500 through MockTransport -> [] with no exception.
   - The request goes to `hn.algolia.com` only.
 
-### N5 [ ] Contact parser: team/about and organizer pages
+### N5 [x] Contact parser: team/about and organizer pages
 - Depends on: N1 (classifier lexicon).
 - Build: `src/contacts/parsers/team_page.py` `parse_team_page(html, page_url) -> list[RawContact]`, in this order:
   - (1) schema.org `Person` microdata (`itemprop=name`, `jobTitle`);
