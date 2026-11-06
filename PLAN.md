@@ -1767,7 +1767,7 @@ Per-type guidance in `draft.md`:
   - `/draft 99999` -> not found.
   - Callback data `dr:<id>` <= 64 bytes for id 10^12.
 
-### P7 [ ] Privacy and safety sweep (D-111)
+### P7 [x] Privacy and safety sweep (D-111)
 - Depends on: P6, N7, C5.
 - Build: one cross-cutting test module that runs the full flow (CV ingest -> /prepare with discovery on MockTransport -> /addcontact -> /draft) with canaries `CANARY-CV`, `CANARY-CONTACT` and `CANARY-DRAFT` in the inputs and canned replies, at log level DEBUG. Fix any leak it finds.
 - Files: `tests/test_privacy_sweep.py`, any `src/` file with a leak.
