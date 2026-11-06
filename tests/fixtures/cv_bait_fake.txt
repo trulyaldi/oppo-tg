@@ -1,0 +1,18 @@
+FAKE FIXTURE - fictional CV, not a real person.
+
+Sam Sample
+
+EDUCATION
+Sample Institute, BSc Mathematics, 2021 - 2025
+
+EXPERIENCE
+Demo Analytics - Data Intern, Summer 2024
+- Worked with a team of researchers on forecasting experiments
+- Cleaned and joined survey datasets with Python and SQL
+
+PROJECTS
+Weather Notebook
+- Python (2 years) used for plotting and small statistics scripts
+
+SKILLS
+Python, SQL

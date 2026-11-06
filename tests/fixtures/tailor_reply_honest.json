@@ -1,0 +1,9 @@
+{"fit": {"level": "partial",
+  "points": [{"text": "Python and SQL data work", "cv_evidence": "Cleaned and joined survey datasets with Python and SQL"}]},
+ "emphasize": [{"text": "Data internship with forecasting experiments", "cv_evidence": "Demo Analytics - Data Intern, Summer 2024"},
+               {"text": "Team research on forecasting", "cv_evidence": "Worked with a team of researchers on forecasting experiments"}],
+ "cut": [],
+ "reorder": [{"text": "Move the Python project up", "cv_evidence": "Python (2 years) used for plotting"}],
+ "keywords": [{"keyword": "Python", "cv_evidence": "Cleaned and joined survey datasets with Python and SQL", "posting_evidence": "Python and SQL for research tooling"}],
+ "gaps": [{"requirement": "C++ and kdb+", "posting_evidence": "We need strong C++ and kdb+",
+           "how_to_address": "Not in your CV; consider a small low-latency side project."}]}

@@ -1,0 +1,14 @@
+{"fit": {"level": "strong",
+  "points": [{"text": "Kaggle Grandmaster with top finishes", "cv_evidence": "Kaggle Grandmaster ranked in the top ten worldwide"}]},
+ "emphasize": [
+  {"text": "Led a team of 12 engineers", "cv_evidence": "Worked with a team of researchers on forecasting experiments"},
+  {"text": "Data internship with forecasting experiments", "cv_evidence": "Demo Analytics - Data Intern, Summer 2024"},
+  {"text": "Python and SQL data cleaning", "cv_evidence": "Cleaned and joined survey datasets with Python and SQL"}],
+ "cut": [],
+ "reorder": [{"text": "3 years of Python", "cv_evidence": "Python (2 years) used for plotting"}],
+ "keywords": [
+  {"keyword": "C++", "cv_evidence": "Wrote C++ matching engines for production", "posting_evidence": "strong C++ and kdb+"},
+  {"keyword": "kdb+", "cv_evidence": "Maintained kdb+ tick databases at scale", "posting_evidence": "C++ and kdb+"},
+  {"keyword": "Python", "cv_evidence": "Cleaned and joined survey datasets with Python and SQL", "posting_evidence": "Python and SQL for research tooling"}],
+ "gaps": [{"requirement": "low-latency trading experience", "posting_evidence": "Required: 3+ years low-latency trading experience",
+           "how_to_address": "Mention your 5 years of C++ in trading systems."}]}

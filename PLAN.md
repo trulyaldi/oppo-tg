@@ -1514,7 +1514,7 @@ Per-type guidance in `draft.md`:
   - `tmp_path` holds no new files after handling (the download goes to BytesIO).
   - Through the dispatcher: a document from another chat triggers no `getFile`/download call.
 
-### P1 [ ] Deterministic claims-vs-CV verifier and lexicon
+### P1 [x] Deterministic claims-vs-CV verifier and lexicon
 - Depends on: C2 (CV skills list).
 - Build: `src/outreach/lexicon.py` and `src/outreach/verify.py` implementing `norm`, V1-V4, K, G (8.1.11), plus the draft checks (8.1.12): `split_sentences`, `verify_tailoring(result, cv_text, posting_text, cv_skills) -> (verified, removed)` and `verify_draft(...)`. Pure functions, no I/O.
 - Fixtures:
