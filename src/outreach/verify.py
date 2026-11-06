@@ -312,6 +312,34 @@ def is_second_person_claim(text: str, ents: list[str]) -> bool:
 _CALL_LEN = re.compile(r"([^\W_]+)\s*-?\s*min(?:ute)?s?\b")
 
 
+_YEAR = re.compile(r"(?:19|20)\d\d")  # a date ("Summer 2026"), not a quantity of experience
+_SECOND = re.compile(r"(?<!\w)(?:you|you['’](?:ve|re|d|ll)|your|yours|yourself)(?!\w)")
+
+
+def ungrounded_own_numbers(
+    text_norm: str, cv_nums: set[str], exempt: set[str] = frozenset()
+) -> set[str]:
+    """Numbers in a sentence about the candidate that the CV does not contain (FIX-32).
+
+    The caller has already established that the sentence speaks about the user. Years such
+    as 2026 and an `exempt` set (the call length of the ask) are not quantities of experience.
+    """
+    return {
+        n
+        for n in numbers(text_norm)
+        if n not in cv_nums and n not in exempt and not _YEAR.fullmatch(n)
+    }
+
+
+def gap_claims_posting_number(how: str, cv_nums: set[str]) -> bool:
+    """A gap tip that tells the user "you have/your N ..." for an N that is not in the CV."""
+    for clause in re.split(r"[;:.!?]", how):
+        cn = norm(clause)
+        if _SECOND.search(cn) and ungrounded_own_numbers(cn, cv_nums):
+            return True
+    return False
+
+
 def call_length_numbers(ask: str) -> set[str]:
     """Numbers an ask may introduce: call length only ("15 minutes")."""
     out: set[str] = set()
@@ -451,6 +479,7 @@ def verify_tailoring(
             h = norm(how)
             ok = not has_contact_info(how, cv_n) and (
                 numbers(h) <= numbers(corpus)  # G: V2 against CV + posting
+                and not gap_claims_posting_number(how, numbers(cv_n))  # FIX-32
                 and inflation_stems(h) <= inflation_stems(corpus)
                 and _skills_in(h, skills) <= _skills_in(corpus, skills)  # G: V4
                 and not ungrounded_entities(how, corpus, skills)  # G: V5 against CV + posting
@@ -565,6 +594,7 @@ def verify_draft(
     quote_n = norm(quote)
     # the ask is a proposal: only its call length ("15 minutes") is exempt, never "5 years"
     allowed_nums = numbers(facts) | call_length_numbers(ask)
+    cv_nums, ask_nums = numbers(cv_n), call_length_numbers(ask)
     non_cv = norm(" ".join([posting_text, contact_text]))
     claims = draft.get("claims") if isinstance(draft.get("claims"), list) else []
     removed = sum(
@@ -584,6 +614,8 @@ def verify_draft(
             bad.add("contact-info")
             continue
         miss = {n for n in numbers(sn) if n not in allowed_nums}
+        if _FIRST_PERSON.search(s):  # FIX-32: a number about "me" must come from the CV
+            miss |= ungrounded_own_numbers(sn, cv_nums, ask_nums & call_length_numbers(s))
         miss |= inflation_stems(sn) - inflation_stems(cv_n)
         miss |= {
             t

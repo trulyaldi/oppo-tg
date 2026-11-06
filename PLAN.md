@@ -2171,7 +2171,7 @@ Third review pass, 2026-11-06. The reviewer re-checked FIX-26..FIX-30 (commits 5
   - `draft_reply_ok.json` and `tailor_reply_honest.json` still pass with nothing removed.
   - "I'm a third-year Computer Science student." is kept against `cv_fake.txt`.
 
-### FIX-32 [ ] Numbers that appear only in the posting can be stated as the user's own experience
+### FIX-32 [x] Numbers that appear only in the posting can be stated as the user's own experience
 - Severity: BLOCKING. This is the most likely fabrication: the model mirrors the posting's requirement back as a claim about the user.
 - Problem:
   - Draft sentences accept any number found in CV ∪ posting ∪ contact (`allowed_nums`). Gap `how_to_address` accepts any number found in CV ∪ posting.
