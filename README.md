@@ -18,13 +18,16 @@ Read this first. Be honest about what has and has not been checked.
   thresholds in `config.toml` are untested guesses. `hh` and `telegram_channels` have never been
   run against live services (no credentials were available). The systemd unit below is an
   example that has not been tested.
-- NOT verified, coverage and freshness (FC-01..FC-30, branch feature/coverage-and-freshness): the
-  tiered scheduler, politeness limiter, fresh alerts, board discovery, Telethon live listener,
-  triage and hard blockers were built and tested offline only (fakes and fixtures). The Workable
-  and Remote OK fixtures are hand-written from each API's documented shape, not captured from a
-  real response (D-215, D-216); a check against a real response is still pending (the final smoke
-  test, FC-33, or you). The triage eval (`--triage`) and the live smoke run have not been run.
-  Nothing in this section has run against the real Telegram, Anthropic or hh.kz services.
+- Verified live once, 2026-11-07 (FC-33, D-232): one capped `once` run and one `discover` run against
+  the real network, Claude API and Telegram Bot API. 9 sources ran with 0 failures, Remote OK parsed
+  a real response (99 items), triage and scoring ran (12 triage plus 1 score calls), a 10-item digest
+  was delivered, and discovery validated and added 3 boards.
+- NOT verified, coverage and freshness (FC-01..FC-31): the Workable parser against a real response
+  (its fixture is hand-written, D-215; no Workable boards ran in the smoke test), hh (credentials
+  not used), the Telethon live listener and channel history, fresh alerts and their latency (no
+  alert fired), the long-running tiered scheduler, and the triage eval (`--triage`). The review
+  fixes FIX-40..43 were tested offline but not re-reviewed; FIX-44, 45, 46, 49, 50, 51 remain open
+  as known limits.
 - NOT verified, outreach and weights: the CV, `/prepare`, `/contacts` and `/draft` features and the
   LLM region fields (`employer_region` and friends) were built and tested offline only (fakes and
   fixtures). They have never been run against the real Anthropic or Telegram APIs, and the scoring

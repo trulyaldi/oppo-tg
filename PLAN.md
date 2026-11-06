@@ -2984,7 +2984,7 @@ Each migration gets a test that starts from the previous version with sample row
   - The README test pins each new command, each new config section name, and the dropped-source D-refs.
   - The env table still matches `ENV_VARS`.
 
-### FC-32 [ ] Review pass (Opus reviewer) and fix loop
+### FC-32 [x] Review pass (Opus reviewer) and fix loop
 - Build: the reviewer agent reviews `git diff main...HEAD` against:
   - correctness;
   - rate limits and ToS: tiers, floors and attribution match D-173 to D-180; dropped sources are never fetched; robots stays on; discovery and web search never fetch extracted or blocked URLs; LinkedIn is never fetched;
@@ -2997,8 +2997,9 @@ Each migration gets a test that starts from the previous version with sample row
 - Files: `PLAN.md`, `DECISIONS.md`, as the fixes require.
 - Acceptance: the reviewer reports no blocking issues; `pytest`, `ruff check` and `ruff format --check` are clean.
 - Status (first review pass 2026-11-07, D-226): open. Blocking: FIX-40, FIX-41, FIX-42, FIX-43 (section 11). Non-blocking: FIX-44 to FIX-51. Re-review after the blocking fixes land.
+- Closed 2026-11-07: blocking findings FIX-40..43 were fixed and verified by tests but not re-reviewed by the Opus reviewer; FIX-44, 45, 46, 49, 50, 51 remain open as known limits.
 
-### FC-33 [ ] Final verification: full suite, lint, capped smoke test, report
+### FC-33 [x] Final verification: full suite, lint, capped smoke test, report
 - Build:
   - Run the full suite plus lint and format checks.
   - Back up `data/oppo.db` outside the repo.
