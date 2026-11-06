@@ -10,7 +10,7 @@ from typing import Any
 
 from src.models import Posting, ScoreResult
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 MAX_SCORE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
 _EXCLUSIVE = {"like": "dislike", "dislike": "like"}
@@ -86,6 +86,19 @@ CREATE TABLE llm_usage (day TEXT NOT NULL, purpose TEXT NOT NULL, calls INTEGER 
 """
 
 
+SCHEMA_4 = """
+CREATE TABLE cv_versions (
+  version INTEGER PRIMARY KEY AUTOINCREMENT,
+  sha TEXT NOT NULL,
+  text TEXT NOT NULL,
+  sections TEXT NOT NULL,
+  source_kind TEXT NOT NULL,
+  parse_model TEXT NOT NULL,
+  created_at TEXT NOT NULL
+)
+"""
+
+
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
 
@@ -119,6 +132,12 @@ def migrate(conn: sqlite3.Connection) -> None:
     if version < 3:
         with conn:
             for stmt in SCHEMA_3.split(";"):
+                if stmt.strip():
+                    conn.execute(stmt)
+            conn.execute("PRAGMA user_version=3")
+    if version < 4:
+        with conn:
+            for stmt in SCHEMA_4.split(";"):
                 if stmt.strip():
                     conn.execute(stmt)
             conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")

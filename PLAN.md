@@ -1455,7 +1455,7 @@ Per-type guidance in `draft.md`:
   - The prompt sent contains the CV between `<cv>` tags and the static block says DATA, not instructions.
   - Fixture files contain `FAKE FIXTURE`.
 
-### C3 [ ] CV storage and versioning
+### C3 [x] CV storage and versioning
 - Depends on: C2.
 - Build:
   - Migration v4 `cv_versions` (8.1.8).

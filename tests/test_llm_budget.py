@@ -47,7 +47,7 @@ def test_migration_v3_on_v2_db_with_rows(tmp_path):
     conn.execute("INSERT INTO state VALUES ('k','v')")
     conn.commit()
     db.migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 3
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 4
     assert conn.execute("SELECT value FROM state WHERE key='k'").fetchone()[0] == "v"
     assert conn.execute("SELECT COUNT(*) FROM llm_usage").fetchone()[0] == 0
 
