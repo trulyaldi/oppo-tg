@@ -710,3 +710,121 @@ Only the user can do these. Agents cannot do them, and they do not block the tas
 4. Fill SPEC.md [EDIT] items: extra target companies -> `config.toml` ATS boards; Kazakh Telegram channels -> `config.toml [sources.telegram_channels].channels`.
 5. Check the live sources with `.venv/bin/python -m src.main probe`; it should exit 0 with >= 6 counted families. Then verify the real digest with `.venv/bin/python -m src.main once`, check that `/sources` shows the counted families with ok runs, and start unattended mode (`run`, systemd unit from README).
 6. Run evals once: `.venv/bin/python -m src.evals.run`, and record the pass rate in DECISIONS.md.
+
+---
+
+## 4. Review fixes (reviewer pass 2026-11-06)
+
+Filed by the reviewer after all T-tasks were checked. Each task has a `[ ]` checkbox and is handled like a T-task: one commit per task, mark it done in the same commit, add a DECISIONS entry where noted. User actions in section 3 (filling `.env.example`, secrets, live runs, evals) stay with the user and are not filed here (D-30).
+
+Evidence from the review: 275 tests pass, `ruff check` and `ruff format --check` are clean, and the README setup steps work in a fresh clone (`python3 -m venv .venv`, `pip install -r requirements.txt`, pytest, ruff). No secrets turned up in code, fixtures or git history, and no LinkedIn access was found.
+
+### FIX-01 [ ] probe gives a false failure on every re-run (pagewatch snapshots persist in data/probe.db)
+- Problem: pagewatch emits items only when a page is new or has changed. `probe` counts a family only if it returned at least 1 item (`src/pipeline/probe.py`), and it reuses the persistent `data/probe.db`. On the second run pagewatch therefore returns 0 items, the count is 5/6 and the exit code is 1. Reproduced offline: same page, two runs, items 1 then 0. This working copy's `data/probe.db` already holds 7 page snapshots from the D-62 run, so the user's README step 5 ("expect exit 0") will fail. D-56 already assumes a "fresh data/probe.db".
+- Build: at the start of each probe run, clear ONLY `page_snapshots` (and optionally `source_runs`) in the probe DB. Do NOT use a temporary or `:memory:` DB and do NOT clear `http_cache` or `robots_cache`. The 1h response cache is how Jobicy's "automated polling must not exceed once per hour" condition is met (D-58), and robots.txt is cached for 24h (D-08). With snapshots cleared, pagewatch hashes the cached body, treats it as new and emits items. Never touch the real `DB_PATH`.
+- Also fix the README "Count rule" paragraph and the Troubleshooting entry. They say "if one fails, set `HH_ACCESS_TOKEN`", but credential-gated sources never count (D-52 and `run_probe`: `if not creds`), so setting the token cannot bring `probe` back to exit 0. Say instead that hh adds coverage but not to the counted total, and that the only counted buffer is a new credential-free source that passes the D-31/D-53 checks.
+- Files: `src/main.py` and/or `src/pipeline/probe.py`, `tests/test_probe.py`, `README.md`, `DECISIONS.md` (D-56 addendum).
+- Acceptance:
+  - A new test runs `main(["probe", "--db", <tmp path>], environ={})` (or `run_probe` with the same DB path) twice. It uses a MockTransport/fake pagewatch backed by `tests/fixtures/page_v1.html` both times, and both runs report the same pagewatch item count (>= 1) and the same exit code.
+  - In the same test, the MockTransport receives exactly one Jobicy API request across the two runs (the second run is served from `http_cache` within the 1h TTL), and `robots_cache` rows survive the second run.
+  - The README no longer suggests that `HH_ACCESS_TOKEN` restores the counted total.
+  - All tests green, ruff clean.
+
+### FIX-02 [ ] A source whose every request fails is recorded as ok (no failure signal in /sources or probe)
+- Problem: every multi-request source (greenhouse, lever, ashby, hn, rss, pagewatch, mlh, jobicy, hh) catches per-request failures, logs them and returns `[]`. `run_source` then records `ok=1, n_items=0`. Reproduced offline: pagewatch with every page answering HTTP 403 gives `ok True items 0`. So `/sources` shows "ok, 0 items" for a source that is completely blocked (403, robots disallow, DNS down), and README step 5 ("check that /sources shows ok runs") cannot detect breakage. With zero spare families (D-60), a silent total failure is the main risk to the 6-source goal.
+- Build: when ALL sub-requests of a run fail (get_json/get_text returned None or raised), the source raises a clear exception, e.g. `SourceUnavailable("all 7 pages failed: no data")`, so `run_source` records `ok=False` with an error string. Partial failure stays ok. "Fetched fine but nothing new" (pagewatch unchanged pages, an empty feed) stays ok. Put the "all failed" logic in a shared helper in `src/sources/base.py` rather than copying it per source.
+- Files: `src/sources/base.py`, the source modules above, their `tests/test_source_<name>.py`, `DECISIONS.md`.
+- Acceptance:
+  - For each counted source, a test where every request returns 403 gives `run_source(...).ok is False` and a non-empty `error`.
+  - A test where one of two boards/pages/feeds fails gives `ok is True` with the other's items.
+  - pagewatch with unchanged pages (200, same content) gives `ok is True, items == []`.
+  - `tests/test_e2e_all_sources.py` still passes. All tests green, ruff clean.
+
+### FIX-03 [ ] Fresh clone: collect/digest/once/run crash because data/ does not exist
+- Problem: `db.connect` does not create the parent directory, and `data/` is not in git (only `*.db` files would live there). In a fresh clone, `db.connect("data/oppo.db")` raises `sqlite3.OperationalError: unable to open database file`. Only `probe` runs `mkdir`. Any `DB_PATH` in a missing directory crashes `once` and `run`, and so does the systemd unit if `probe` never ran. README's `nohup ... >> data/run.log` also needs `data/` to exist.
+- Build: create the parent directory of a file DB path in `db.connect` (or in `_run`/`_serve`), skipping `:memory:`. Remove the now-redundant `mkdir` in `_probe` if it is covered.
+- Files: `src/db.py` and/or `src/main.py`, `tests/test_db.py` or `tests/test_scheduler.py`.
+- Acceptance: a test calls `db.connect(tmp_path / "missing" / "sub" / "oppo.db")` and `db.migrate` on it, and the file exists afterwards. A test runs `main(["digest"], environ={...three required..., "DB_PATH": str(tmp_path/"nope"/"x.db")})` with the Bot faked (as in `test_main_collect_once_wiring`) and it does not raise `OperationalError`. All tests green.
+
+### FIX-04 [ ] Intern matching: Lever/Greenhouse regex and the filter's "intern" prefix match "Internal"/"International"
+- Problem:
+  - `src/sources/lever.py` uses `\bintern\w*\b` and `src/sources/greenhouse.py` uses `\b(intern\w*|summer)\b`. Both mark "Internal Applications Engineer" and "International Tax Analyst" as `Kind.INTERNSHIP`. The other sources use `\bintern(?:ship)?s?\b`.
+  - `src/pipeline/filters.py` applies the same prefix match in two places, verified by running `hard_filter`/`relevance_ok` with the repo config:
+    - The senior-only exemption `_kw_match("intern", title, prefix=True)` lets senior roles through the senior-only filter: "Senior Internal Tools Engineer" and "Head of International Sales" give `None` instead of `senior_only`.
+    - The positive keyword `intern` (len > 3, so prefix match) makes "Internal Communications Manager" pass `relevance_ok`, which wastes LLM calls.
+- Build:
+  - Lever and Greenhouse: use `\bintern(?:ship)?s?\b`. Keep Greenhouse's `summer` alternative, since "Summer Analyst" is the standard quant-intern title.
+  - Filters: use a word-boundary match `\bintern(?:ship)?s?\b` for the senior exemption and for the `intern` positive keyword. Keep other keywords' prefix behavior unless a test shows a similar false positive.
+  - Best option: one shared `INTERN_RE` in `src/text.py` (or `src/models.py`) imported by all sources and filters.
+- Files: `src/sources/lever.py`, `src/sources/greenhouse.py`, `src/pipeline/filters.py`, optionally the other sources, `tests/test_source_lever.py`, `tests/test_source_greenhouse.py`, `tests/test_filters.py` and/or `tests/fixtures/filter_cases.json`, `DECISIONS.md`.
+- Acceptance (tests):
+  - Lever and Greenhouse parse a posting titled "Internal Applications Engineer" as `Kind.JOB`, while "Software Engineer Intern", "Internship 2027" and (Greenhouse) "Summer Analyst" stay `INTERNSHIP`.
+  - `hard_filter` returns `senior_only` for "Senior Internal Tools Engineer" and "Head of International Sales" (`Kind.JOB`), and returns `None` for "Senior Software Engineer Intern".
+  - `relevance_ok` is False for "Internal Communications Manager".
+  - All tests green.
+
+### FIX-05 [ ] .gitignore misses SQLite WAL/SHM files, the run log and the Telethon session journal
+- Problem: `git check-ignore` reports NOT ignored for:
+  - `data/oppo.db-wal` and `data/oppo.db-shm`, created by WAL mode (D-10). They hold postings, the HTTP cache and the chat id in deliveries.
+  - `data/run.log`, from README's nohup line.
+  - `data/telethon.session-journal`, a transient SQLite journal of the Telethon session, which can contain the account auth key.
+  A `git add -A` would commit them.
+- Build: ignore everything under data with `data/*` plus `!data/.gitkeep` (a bare `data/` pattern cannot be re-included, because git does not look inside an excluded directory). Add a tracked `data/.gitkeep` if desired, which also helps FIX-03. Also add `*.db-wal`, `*.db-shm`, `*.session-journal` for paths outside `data/`.
+- Files: `.gitignore`, optionally `data/.gitkeep`, `tests/test_smoke.py` or a new small test.
+- Acceptance: a test (subprocess `git check-ignore -q`, skipped if git is unavailable) confirms that `data/oppo.db`, `data/oppo.db-wal`, `data/oppo.db-shm`, `data/run.log`, `data/telethon.session`, `data/telethon.session-journal`, `x.db-wal` and `.env` are all ignored. `git ls-files` shows no file under `data/` except an optional `.gitkeep`.
+
+### FIX-06 [ ] Tests break when the user edits config.toml as README step 4 instructs
+- Problem: README "First run" step 4 tells the user to add Kazakh channels to `[sources.telegram_channels].channels`. Doing exactly that (one channel added in a clean clone) fails `tests/test_source_telegram_channels.py::test_default_config_channels_empty`. Disabling one counted source also fails `tests/test_bot_commands.py::test_sources_exact_fixture` and the e2e tests. Those tests check user-editable values, not code, so "all tests green" (DoD) depends on the user never personalising the config. The README Troubleshooting entry claims a failing test "is not a credentials problem", but says nothing about config edits.
+- Build:
+  - Point `test_sources_exact_fixture` (and other tests that only need some config) at a committed test copy, e.g. `tests/fixtures/config_repo_snapshot.toml`, or at an inline `AppConfig.from_dict`.
+  - Drop or rewrite `test_default_config_channels_empty` so it checks only that the repo config parses channels into a list of valid handles.
+  - Keep `tests/test_source_count.py` (and the e2e count check) on the real repo `config.toml` on purpose, because it is the DoD guard for "at least 6 sources". Add a one-line comment saying so, and a README Troubleshooting line saying that disabling counted sources in `config.toml` makes `test_source_count` fail by design.
+- Files: `tests/test_bot_commands.py`, `tests/test_source_telegram_channels.py`, possibly a new fixture, `README.md`.
+- Acceptance: in a scratch copy of the repo, adding `channels = ["kz_jobs_example"]` and an extra Greenhouse board to `config.toml` leaves the whole suite green (verify manually and note it in the commit message). `test_sources_exact_fixture` no longer reads `config.toml` from the repo root.
+
+### FIX-07 [ ] Untested Telethon paths: default client factory and the login tool (empty TG_SESSION_PATH writes no session)
+- Problem: `default_client_factory` (`src/sources/telegram_channels.py`) and `src/tools/telethon_login.py` have no tests, and neither has ever run live. A concrete bug: `telethon_login.main` uses `os.environ.get("TG_SESSION_PATH", "data/telethon.session")`. After `set -a; . ./.env` with `TG_SESSION_PATH=` empty (README says "Empty optional values fall back to their defaults"), it passes `""`. Telethon then uses an in-memory session (verified: `SQLiteSession('').filename == ':memory:'`), so the login "succeeds" but no session file is written, while the bot looks for `data/telethon.session`. A non-numeric `TG_API_ID` also crashes with a bare `ValueError` traceback.
+- Build: `telethon_login.main` resolves settings the same way the app does: use `Settings.from_env(os.environ, require_secrets=False)`, or apply the same empty-means-default rule. It prints a clear message and exits 2 for a non-integer `TG_API_ID`.
+- Files: `src/tools/telethon_login.py`, `tests/test_telethon_login.py` (new), `tests/test_source_telegram_channels.py`.
+- Acceptance (no network; monkeypatch `telethon.TelegramClient` with a fake):
+  - `default_client_factory(settings)` constructs the client with `settings.tg_session_path`, `int(tg_api_id)`, `tg_api_hash` and `flood_sleep_threshold=FLOOD_SLEEP_THRESHOLD_S`.
+  - `telethon_login.main()` returns 2 without `TG_API_ID`/`TG_API_HASH`.
+  - It returns 2 with a message for `TG_API_ID=abc`.
+  - With `TG_SESSION_PATH=""` it calls `login` with `data/telethon.session`.
+  - With a fake client, `login` creates the session's parent directory and calls `start`, `get_me` and `disconnect`.
+  - README keeps "telegram_channels never run live" in Verification status.
+
+### FIX-08 [ ] Kaggle leftovers in ENV_VARS/Settings contradict D-68
+- Problem: `src/config.py` ENV_VARS still describes `KAGGLE_USERNAME`/`KAGGLE_KEY` as "(enables Kaggle source)", while README says "Unused: the Kaggle source was dropped (D-68)" (the README test compares names only, not descriptions). `Settings` still has `kaggle_username`/`kaggle_key`. PLAN section 3 item 3 still lists `KAGGLE_USERNAME`/`KAGGLE_KEY` as optional credentials, and `config.toml [sources.kaggle]` keeps an unused `categories` key.
+- Build: remove `KAGGLE_*` from `ENV_VARS`, `Settings`, the README env table and the README `.env.example` block, and from PLAN section 3 items 1 and 3 (text edit only; the user action itself is unchanged). Remove `categories` from `[sources.kaggle]` and keep `enabled = false` with the D-68 comment. `.env.example` is not touched (D-03). If the user's file has the lines, unknown vars are harmless; say so in README.
+- Files: `src/config.py`, `README.md`, `PLAN.md` (section 3 text), `config.toml`, `tests/test_config.py` and `tests/test_readme.py` if they reference Kaggle, `DECISIONS.md` (D-68 addendum superseding the D-71 note).
+- Acceptance: `grep -rn KAGGLE src tests README.md` finds nothing except an explanatory README sentence. The README env table still equals `ENV_VARS` (existing test). `Settings.from_env` ignores a stray `KAGGLE_KEY`. All tests green.
+
+### FIX-09 [ ] Honest UA default, README accuracy and a DoD status checklist
+- Problems:
+  1. The `HTTP_CONTACT` default `https://github.com/oppo-tg` is not this project. The repo is `https://github.com/trulyaldi/oppo-tg` (git remote), so every request (including the D-62 live probe) advertised a contact the user does not control. This weakens the "honest User-Agent" requirement, and there is no DECISIONS entry for it (PLAN calls it a "placeholder").
+  2. README "Running" describes `collect` as "collect, dedupe, filter, score", but `src/main.py` `collect` also sends instant alerts to Telegram.
+  3. `digest_min_items` is listed in the README `config.toml` guide but is read nowhere in `src/` (dead config; D-17 says the digest is never padded).
+  4. T29's title promises a "DoD checklist", but README has no per-item Definition-of-done status. Its Verification status says probe "reached all six counted source families" without noting that this was a first-run result (see FIX-01).
+- Build:
+  1. Default `HTTP_CONTACT` to `https://github.com/trulyaldi/oppo-tg`. Do not use the user's email. Add a DECISIONS entry.
+  2. Fix the `collect` description in README and the CLI `--help`.
+  3. Either implement `digest_min_items` as documented or remove it from `Thresholds`, `config.toml` and README.
+  4. Add a "Definition of done status" list under README "Verification status" that names every SPEC DoD item as verified offline / user-only (with the exact user step) / not met. Mark `.env.example` as "not met until the user adds the block (agents cannot edit it, D-03)".
+- Files: `src/config.py`, `README.md`, `src/main.py`, `config.toml` (thresholds), `tests/test_readme.py`, `tests/test_config.py`, `DECISIONS.md`.
+- Acceptance:
+  - `Settings.from_env(required_only).http_contact == "https://github.com/trulyaldi/oppo-tg"`, and the README table matches (existing test).
+  - A test asserts the README contains a "Definition of done status" section listing all 8 SPEC DoD bullets.
+  - `grep -rn digest_min_items src config.toml README.md` matches either nothing or a real use in `src/delivery/digest.py` with a test.
+  - All tests green, ruff clean.
+
+### FIX-10 [ ] Cross-host redirects skip robots.txt and the per-host throttle
+- Problem: `PoliteClient` uses httpx `follow_redirects=True` and checks robots.txt and the 2s per-host throttle only for the ORIGINAL host. D-62 records that mlh.io redirects (302) to www.mlh.com and that the request followed it. The robots_cache in `data/probe.db` has `mlh.io` but no `www.mlh.com`, so the destination host's robots.txt was never consulted. Any configured RSS or pagewatch URL that redirects off-host has the same gap.
+- Build: turn off automatic redirects in `PoliteClient` and follow them manually in `get_text`/`_fetch`. Allow at most 5 hops. Resolve relative `Location` headers. For each hop to a different host, run `_robots_allowed` on the new URL (when `check_robots` is on) and apply `_throttle`/the lock for that host. Cache the response under the original request key as today. Add a DECISIONS entry, and in D-49 note that MLH's canonical host is now www.mlh.com. Optionally point `src/sources/mlh.py` at the canonical host if its robots.txt and terms allow it, and record the check.
+- Files: `src/http.py`, `tests/test_http.py` and/or `tests/test_http_robots_cache.py`, `DECISIONS.md`, optionally `src/sources/mlh.py`.
+- Acceptance (MockTransport tests):
+  - `a.test/x` answers 302 to `https://b.test/y`, and `b.test/robots.txt` disallows `/y`: `get_text` returns None, and `b.test/y` is never requested.
+  - With `b.test/robots.txt` allowing it, the body of `b.test/y` is returned, and both `a.test` and `b.test` rows exist in `robots_cache`.
+  - A same-host 301 still works without an extra robots fetch.
+  - A redirect loop stops after 5 hops and returns None.
+  - Existing http tests stay green. All tests green, ruff clean.
