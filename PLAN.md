@@ -2144,7 +2144,7 @@ Third review pass, 2026-11-06. The reviewer re-checked FIX-26..FIX-30 (commits 5
 - Honest-sample false positives: 24 honest single sentences and 3 complete honest drafts against `cv_fake.txt` are all kept (removed=0). Honest tailoring is not; see FIX-34.
 - `git log -p fd49926..HEAD` contains no keys or tokens. `git ls-files data` lists only `.gitkeep`.
 
-### FIX-31 [ ] Written-out numbers bypass V2, so invented metrics pass
+### FIX-31 [x] Written-out numbers bypass V2, so invented metrics pass
 - Severity: BLOCKING (SPEC hard rule "never invent or inflate").
 - Problem:
   - V2 (`numbers()`) only sees digits, so a metric written in words is never checked.

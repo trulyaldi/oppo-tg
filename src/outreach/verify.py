@@ -13,7 +13,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.cv.extract import norm
-from src.outreach.lexicon import ENTITY_STOP, INFLATION_STEMS, SKILL_TERMS
+from src.outreach.lexicon import (
+    ENTITY_STOP,
+    INFLATION_STEMS,
+    NUMBER_STEMS_RU,
+    NUMBER_WORDS,
+    SKILL_TERMS,
+)
 
 MAX_TEXT = 200
 MIN_EVIDENCE = 8
@@ -50,8 +56,25 @@ def has_term(term: str, text_norm: str) -> bool:
     return bool(_term_re(term).search(text_norm))
 
 
+_NUM_TOKEN = re.compile(r"[^\W\d_]+")
+
+
+def number_words(text_norm: str) -> set[str]:
+    """Written-out numbers and multipliers ("five", "thousands", "tenfold", "тысяч"), FIX-31."""
+    out: set[str] = set()
+    for w in _NUM_TOKEN.findall(text_norm):
+        if w in NUMBER_WORDS:
+            out.add(NUMBER_WORDS[w])
+        elif len(w) > 4 and w.endswith("fold"):
+            out.add(w)
+        else:
+            out.update(v for stem, v in NUMBER_STEMS_RU if w.startswith(stem))
+    return out
+
+
 def numbers(text: str) -> set[str]:
-    return {m.replace(",", ".") for m in _NUM.findall(norm(text))}
+    n = norm(text)
+    return {m.replace(",", ".") for m in _NUM.findall(n)} | number_words(n)
 
 
 def inflation_stems(text_norm: str) -> set[str]:
@@ -286,12 +309,15 @@ def is_second_person_claim(text: str, ents: list[str]) -> bool:
     return False
 
 
-_CALL_LEN = re.compile(r"(\d+)\s*-?\s*min(?:ute)?s?\b")
+_CALL_LEN = re.compile(r"([^\W_]+)\s*-?\s*min(?:ute)?s?\b")
 
 
 def call_length_numbers(ask: str) -> set[str]:
     """Numbers an ask may introduce: call length only ("15 minutes")."""
-    return set(_CALL_LEN.findall(norm(ask)))
+    out: set[str] = set()
+    for tok in _CALL_LEN.findall(norm(ask)):
+        out |= numbers(tok)  # "15 minutes", "fifteen-minute"
+    return out
 
 
 def claim_ok(

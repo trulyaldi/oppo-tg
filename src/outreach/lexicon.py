@@ -135,6 +135,86 @@ SKILL_TERMS: tuple[str, ...] = (
     "excel",
 )
 
+# Number words count as numbers (FIX-31, D-125 addendum). Values are the digit string where one
+# exists, so "five" in a draft matches "5" in the CV. "one" and ordinals are left out on
+# purpose ("One thing ...", "third-year student").
+_EN_UNITS = [
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "eleven",
+    "twelve",
+    "thirteen",
+    "fourteen",
+    "fifteen",
+    "sixteen",
+    "seventeen",
+    "eighteen",
+    "nineteen",
+    "twenty",
+]
+_EN_TENS = ["thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+NUMBER_WORDS: dict[str, str] = {w: str(i) for i, w in enumerate(_EN_UNITS, start=2)}
+NUMBER_WORDS.update({w: str(i * 10) for i, w in enumerate(_EN_TENS, start=3)})
+NUMBER_WORDS.update(
+    {
+        "dozen": "dozen",
+        "dozens": "dozen",
+        "hundred": "hundred",
+        "hundreds": "hundred",
+        "thousand": "thousand",
+        "thousands": "thousand",
+        "million": "million",
+        "millions": "million",
+        "billion": "billion",
+        "billions": "billion",
+        "half": "half",
+        "twice": "twice",
+        "double": "double",
+        "doubled": "double",
+        "triple": "triple",
+        "tripled": "triple",
+        "quadruple": "quadruple",
+        "quadrupled": "quadruple",
+        # Russian (nominative and genitive; whole words)
+        "два": "2",
+        "две": "2",
+        "двух": "2",
+        "три": "3",
+        "трех": "3",
+        "трёх": "3",
+        "четыре": "4",
+        "четырех": "4",
+        "четырёх": "4",
+        "пять": "5",
+        "пяти": "5",
+        "шесть": "6",
+        "шести": "6",
+        "семь": "7",
+        "семи": "7",
+        "восемь": "8",
+        "восьми": "8",
+        "девять": "9",
+        "девяти": "9",
+        "десять": "10",
+        "десяти": "10",
+        "вдвое": "twice",
+        "втрое": "triple",
+    }
+)
+# Russian stems matched as word prefixes: тысяча/тысячи/тысяч, миллион(ов), миллиард(ов).
+NUMBER_STEMS_RU: tuple[tuple[str, str], ...] = (
+    ("тысяч", "thousand"),
+    ("миллион", "million"),
+    ("миллиард", "billion"),
+)
+
 # Capitalized words that are not entities (entity grounding, FIX-15). Lowercase.
 ENTITY_STOP: frozenset[str] = frozenset(
     {
