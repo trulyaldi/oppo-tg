@@ -120,3 +120,15 @@ def test_main_returns_the_exit_code(monkeypatch):
     monkeypatch.setattr(main_mod, "_run", fake)
     env = {"TELEGRAM_BOT_TOKEN": "1:t", "TELEGRAM_CHAT_ID": "42", "ANTHROPIC_API_KEY": "k"}
     assert main_mod.main(["collect"], env) == 1
+
+
+async def test_cap_only_run_exits_zero_and_warns_not_fails(setup, monkeypatch):
+    import src.config as config_mod
+
+    monkeypatch.setattr(anthropic, "AsyncAnthropic", make_client(GOOD))
+    monkeypatch.setattr(
+        main_mod.ScoringConfig, "from_cfg", lambda cfg: config_mod.ScoringConfig(daily_call_cap=0)
+    )
+    assert await main_mod._run("collect", setup) == 0
+    assert len(SENT) == 1 and "Scoring cap reached" in SENT[0][1]
+    assert "ERROR: scoring failed" not in SENT[0][1]

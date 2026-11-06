@@ -879,3 +879,13 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **Source-run rows.** The `source_runs` backfill into `target_state` (target `''`) only covers sources that have no `target_state` row yet, so a board source such as greenhouse gets no junk `''` row next to its real boards, while credential-gated sources such as hh still get one.
   - **Tier.** `target_state.tier` is `''` after migration (tier is assigned by config at runtime, FC-05+).
   - **Old-migration test.** `test_migration_v5_to_v6_keeps_rows` re-runs v6 on an already-v8 database, so it now limits `_MIGRATIONS` to the first 7 steps via monkeypatch (re-running v8's ALTERs would fail).
+
+## 2026-11-07 — FC-02 implementation (implementer)
+
+- **D-199 Cost guard details.**
+  - **Optional budget.** `Scorer` takes `budget` and `baseline_budget` as optional arguments, so direct `Scorer(...)` callers (tests, evals) are unlimited. `pipeline.run.score_pending` always builds both from `ScoringConfig` (default cap 200).
+  - **Purposes.** Daily cap counts `score` + `score_baseline`; the baseline sub-cap counts `score_baseline` only and is `floor(share x cap)`. `OUTREACH_PURPOSES = (parse_cv, extract_contact, tailor, draft)` lives in `src/llm/budget.py`.
+  - **Capped vs failed.** A call refused by either cap raises `BudgetExhausted` inside the scorer; the posting is left unchanged (no attempt recorded) and counted as `capped`. A cap hit on the retry after a bad first reply also counts as capped. The public `Scorer.score()` still returns None for that case.
+  - **Run-limit skips.** Items skipped by the per-run `max_calls` stay `skipped` and are no longer a failure either.
+  - **Ordering.** `pending_for_scoring` now orders `baseline ASC` first, then newest first, so a baseline backlog inside the SQL `LIMIT` window cannot crowd out new postings.
+  - **Warning.** `cap_warned:score:<Almaty day>` state key, sent from `report_scoring_outcome` (only when a bot is given), independent of the failure throttle. It is sent for the sub-cap too, because those items are also counted as capped.

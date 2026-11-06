@@ -9,9 +9,19 @@ from src.clock import Clock
 
 TZ = ZoneInfo("Asia/Almaty")
 
+# Every purpose outreach spends calls on; its cap counts only these (D-184, D-196).
+OUTREACH_PURPOSES = ("parse_cv", "extract_contact", "tailor", "draft")
+
 
 class LlmBudget:
-    def __init__(self, conn: sqlite3.Connection, clock: Clock, cap: int) -> None:
+    def __init__(
+        self,
+        conn: sqlite3.Connection,
+        clock: Clock,
+        cap: int,
+        purposes: tuple[str, ...] | None = None,
+    ) -> None:
+        self.purposes = purposes
         self.conn = conn
         self.clock = clock
         self.cap = cap
@@ -20,9 +30,12 @@ class LlmBudget:
         return self.clock.now().astimezone(TZ).date().isoformat()
 
     def used(self) -> int:
-        row = self.conn.execute(
-            "SELECT COALESCE(SUM(calls), 0) FROM llm_usage WHERE day=?", (self._day(),)
-        ).fetchone()
+        sql = "SELECT COALESCE(SUM(calls), 0) FROM llm_usage WHERE day=?"
+        args: list[str] = [self._day()]
+        if self.purposes is not None:
+            sql += f" AND purpose IN ({','.join('?' * len(self.purposes))})"
+            args += self.purposes
+        row = self.conn.execute(sql, args).fetchone()
         return int(row[0])
 
     def reserve(self, purpose: str) -> bool:

@@ -69,13 +69,14 @@ def test_is_total_failure():
     assert is_total_failure({"scored": 0, "errors": 3})
     assert not is_total_failure({"scored": 1, "errors": 3})  # partial failure
     assert not is_total_failure({"scored": 0, "errors": 0})  # nothing to score
-    assert is_total_failure({"scored": 0, "errors": 0, "skipped": 2})  # candidates, none scored
+    assert not is_total_failure({"scored": 0, "errors": 0, "skipped": 2})  # skipped is no failure
+    assert not is_total_failure({"scored": 0, "errors": 0, "capped": 5})  # cap is no failure
     assert not is_total_failure({"scored": 1, "errors": 0, "skipped": 2})
 
 
 def test_message_is_clear_and_escaped():
     text = render_failure({"errors": 4}, "<b>bad</b> & worse", "claude-x")
-    assert "ERROR: scoring failed" in text and "All 4 postings" in text
+    assert "ERROR: scoring failed" in text and "All 4 scoring attempts" in text
     assert "claude-x" in text and "ANTHROPIC_API_KEY" in text
     assert "<b>bad</b>" not in text and "&lt;b&gt;bad&lt;/b&gt; &amp; worse" in text
 
@@ -90,7 +91,7 @@ async def test_total_failure_sends_one_telegram_message(conn):
     assert len(bot.sent) == 1
     chat_id, text, kw = bot.sent[0]
     assert chat_id == 42 and kw["parse_mode"] == "HTML"
-    assert "All 3 postings" in text and "TypeError" in text and "temperature" in text
+    assert "All 3 scoring attempts" in text and "TypeError" in text and "temperature" in text
 
 
 async def test_no_message_when_something_scored(conn):
@@ -137,3 +138,70 @@ async def test_telegram_failure_never_raises_and_is_retried_next_run(conn):
     assert not db.get_state(conn, STATE_KEY)  # not marked as sent
     bot = FakeBot()
     assert await report_scoring_outcome(bot, 1, conn, FixedClock(NOW), stats, "e", "m")
+
+
+def set_baseline(conn, n):
+    ids = [r[0] for r in conn.execute("SELECT id FROM postings ORDER BY external_id").fetchall()]
+    for pid in ids[:n]:
+        conn.execute("UPDATE postings SET baseline=1 WHERE id=?", (pid,))
+    conn.commit()
+
+
+def calls_today(conn, *purposes):
+    q = ",".join("?" * len(purposes))
+    return conn.execute(
+        f"SELECT COALESCE(SUM(calls),0) FROM llm_usage WHERE purpose IN ({q})", purposes
+    ).fetchone()[0]
+
+
+async def test_daily_cap_across_runs_then_resumes_next_day(conn):
+    from src.config import ScoringConfig
+
+    add(conn, 12)
+    cfg = ScoringConfig(daily_call_cap=5)
+    bot = FakeBot()
+    clock = FixedClock(NOW)
+    client = FakeClient([])
+    for _ in range(2):
+        await score_pending(conn, client, "m", clock, 100, bot=bot, chat_id=1, scoring_cfg=cfg)
+    assert calls_today(conn, "score", "score_baseline") == 5
+    assert len(bot.sent) == 1  # one warning per day, not per run
+    assert "daily_call_cap" in bot.sent[0][1] and "5" in bot.sent[0][1]
+    clock.set(NOW + timedelta(days=1))
+    stats = await score_pending(conn, client, "m", clock, 100, bot=bot, chat_id=1, scoring_cfg=cfg)
+    assert stats["scored"] == 5
+    assert len(bot.sent) == 2  # a new day warns again
+
+
+async def test_baseline_subcap_leaves_room_for_new_postings(conn):
+    from src.config import ScoringConfig
+
+    add(conn, 30)
+    set_baseline(conn, 30)
+    cfg = ScoringConfig(daily_call_cap=10, baseline_max_share=0.5)
+    clock = FixedClock(NOW)
+    client = FakeClient([])
+    await score_pending(conn, client, "m", clock, 100, scoring_cfg=cfg)
+    assert calls_today(conn, "score_baseline") == 5
+    p = Posting(
+        source="t", external_id="late", title="Quant intern late", company="Acme",
+        url="https://example.com/y", kind=Kind.INTERNSHIP,
+    )  # fmt: skip
+    db.upsert_posting(conn, p, fingerprint(p), NOW)
+    stats = await score_pending(conn, client, "m", clock, 100, scoring_cfg=cfg)
+    assert stats["scored"] == 1 and calls_today(conn, "score") == 1
+    assert calls_today(conn, "score_baseline") == 5
+
+
+async def test_cap_only_run_is_not_a_failure_notice(conn):
+    from src.config import ScoringConfig
+
+    add(conn, 3)
+    bot = FakeBot()
+    stats = await score_pending(
+        conn, FakeClient([]), "m", FixedClock(NOW), 100, bot=bot, chat_id=1,
+        scoring_cfg=ScoringConfig(daily_call_cap=0),
+    )  # fmt: skip
+    assert stats["capped"] == 3 and not is_total_failure(stats)
+    assert all("ERROR: scoring failed" not in t for _, t, _ in bot.sent)
+    assert len(bot.sent) == 1 and "Scoring cap reached" in bot.sent[0][1]

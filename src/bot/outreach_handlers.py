@@ -19,7 +19,7 @@ from src.cv.extract import CvInputError, cv_sha, normalize_cv_text, pdf_to_text
 from src.cv.parse import parse_cv_sections
 from src.cv.store import current_cv, forget_cv, save_cv
 from src.delivery.digest import load_weights_checked
-from src.llm.budget import LlmBudget
+from src.llm.budget import OUTREACH_PURPOSES, LlmBudget
 from src.outreach import draft as _draft  # noqa: F401  (registers cache hooks)
 from src.outreach import prepare as _prepare  # noqa: F401  (registers cache hooks)
 from src.outreach.draft import FALLBACK_REPLY, DraftError, DraftResult
@@ -101,7 +101,7 @@ async def ingest_cv_text(
     if client is None:
         await _say(message, "Could not parse the CV right now (no LLM client); try again later.")
         return
-    budget = LlmBudget(conn, clock, oc.daily_llm_call_cap)
+    budget = LlmBudget(conn, clock, oc.daily_llm_call_cap, OUTREACH_PURPOSES)
     res = await parse_cv_sections(client, text, oc, budget)
     if res.error == "budget":
         await _say(
@@ -234,7 +234,7 @@ async def run_prepare(
     await _say(message, f"Preparing {_esc(posting['title'][:200])}...")
     weights = load_weights_checked(cfg)[0]
     report = await discover_contacts(conn, http, posting, cfg, clock, weights)
-    budget = LlmBudget(conn, clock, oc.daily_llm_call_cap)
+    budget = LlmBudget(conn, clock, oc.daily_llm_call_cap, OUTREACH_PURPOSES)
     res = await prepare(conn, client, posting_id, cfg, clock, budget)
     if isinstance(res, PrepareError):
         await _say(message, prepare_error_text(res.kind, oc.daily_llm_call_cap))
@@ -424,7 +424,7 @@ async def store_pasted_contact(
         if client is None:
             await _say(message, "Could not read that right now (no LLM client); try again later.")
             return
-        budget = LlmBudget(conn, clock, oc.daily_llm_call_cap)
+        budget = LlmBudget(conn, clock, oc.daily_llm_call_cap, OUTREACH_PURPOSES)
         raw, found_company, err = await extract_with_llm(client, text, oc, budget)
         if err == "budget":
             await _say(
@@ -504,7 +504,7 @@ async def run_draft(
     if client is None:
         await _say(message, "Could not draft right now (no LLM client); try again later.")
         return
-    budget = LlmBudget(conn, clock, oc.daily_llm_call_cap)
+    budget = LlmBudget(conn, clock, oc.daily_llm_call_cap, OUTREACH_PURPOSES)
     res = await make_draft(conn, client, contact_id, cfg, clock, budget)
     if isinstance(res, DraftError):
         await _say(message, draft_error_text(res.kind, oc.daily_llm_call_cap))

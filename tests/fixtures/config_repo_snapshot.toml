@@ -164,6 +164,10 @@ alert_deadline_min_score = 0.0
 [ranking]
 weights_file = "tests/fixtures/weights_snapshot/weights.yaml"
 
+[scoring]
+daily_call_cap = 200       # all scoring calls per Asia/Almaty day, retries included; 0 = no scoring
+baseline_max_share = 0.5   # baseline postings may use at most this share of the cap
+
 [outreach]
 cheap_model = "claude-haiku-4-5"     # CV parsing, pasted-contact extraction
 tailor_model = "claude-sonnet-4-6"   # /prepare and /draft

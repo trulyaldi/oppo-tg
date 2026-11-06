@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 from src import db
 from src.clock import Clock
+from src.llm.budget import LlmBudget
 from src.models import Kind, Posting, ScoreResult
 from src.scoring.parse import ScoreParseError, parse_score_response
 from src.scoring.prompt import build_system_blocks, build_user_message, prompt_version
@@ -25,6 +26,10 @@ CORRECTION = (
     "Your previous reply was not valid: {error}\n"
     "Reply again with only the JSON object from the output contract, no other text."
 )
+
+
+class BudgetExhausted(Exception):
+    """The daily call cap (or the baseline sub-cap) stopped a call."""
 
 
 def row_to_posting(row: sqlite3.Row) -> Posting:
@@ -57,7 +62,11 @@ class Scorer:
         conn: sqlite3.Connection,
         clock: Clock,
         max_calls: int,
+        budget: LlmBudget | None = None,
+        baseline_budget: LlmBudget | None = None,
     ) -> None:
+        self.budget = budget  # purposes score + score_baseline, the daily cap (D-184)
+        self.baseline_budget = baseline_budget  # purpose score_baseline, the sub-cap (D-188)
         self.client = client
         self.model = model
         self.conn = conn
@@ -77,7 +86,17 @@ class Scorer:
             "dislike": db.recent_feedback_examples(self.conn, "dislike", 20),
         }
 
-    async def _call(self, system: list[dict], messages: list[dict]) -> str:
+    def _reserve_daily(self, baseline: bool) -> None:
+        if self.budget is None:
+            return
+        sub = self.baseline_budget
+        if baseline and sub is not None and sub.used() >= sub.cap:
+            raise BudgetExhausted("baseline")
+        if not self.budget.reserve("score_baseline" if baseline else "score"):
+            raise BudgetExhausted("daily")
+
+    async def _call(self, system: list[dict], messages: list[dict], baseline: bool = False) -> str:
+        self._reserve_daily(baseline)
         self.calls += 1  # reserved before awaiting, so concurrent tasks respect the cap
         response = await self.client.messages.create(
             model=self.model,
@@ -88,16 +107,31 @@ class Scorer:
         return _text(response)
 
     async def score(
-        self, posting: Posting, examples: dict[str, list[dict[str, Any]]] | None = None
+        self,
+        posting: Posting,
+        examples: dict[str, list[dict[str, Any]]] | None = None,
+        baseline: bool = False,
     ) -> ScoreResult | None:
-        """Score one posting; None on any failure. Retries once on a parse failure."""
+        """Score one posting; None on any failure or cap. Retries once on a parse failure."""
+        try:
+            return await self.score_or_cap(posting, examples, baseline)
+        except BudgetExhausted:
+            return None
+
+    async def score_or_cap(
+        self,
+        posting: Posting,
+        examples: dict[str, list[dict[str, Any]]] | None = None,
+        baseline: bool = False,
+    ) -> ScoreResult | None:
+        """Like score, but raises BudgetExhausted when a cap stops a call (not a failure)."""
         try:
             system = build_system_blocks(self._examples() if examples is None else examples)
             today = self.clock.now().astimezone(TZ).date()
             messages: list[dict] = [{"role": "user", "content": build_user_message(posting, today)}]
             if not self.budget_left:
                 return None
-            raw = await self._call(system, messages)
+            raw = await self._call(system, messages, baseline)
             try:
                 return parse_score_response(raw)
             except ScoreParseError as e:
@@ -108,7 +142,9 @@ class Scorer:
                 {"role": "assistant", "content": raw or "(empty reply)"},
                 {"role": "user", "content": CORRECTION.format(error=str(first_error)[:300])},
             ]
-            return parse_score_response(await self._call(system, messages))
+            return parse_score_response(await self._call(system, messages, baseline))
+        except BudgetExhausted:
+            raise
         except ScoreParseError:
             self.last_error = "model reply was not valid JSON twice in a row"
             log.warning("score parse failed twice for %s", posting.id)
@@ -121,7 +157,7 @@ class Scorer:
         rows = db.pending_for_scoring(self.conn, limit)
         examples = self._examples()
         sem = asyncio.Semaphore(CONCURRENCY)
-        stats = {"scored": 0, "errors": 0, "skipped": 0}
+        stats = {"scored": 0, "errors": 0, "skipped": 0, "capped": 0}
 
         async def one(row: sqlite3.Row) -> None:
             async with sem:
@@ -135,7 +171,11 @@ class Scorer:
                     db.record_score_error(self.conn, row["id"])
                     stats["errors"] += 1
                     return
-                result = await self.score(posting, examples)
+                try:
+                    result = await self.score_or_cap(posting, examples, bool(row["baseline"]))
+                except BudgetExhausted:
+                    stats["capped"] += 1
+                    return
                 if result is None:
                     db.record_score_error(self.conn, row["id"])
                     stats["errors"] += 1

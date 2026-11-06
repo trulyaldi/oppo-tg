@@ -2457,7 +2457,7 @@ Each migration gets a test that starts from the previous version with sample row
   - Prune: a filtered row with a 90-day-old `first_seen_at` and a 1-day-old `last_seen_at` is kept; one with a 90-day-old `last_seen_at` is deleted.
   - Existing migration tests still pass (`test_migration_v2.py`).
 
-### FC-02 [ ] Cost guards: per-purpose LLM budgets, daily scoring cap, cap is not failure
+### FC-02 [x] Cost guards: per-purpose LLM budgets, daily scoring cap, cap is not failure
 - Build (D-184, D-196):
   - **Per-purpose budgets.** `LlmBudget(conn, clock, cap, purposes=None)`. `used()` sums only `purposes` when given. Outreach call sites pass an `OUTREACH_PURPOSES` tuple that holds every outreach purpose.
   - **Config.** New `[scoring]` section, a `ScoringConfig` dataclass validated like `OutreachConfig`:

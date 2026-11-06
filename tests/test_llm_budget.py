@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import UTC, datetime
+from pathlib import Path
 
 from src import db
 from src.clock import FixedClock
@@ -72,3 +73,39 @@ def test_models_known_to_sdk():
     }
     d = OutreachConfig()
     assert d.cheap_model in known and d.tailor_model in known
+
+
+def test_outreach_budget_ignores_scoring_calls(tmp_path):
+    from src.llm.budget import OUTREACH_PURPOSES
+
+    conn = mk(tmp_path)
+    clock = FixedClock(datetime(2026, 11, 1, 5, 0, tzinfo=UTC))
+    scoring = LlmBudget(conn, clock, 1000)
+    for _ in range(50):
+        assert scoring.reserve("score")
+    out = LlmBudget(conn, clock, 40, OUTREACH_PURPOSES)
+    assert out.used() == 0
+    n = 0
+    while out.reserve("tailor"):
+        n += 1
+    assert n == 40
+    assert set(OUTREACH_PURPOSES) >= {"parse_cv", "extract_contact", "tailor", "draft"}
+
+
+def test_scoring_config_validation():
+    import pytest
+
+    from src.config import ScoringConfig
+
+    assert ScoringConfig.from_cfg(AppConfig()) == ScoringConfig(200, 0.5)
+    assert ScoringConfig(daily_call_cap=0).baseline_cap == 0
+    assert ScoringConfig(daily_call_cap=10).baseline_cap == 5
+    for bad in ({"daily_call_cap": -1}, {"daily_call_cap": "x"}, {"baseline_max_share": 1.5}):
+        with pytest.raises(ValueError):
+            AppConfig.from_dict({"scoring": bad})
+    with pytest.raises(ValueError):
+        AppConfig.from_dict({"scoring": {"nope": 1}})
+    snap = Path(__file__).parent / "fixtures" / "config_repo_snapshot.toml"
+    assert ScoringConfig.from_cfg(AppConfig.load(snap)) == ScoringConfig()
+    root = Path(__file__).parent.parent / "config.toml"
+    assert ScoringConfig.from_cfg(AppConfig.load(root)) == ScoringConfig()

@@ -284,10 +284,10 @@ def set_status(
 
 
 def pending_for_scoring(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
-    """Newest new/score_error postings with fewer than MAX_SCORE_ATTEMPTS attempts."""
+    """New/score_error postings under MAX_SCORE_ATTEMPTS: non-baseline first, then newest."""
     return conn.execute(
         "SELECT * FROM postings WHERE status IN ('new','score_error') AND score_attempts < ?"
-        " ORDER BY first_seen_at DESC, rowid DESC LIMIT ?",
+        " ORDER BY baseline ASC, first_seen_at DESC, rowid DESC LIMIT ?",
         (MAX_SCORE_ATTEMPTS, limit),
     ).fetchall()
 

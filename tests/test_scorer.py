@@ -236,7 +236,7 @@ async def test_real_sdk_client_scores_through_mock_transport(conn):
     client = _real_client(handler)
     s = Scorer(client, "claude-haiku-4-5", conn, FixedClock(NOW), 10)
     stats = await s.score_pending(10)
-    assert stats == {"scored": 1, "errors": 0, "skipped": 0}, s.last_error
+    assert stats == {"scored": 1, "errors": 0, "skipped": 0, "capped": 0}, s.last_error
     assert status(conn, pid)["status"] == "scored"
     path, body = seen[0]
     assert path == "/v1/messages"

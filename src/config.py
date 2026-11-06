@@ -168,12 +168,42 @@ class OutreachConfig:
 
 
 @dataclass(frozen=True)
+class ScoringConfig:
+    daily_call_cap: int = 200  # 0 means "no scoring" (D-184)
+    baseline_max_share: float = 0.5
+
+    def __post_init__(self) -> None:
+        cap = self.daily_call_cap
+        if isinstance(cap, bool) or not isinstance(cap, int) or cap < 0:
+            raise ValueError("[scoring] daily_call_cap must be a non-negative integer")
+        share = self.baseline_max_share
+        if isinstance(share, bool) or not isinstance(share, int | float) or not 0 <= share <= 1:
+            raise ValueError("[scoring] baseline_max_share must be a number between 0 and 1")
+
+    @property
+    def baseline_cap(self) -> int:
+        return int(self.baseline_max_share * self.daily_call_cap)
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> ScoringConfig:
+        unknown = set(data) - set(cls.__dataclass_fields__)
+        if unknown:
+            raise ValueError(f"unknown scoring keys: {sorted(unknown)}")
+        return cls(**data)
+
+    @classmethod
+    def from_cfg(cls, cfg: AppConfig) -> ScoringConfig:
+        return cls.from_mapping(cfg.scoring)
+
+
+@dataclass(frozen=True)
 class AppConfig:
     sources: dict[str, dict[str, Any]] = field(default_factory=dict)
     filters: dict[str, Any] = field(default_factory=dict)
     thresholds: Thresholds = field(default_factory=Thresholds)
     ranking: dict[str, Any] = field(default_factory=dict)
     outreach: dict[str, Any] = field(default_factory=dict)
+    scoring: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> AppConfig:
@@ -187,12 +217,15 @@ class AppConfig:
         sources = {k: dict(v) for k, v in dict(data.get("sources", {})).items()}
         outreach = dict(data.get("outreach", {}))
         OutreachConfig.from_mapping(outreach)  # fail fast at load (D-147)
+        scoring = dict(data.get("scoring", {}))
+        ScoringConfig.from_mapping(scoring)  # fail fast at load
         return cls(
             sources=sources,
             filters=dict(data.get("filters", {})),
             thresholds=Thresholds(**th),
             ranking=dict(data.get("ranking", {})),
             outreach=outreach,
+            scoring=scoring,
         )
 
     @classmethod
