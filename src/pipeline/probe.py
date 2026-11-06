@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 from typing import TextIO
 
 from src.clock import Clock
@@ -15,6 +16,17 @@ from src.sources.base import (
     source_credentials,
     source_family,
 )
+
+
+def reset_probe_state(conn: sqlite3.Connection) -> None:
+    """Clear only per-run state (FIX-01, D-72): page snapshots and source run records.
+
+    http_cache and robots_cache stay, so the 1h Jobicy TTL (D-58) and the 24h robots TTL (D-08)
+    still apply across probe runs. Only call this on the probe DB, never the real DB_PATH.
+    """
+    with conn:
+        conn.execute("DELETE FROM page_snapshots")
+        conn.execute("DELETE FROM source_runs")
 
 
 async def run_probe(

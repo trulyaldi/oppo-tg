@@ -167,7 +167,7 @@ async def _serve(settings: Settings) -> None:
 
 async def _probe(settings: Settings, db_path: str) -> int:
     import src.sources  # noqa: F401,I001  (registers the sources)
-    from src.pipeline.probe import run_probe
+    from src.pipeline.probe import reset_probe_state, run_probe
 
     clock = SystemClock()
     cfg = AppConfig.load(settings.oppo_config)
@@ -175,6 +175,7 @@ async def _probe(settings: Settings, db_path: str) -> int:
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     conn = db.connect(db_path)
     db.migrate(conn)
+    reset_probe_state(conn)  # pagewatch must see its pages as new on every probe run (FIX-01)
     http = build_client(conn, clock, contact=settings.http_contact)
     try:
         return await run_probe(http, settings, cfg, clock, sys.stdout)

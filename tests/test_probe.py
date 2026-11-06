@@ -104,3 +104,68 @@ def test_help_lists_probe(capsys):
     with pytest.raises(SystemExit):
         main_mod.main(["--help"], environ={})
     assert "probe" in capsys.readouterr().out
+
+
+def test_probe_rerun_is_repeatable(monkeypatch, tmp_path):
+    import json
+    from pathlib import Path
+
+    import httpx
+
+    import src.sources  # noqa: F401  (registers sources)
+    from src.sources.jobicy import JobicySource
+    from src.sources.pagewatch import PageWatchSource
+
+    fixtures = Path(__file__).parent / "fixtures"
+    page = (fixtures / "page_v1.html").read_text()
+    jobs = json.loads((fixtures / "jobicy_jobs.json").read_text())
+    cfg_path = tmp_path / "c.toml"
+    cfg_path.write_text(
+        "[sources.pagewatch]\nenabled = true\n[[sources.pagewatch.pages]]\n"
+        'url = "https://p.test/careers"\nname = "P"\nkind = "internship"\n'
+        '[sources.jobicy]\nenabled = true\nindustries = ["data-science"]\ntags = []\n'
+    )
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        if request.url.path == "/robots.txt":
+            return httpx.Response(200, text="User-agent: *\nAllow: /\n")
+        if request.url.host == "jobicy.com":
+            return httpx.Response(200, json=jobs)
+        return httpx.Response(200, text=page, headers={"content-type": "text/html"})
+
+    real_build = main_mod.build_client
+
+    def fake_build(conn, clock, **kw):
+        async def nosleep(_s):
+            return None
+
+        return real_build(conn, clock, transport=httpx.MockTransport(handler), sleep=nosleep, **kw)
+
+    monkeypatch.setattr(main_mod, "build_client", fake_build)
+    monkeypatch.setattr(
+        base,
+        "REGISTRY",
+        {"pagewatch": PageWatchSource, "jobicy": JobicySource},
+    )
+    env = {"OPPO_CONFIG": str(cfg_path)}
+    db_path = tmp_path / "probe.db"
+    outs = []
+    for _ in range(2):
+        buf = io.StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        code = main_mod.main(["probe", "--db", str(db_path)], environ=env)
+        outs.append((code, buf.getvalue()))
+    monkeypatch.undo()
+    (c1, t1), (c2, t2) = outs
+    assert c1 == c2
+    line1 = next(x for x in t1.splitlines() if x.startswith("pagewatch"))
+    line2 = next(x for x in t2.splitlines() if x.startswith("pagewatch"))
+    assert line1 == line2
+    assert int(line1.split()[-1]) >= 1
+    assert sum(1 for u in seen if u.startswith("https://jobicy.com/api/jobs")) == 1
+    conn = dbm.connect(str(db_path))
+    hosts = {r["host"] for r in conn.execute("SELECT host FROM robots_cache")}
+    conn.close()
+    assert {"p.test", "jobicy.com"} <= hosts

@@ -107,7 +107,9 @@ Count rule (D-52): a source family counts toward the "at least 6 sources" goal o
 enabled in the committed `config.toml`, works with just the three required env vars and needs no
 credentials, and Greenhouse, Lever and Ashby together count as one family (`ats`). Credential-gated
 and dropped sources never count, so today there are exactly 6 counted families (ats, hn, rss,
-pagewatch, mlh, jobicy) and no spare margin (D-60): if one fails, set `HH_ACCESS_TOKEN` or add a source.
+pagewatch, mlh, jobicy) and no spare margin (D-60): if one fails, `HH_ACCESS_TOKEN` adds hh coverage but does
+not raise the counted total (credential-gated sources never count, D-52). The only counted buffer is a new
+credential-free source that passes the D-31/D-53 checks.
 
 Check live status at any time (real network, no secrets needed, uses a separate DB `data/probe.db`):
 
@@ -226,7 +228,9 @@ These evals have never been run yet. Re-run them after any prompt, profile or ru
 
 - "Missing required environment variables": fill the three required values in `.env`.
 - `probe` exits 1: a counted family returned no items; read its line and `error:` output, and
-  retry later. Never work around a 403 or a robots.txt disallow.
+  retry later. Never work around a 403 or a robots.txt disallow. Setting `HH_ACCESS_TOKEN` does not
+  fix this: credential-gated sources never count (D-52); only a new credential-free source adds
+  a counted family. `probe` clears its own page snapshots each run, so re-runs are repeatable.
 - The bot does not answer: `TELEGRAM_CHAT_ID` must be your own chat id; other chats are ignored silently.
 - hh or telegram_channels shown as `credentials:` or `disabled:` in `/sources`: set the variables,
   complete the Telethon login and add channels (see above).
