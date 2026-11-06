@@ -86,7 +86,8 @@ def _base(token: str) -> str:
 def _word_re(word: str) -> re.Pattern[str]:
     w = norm(word)
     if _CYR.search(w) and len(w) >= 5:  # Russian inflection: "Яндексе" vs "Яндекс"
-        return re.compile(r"(?<!\w)" + re.escape(w[: max(4, len(w) - 2)]))
+        # bounded tail: "маркет" must not be grounded by "маркетинг" (D-152)
+        return re.compile(r"(?<!\w)" + re.escape(w[: max(4, len(w) - 2)]) + r"\w{0,3}(?!\w)")
     return re.compile(r"(?<!\w)" + re.escape(w) + r"(?!\w)")
 
 
@@ -100,12 +101,37 @@ def _is_cap(token: str) -> bool:
     return len(b) >= 2 and b[0].isupper()
 
 
+# Sentence-initial words that are ordinary words, not names, even in a first-person sentence.
+_STARTER_WORDS = (
+    "previously currently recently lately now today last next this that these those over under "
+    "throughout between among through about regarding given based having being coming working "
+    "looking building during after before while once still even just only also both either "
+    "perhaps maybe finally first second third one two many most some every each another such "
+    "what why how where who which whenever whether right early late overall together meanwhile "
+    "honestly hopefully ideally personally generally mostly lastly currently often always never "
+    "sometimes usually already soon later whatever whoever somehow somewhere hence thus therefore "
+    "otherwise instead indeed clearly basically actually especially particularly specifically "
+    "ever more less much few several all any none nothing everything something anything "
+    "yesterday tomorrow tonight could would can will should may might must shall do does did "
+    "is are was were am have has had let lets shall im ive id ill may whose whom whilst unless "
+    "until upon within without across along beyond despite per via like unlike thanks "
+    "interested excited curious happy glad eager keen impressed inspired"
+)
+_STARTERS = frozenset(_STARTER_WORDS.split())
+_FIRST_PERSON = re.compile(
+    r"(?<!\w)(?:i|i['’](?:m|ve|d|ll)|me|my|mine|myself|я|мне|меня|мой|моя|моё|мои|моей)(?!\w)",
+    re.IGNORECASE,
+)
+
+
 def entities(sentence: str, extra_skills: list[str] | None = None) -> list[str]:
     """Name-like tokens of one sentence: capitalized words, acronyms, CamelCase.
 
     Skipped: stop words, skill terms, and a lone sentence-initial capital (an ordinary
-    word). Residual risk: a lone sentence-initial invented name is not seen.
+    word), unless the sentence is first-person and the word is not a common starter, -ing/-ly
+    word (D-152): "Citadel hired me last summer." then names Citadel.
     """
+    first_person = bool(_FIRST_PERSON.search(sentence))
     toks = _WORD.findall(sentence)
     out: list[str] = []
     for i, tok in enumerate(toks):
@@ -116,7 +142,9 @@ def entities(sentence: str, extra_skills: list[str] | None = None) -> list[str]:
             continue
         shouty = b.isupper() or any(c.isupper() for c in b[1:])  # MIT, OpenAI
         if i == 0 and not shouty and not (len(toks) > 1 and _is_cap(toks[1])):
-            continue
+            low = b.casefold()
+            if not first_person or low in _STARTERS or low.endswith(("ly", "ing")):
+                continue
         out.append(b)
     return out
 
@@ -151,7 +179,13 @@ _PAST_RU = r"стажировал\w*|работал\w*|учил\w*|окончи�
 _PREP = r"(?:at|with|for|from|in|under|@)"
 _NOUN = (
     r"internship|intern|degree|msc|bsc|masters?|bachelors?|phd|job|role|position|studies|"
-    r"coursework|experience|employment|tenure|thesis|education"
+    r"coursework|experience|employment|tenure|thesis|education|summer|winter|semester|"
+    r"year|years|time|stint|term|months|days"
+)
+_ROLE = (
+    r"intern|internship|engineer|analyst|developer|researcher|employee|student|member|"
+    r"fellow|trainee|apprentice|associate|assistant|contractor|consultant|volunteer|"
+    r"resident|scientist|programmer|designer|alumnus|alumna"
 )
 _INTENT = re.compile(r"\b(?:to|excited|eager|thrilled|glad|happy|keen|hoping|would|could)\b")
 
@@ -159,7 +193,7 @@ _INTENT = re.compile(r"\b(?:to|excited|eager|thrilled|glad|happy|keen|hoping|wou
 def _ent_pat(e: str) -> str:
     w = norm(e)
     if _CYR.search(w) and len(w) >= 5:
-        return re.escape(w[: max(4, len(w) - 2)])
+        return re.escape(w[: max(4, len(w) - 2)]) + r"\w{0,3}(?!\w)"
     return re.escape(w) + r"(?!\w)"
 
 
@@ -186,6 +220,63 @@ def is_past_claim(sentence: str, ents: list[str]) -> bool:
         if re.search(
             r"(?<!\w)(?:my|i\s+(?:hold|have|earned|received|got))\s+(?:\w+\s+){0,3}?"
             r"(?:" + _NOUN + r")\s+" + _PREP + r"\s+(?:the\s+)?" + ep,
+            sn,
+        ):
+            return True
+        if _present_or_copula_claim(sn, ep):
+            return True
+    return False
+
+
+def _present_or_copula_claim(sn: str, ep: str) -> bool:
+    """ "I am (currently) a ... at X", "former ... X", "X was my employer" (D-152)."""
+    m = re.search(
+        r"(?<!\w)i(?:'m|\s+am)(?P<mid>(?:\s+\w+){0,4}?)\s+(?:at|with|for)\s+(?:the\s+)?"
+        r"(?:\w+\s+){0,2}?" + ep,
+        sn,
+    )
+    if (
+        m
+        and re.search(r"\b(?:" + _ROLE + r")\b", m.group("mid"))
+        and not _INTENT.search(m.group("mid"))
+    ):
+        return True
+    m = re.search(r"(?<!\w)former\b(?P<span>[^.?!]{0,40}?)(?<!\w)" + ep, sn)
+    if m and not _INTENT.search(m.group("span")):
+        return True
+    return bool(
+        re.search(
+            r"(?<!\w)" + ep + r"(?:\s+\w+){0,2}?\s+(?:was|is)\s+"
+            r"(?:where\s+i\b|(?:\w+\s+){0,2}?my\s+(?:\w+\s+)?"
+            r"(?:employer|school|university|company|workplace|team|internship|job|college)\b)",
+            sn,
+        )
+    )
+
+
+def is_second_person_claim(text: str, ents: list[str]) -> bool:
+    """ "your internship at X", "your X internship": experience the user is told they have."""
+    sn = norm(text)
+    for e in ents:
+        ep = _ent_pat(e)
+        if re.search(
+            r"(?<!\w)your\s+(?:\w+\s+){0,3}?(?:"
+            + _NOUN
+            + r"|"
+            + _ROLE
+            + r")s?\s+"
+            + _PREP
+            + r"\s+(?:the\s+)?(?:\w+\s+){0,2}?"
+            + ep,
+            sn,
+        ) or re.search(
+            r"(?<!\w)your\s+(?:\w+\s+){0,2}?"
+            + ep
+            + r"(?:\s+\w+){0,2}?\s+(?:"
+            + _NOUN
+            + r"|"
+            + _ROLE
+            + r")",
             sn,
         ):
             return True
@@ -320,6 +411,14 @@ def verify_tailoring(
                 and _skills_in(h, skills) <= _skills_in(corpus, skills)  # G: V4
                 and not ungrounded_entities(how, corpus, skills)  # G: V5 against CV + posting
             )
+            if ok:  # "your internship at <posting company>" is an invented CV fact
+                only_post = [
+                    e
+                    for s_ in split_sentences(how) or [how]
+                    for e in entities(s_, skills)
+                    if not has_word(e, cv_n)
+                ]
+                ok = not is_second_person_claim(how, only_post)
         if ok:
             add_gap({"requirement": req, "posting_evidence": pe, "how_to_address": how})
         else:

@@ -2054,7 +2054,7 @@ Second review pass, 2026-11-06. The reviewer re-checked FIX-15..FIX-25 (commits 
   - "I am a BSc Computer Science student at Example University of Technology." still passes against `cv_fake.txt`.
   - `draft_reply_ok.json`, `tailor_reply_honest.json` and every FIX-15 legitimate sentence still pass with nothing removed.
 
-### FIX-27 [ ] Remaining entity-grounding fabrication phrasings (residual risk wider than D-140 states)
+### FIX-27 [x] Remaining entity-grounding fabrication phrasings (residual risk wider than D-140 states)
 - Severity: non-blocking. Each case is a single phrasing, the prompt forbids it, and D-140 records part of it as residual risk.
 - Problem (`cv_fake.txt`, the `entity_probes.json` posting and contact, `verify_draft` result `removed=0`):
   - A lone sentence-initial invented employer is not seen:

@@ -188,3 +188,73 @@ def test_fix26_honest_bsc_still_passes():
     assert claim_ok(t, "BSc Computer Science, 2022 - 2026", CV, ["Python"])
     v = run([P["greeting"], t, P["legit"]["was_intern"], P["legit"]["intent"], ASK])
     assert v.ok and v.removed == 0
+
+
+# ---- FIX-27: remaining phrasings (D-152) ----
+
+FIX27_DRAFT = [
+    "Citadel hired me last summer.",
+    "Google was where I interned.",
+    "I am currently a Research Intern at Acme Fake.",
+    "I'm a former intern at Acme Fake.",
+    "Acme Fake was my previous employer.",
+    "As a former Acme Fake intern I know the stack.",
+    "My summer at Acme Fake taught me a lot.",
+]
+
+
+def test_fix27_each_phrasing_dropped_and_legit_kept():
+    keep = [P["greeting"], P["legit"]["was_intern"], P["legit"]["intent"], ASK]
+    for s in FIX27_DRAFT:
+        v = run([keep[0], s, *keep[1:]])
+        assert v.ok and v.removed == 1 and s not in v.body, s
+
+
+def test_fix27_legit_sentences_survive():
+    for s in (
+        "Previously I was a research intern at Sample Labs.",
+        "Recently I built tools in Python.",
+        P["legit"]["intent"],
+        "Could I learn more about internships at Acme Fake?",
+        "Sample Labs was where I interned.",
+        "Working with Python at Sample Labs taught me a lot.",
+    ):
+        v = run([P["greeting"], s, P["legit"]["was_intern"], P["legit"]["intent"], ASK])
+        assert v.ok and v.removed == 0, s
+
+
+def test_fix27_second_person_gap_at_posting_company_removed():
+    res = {
+        "gaps": [
+            {"requirement": f"x{i}", "posting_evidence": "", "how_to_address": h}
+            for i, h in enumerate(
+                (
+                    "Highlight your internship at Acme Fake",
+                    "Highlight your Acme Fake internship",
+                    "Highlight your internship at Sample Labs",
+                    "Read about Acme Fake and its research tooling.",
+                )
+            )
+        ]
+    }
+    out, removed = verify_tailoring(res, CV, POST, ["Python"])
+    assert removed == 2
+    assert [g["how_to_address"] for g in out["gaps"]] == [
+        "Highlight your internship at Sample Labs",
+        "Read about Acme Fake and its research tooling.",
+    ]
+
+
+def test_fix27_cyrillic_stem_is_bounded():
+    cv = CV + "\nМаркетинг и аналитика. Яндекс - стажёр\n"
+    bad = "Я работал в Яндекс Маркете."
+    ok = "Я стажировался в Яндексе."
+    for s, removed in ((bad, 1), (ok, 0)):
+        v = verify_draft(
+            draft([P["greeting"], s, P["legit"]["was_intern"], P["legit"]["intent"], ASK]),
+            cv,
+            POST,
+            CONTACT,
+            ["Python"],
+        )
+        assert v.ok and v.removed == removed, s
