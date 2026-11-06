@@ -44,7 +44,7 @@ Hard filters (applied before the LLM): obvious spam, unpaid "exposure" roles, se
 
 - ATS JSON endpoints (Greenhouse, Lever, Ashby) for a company watchlist. (implemented: greenhouse in src/sources/greenhouse.py; lever in src/sources/lever.py; ashby in src/sources/ashby.py)
 - Hacker News "Who is hiring". (implemented: hn in src/sources/hn.py)
-- YC Work at a Startup.
+- YC Work at a Startup. (dropped: see D-54; YC startups are covered via HN Who is hiring, hnrss HN Jobs feed and Ashby/Lever boards)
 - hh.kz. (implemented: hh in src/sources/hh.py; needs HH_ACCESS_TOKEN, disabled without it)
 - Selected Kazakh Telegram job channels via Telethon. (implemented: src/sources/telegram_channels.py, credential-gated, see D-69)
 - Hackathon/competition feeds (Devpost, MLH, Kaggle). (implemented: mlh in src/sources/mlh.py; devpost in src/sources/devpost.py but dropped: see D-50, disabled in config; kaggle dropped: see D-68)

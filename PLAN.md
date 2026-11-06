@@ -637,7 +637,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Set `credentials = ("TG_API_ID", "TG_API_HASH")` (D-52).
 - Acceptance: fake client messages fixture -> postings with t.me urls and Cyrillic intact; last-seen id persisted and second run returns only newer; `FloodWaitError` from fake -> `[]` and logged; no creds -> disabled with reason; registered. Channel list in config defaults to empty (user fills in, see section 3). `tests/test_source_count.py` still passes and lists telegram_channels under `credential_gated`.
 
-### T27 [ ] YC jobs: record the drop (no code)
+### T27 [x] YC jobs: record the drop (no code)
 - The planner read the YC Terms of Use (`https://www.ycombinator.com/legal`) on 2026-11-06. They say "you will not engage in or use any data mining, robots, scraping or similar data gathering or extraction methods" (D-54). robots.txt allows `/jobs`, but the terms forbid automated access, so YC is dropped. Work at a Startup was already excluded (D-24).
 - Do not create `src/sources/yc.py`. T19d already sets `[sources.yc] enabled = false`; verify that it is still set. Append `(dropped: see D-54; YC startups are covered via HN Who is hiring, hnrss HN Jobs feed and Ashby/Lever boards)` to SPEC.md's "YC Work at a Startup." bullet.
 - Files: `SPEC.md`, `config.toml` (only if the flag is missing).
