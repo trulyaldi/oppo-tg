@@ -276,3 +276,52 @@ async def test_non_default_port_event_page_skipped_but_team_fetched(conn):
     row = add(conn, "https://hack-fake.test:8443/event", kind=Kind.HACKATHON, title="FakeHack")
     rep = await run(conn, site, row)
     assert site.pages() == ["https://hack-fake.test/team"] and rep.unreachable == 2
+
+
+BOARD_FIXTURES = (
+    "lever_postings.json",
+    "ashby_board.json",
+    "jobicy_jobs.json",
+    "hh_vacancies.json",
+    "remoteok_api.json",
+    "workable_account.json",
+)
+_URL_KEY = re.compile(r'"[A-Za-z_]*url"\s*:\s*"(https?://[^"]+)"', re.I)
+
+
+@pytest.mark.parametrize("name", BOARD_FIXTURES)
+# greenhouse (employer-hosted careers urls) and devpost (per-event hosts) are intentionally absent.
+def test_every_board_fixture_host_is_aggregator(name):
+    """FIX-42: a new board source must add its posting host to AGGREGATOR_HOSTS."""
+    from urllib.parse import urlsplit
+
+    from src.contacts.discover import is_aggregator_host
+
+    urls = _URL_KEY.findall((FX / name).read_text())
+    assert urls, name
+    for u in urls:
+        host = urlsplit(u).hostname or ""
+        if host == "evil.example":  # bait url the remoteok source itself rejects
+            continue
+        assert is_aggregator_host(host), f"{name}: {host}"
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["https://remoteok.com/remote-jobs/remote-ml-1001", "https://apply.workable.com/j/A1B2C3D4E5"],
+)
+async def test_remoteok_and_workable_postings_fetch_nothing(conn, url):
+    from src.contacts.discover import _page_targets
+
+    row = add(conn, url, company="Unknown Startup Fake")
+    assert _page_targets(row, WEIGHTS) == []
+    site = Site({"/team": (200, CARDS), "/about": (200, CARDS)})
+    await run(conn, site, row)
+    assert site.urls == []
+
+
+async def test_watchlist_company_via_remoteok_uses_watchlist_domain(conn):
+    site = Site({"/team": (200, CARDS)})
+    row = add(conn, "https://remoteok.com/remote-jobs/kaspi-1", company="Kaspi.kz")
+    await run(conn, site, row)
+    assert site.pages() == ["https://kaspi.kz/team"]

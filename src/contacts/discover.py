@@ -39,6 +39,8 @@ AGGREGATOR_HOSTS = (
     "news.ycombinator.com",
     "hn.algolia.com",
     "jobicy.com",
+    "remoteok.com",
+    "workable.com",
     "hh.kz",
     "hh.ru",
     "t.me",
