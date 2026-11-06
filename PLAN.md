@@ -1730,7 +1730,7 @@ Per-type guidance in `draft.md`:
   - Expired pending -> ignored.
   - caplog has no pasted text.
 
-### P5 [ ] Draft service (3-5 sentences, one hook, one ask, verified)
+### P5 [x] Draft service (3-5 sentences, one hook, one ask, verified)
 - Depends on: N1, P2.
 - Build:
   - Migration v7 `outreach_drafts`.

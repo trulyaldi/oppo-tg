@@ -162,7 +162,7 @@ def test_migration_v5_to_v6_keeps_rows(tmp_path):
     raw.close()
     c = db.connect(path)
     db.migrate(c)
-    assert c.execute("PRAGMA user_version").fetchone()[0] == 6
+    assert c.execute("PRAGMA user_version").fetchone()[0] == 7
     c.execute(
         "INSERT INTO postings (id, source, external_id, title, url, fingerprint, status,"
         " first_seen_at, last_seen_at) VALUES ('p9','t','9','T','https://x.example','f9','new',?,?)",
@@ -171,10 +171,11 @@ def test_migration_v5_to_v6_keeps_rows(tmp_path):
     c.commit()
     c.close()
     c = db.connect(path)
+    c.execute("DROP TABLE outreach_drafts")
     c.execute("DROP TABLE contacts")
     c.execute("PRAGMA user_version=5")
     c.commit()
     db.migrate(c)
-    assert c.execute("PRAGMA user_version").fetchone()[0] == 6
+    assert c.execute("PRAGMA user_version").fetchone()[0] == 7
     assert c.execute("SELECT COUNT(*) FROM postings").fetchone()[0] == 1
     assert c.execute("SELECT COUNT(*) FROM contacts").fetchone()[0] == 0

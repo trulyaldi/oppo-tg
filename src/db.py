@@ -10,7 +10,7 @@ from typing import Any
 
 from src.models import Posting, ScoreResult
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 MAX_SCORE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
 _EXCLUSIVE = {"like": "dislike", "dislike": "like"}
@@ -126,6 +126,19 @@ CREATE TABLE contacts (
 CREATE INDEX idx_contacts_expires ON contacts(expires_at)
 """
 
+SCHEMA_7 = """
+CREATE TABLE outreach_drafts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  posting_id TEXT NOT NULL REFERENCES postings(id) ON DELETE CASCADE,
+  cv_version INTEGER NOT NULL,
+  body TEXT NOT NULL, hook TEXT NOT NULL, ask TEXT NOT NULL,
+  removed_claims INTEGER NOT NULL DEFAULT 0,
+  model TEXT NOT NULL, prompt_version TEXT NOT NULL, created_at TEXT NOT NULL,
+  UNIQUE (contact_id, cv_version)
+)
+"""
+
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
@@ -178,6 +191,12 @@ def migrate(conn: sqlite3.Connection) -> None:
     if version < 6:
         with conn:
             for stmt in SCHEMA_6.split(";"):
+                if stmt.strip():
+                    conn.execute(stmt)
+            conn.execute("PRAGMA user_version=6")
+    if version < 7:
+        with conn:
+            for stmt in SCHEMA_7.split(";"):
                 if stmt.strip():
                     conn.execute(stmt)
             conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")

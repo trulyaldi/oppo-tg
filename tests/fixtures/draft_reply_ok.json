@@ -1,0 +1,19 @@
+{
+ "body": "Hi Jane, I saw that the role mentions Python and SQL for research tooling, which fits my recent work. At Demo Analytics I cleaned and joined survey datasets with Python and SQL. I studied Mathematics at Sample Institute. Could you tell me how the hiring process works for this role?",
+ "hook": {
+  "text": "Python and SQL for research tooling",
+  "quote": "Python and SQL for research tooling",
+  "from": "posting"
+ },
+ "ask": "Could you tell me how the hiring process works for this role?",
+ "claims": [
+  {
+   "text": "Cleaned and joined survey datasets with Python and SQL",
+   "cv_evidence": "Cleaned and joined survey datasets with Python and SQL"
+  },
+  {
+   "text": "Studied Mathematics at Sample Institute",
+   "cv_evidence": "Sample Institute, BSc Mathematics"
+  }
+ ]
+}
