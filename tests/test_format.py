@@ -105,3 +105,37 @@ def test_keyboard():
     ]
     assert all(len(b.callback_data.encode()) <= 64 for b in row)
     assert [b.text for b in feedback_keyboard("x").inline_keyboard[0]][0] == "Like"
+
+
+def flagged(**kw) -> Item:
+    base = dict(
+        posting_id="0123456789abcdef",
+        title="Backend Intern",
+        company="Arbuz.kz",
+        url="https://example.com/jobs/9",
+        score=6.5,
+        reason="Good fit: Python, Almaty.",
+        base_score=5.5,
+        employer_category="kz_startup",
+        adjustment_detail="+1.0 KZ startup",
+        flag="\U0001f1f0\U0001f1ff",
+    )
+    base.update(kw)
+    return Item(**base)
+
+
+def test_flagged_matches_fixture():
+    expected = (FIXTURES / "render_item_flagged_expected.txt").read_text(encoding="utf-8")
+    assert render_item(flagged()) == expected
+
+
+def test_intl_flag_and_unknown_has_no_prefix():
+    assert render_item(flagged(flag="\U0001f30d")).startswith("\U0001f30d <b>Backend")
+    out = render_item(flagged(flag="", adjustment_detail="", base_score=6.5))
+    assert out.startswith("<b>Backend") and "(base" not in out
+
+
+def test_flagged_alert_and_length():
+    out = render_item(flagged(reason="x" * 5000), alert=True)
+    assert out.startswith("<b>ALERT</b>\n\U0001f1f0\U0001f1ff <b>")
+    assert len(out) <= MAX_ITEM_CHARS

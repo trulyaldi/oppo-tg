@@ -14,7 +14,9 @@ import src.sources  # noqa: F401  (registers the sources for /sources)
 from src import db
 from src.clock import Clock
 from src.config import AppConfig, Settings
-from src.delivery.format import Item, feedback_keyboard, render_item
+from src.delivery.digest import item_from_row, load_weights_checked
+from src.delivery.format import feedback_keyboard, render_item
+from src.ranking.adjust import recompute_adjusted
 from src.sources.base import MIN_SOURCE_FAMILIES, REGISTRY, count_report, source_family
 
 log = logging.getLogger(__name__)
@@ -94,7 +96,11 @@ async def cmd_start(message: Any) -> None:
     await _say(message, START_TEXT)
 
 
-async def cmd_top(message: Any, conn: sqlite3.Connection, clock: Clock) -> None:
+async def cmd_top(
+    message: Any, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig | None = None
+) -> None:
+    weights = load_weights_checked(cfg or AppConfig.from_dict({}))[0]
+    recompute_adjusted(conn, weights)
     since = (clock.now() - timedelta(days=TOP_DAYS)).isoformat()
     rows = conn.execute(
         "SELECT p.*, s.base_score AS base_score, s.adjusted_score AS adjusted_score,"
@@ -111,7 +117,7 @@ async def cmd_top(message: Any, conn: sqlite3.Connection, clock: Clock) -> None:
     for row in rows:
         await _say(
             message,
-            render_item(Item.from_row(row)),
+            render_item(item_from_row(row, weights)),
             reply_markup=feedback_keyboard(row["id"], db.active_reactions(conn, row["id"])),
         )
 

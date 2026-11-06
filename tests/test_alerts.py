@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -103,3 +104,50 @@ async def test_paused_sends_nothing(conn):
     assert await send_alerts(bot, conn, SETTINGS, CFG, CLOCK) == 0
     assert bot.sent == []
     assert conn.execute("SELECT COUNT(*) c FROM deliveries").fetchone()["c"] == 0
+
+
+SNAP_W = str(Path(__file__).parent / "fixtures" / "weights_snapshot" / "weights.yaml")
+WCFG = AppConfig.from_dict({"ranking": {"weights_file": SNAP_W}})
+
+
+def add_co(conn, company, base, deadline=None, region=None):
+    p = Posting(
+        source="t",
+        external_id=f"{company}-{base}",
+        title="Role",
+        company=company,
+        url="https://example.com/x",
+        kind=Kind.JOB,
+    )
+    db.upsert_posting(conn, p, fingerprint(p), NOW)
+    db.save_score(
+        conn,
+        p.id,
+        ScoreResult(
+            score=base,
+            reason="ok",
+            deadline=deadline,
+            employer_region=region or "unknown",
+            region_confidence=0.9 if region else 0.0,
+        ),
+        "m",
+        "v",
+        NOW,
+    )
+    return p.id
+
+
+def test_alerts_use_base_score(conn):
+    hit = add_co(conn, "Acme Robotics", 9.0, region="intl")
+    add_co(conn, "Citadel", 8.6)  # adjusted 9.6, base below 9.0
+    items = select_alerts(conn, WCFG, CLOCK)
+    assert [i.posting_id for i in items] == [hit]
+    assert items[0].flag == "\U0001f30d"
+    assert items[0].score == 9.0 and items[0].base_score == 9.0
+
+
+def test_deadline_alert_low_base(conn):
+    pid = add_co(conn, "Arbuz.kz", 3.0, "2026-11-09")
+    items = select_alerts(conn, WCFG, CLOCK)
+    assert [i.posting_id for i in items] == [pid]
+    assert items[0].score == 4.0 and items[0].flag == "\U0001f1f0\U0001f1ff"

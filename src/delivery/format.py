@@ -36,6 +36,7 @@ class Item:
     base_score: float | None = None
     employer_category: str = "unknown"
     adjustment_detail: str = ""
+    flag: str = ""
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> Item:
@@ -80,9 +81,15 @@ def _esc(text: str) -> str:
 
 
 def _build(item: Item, reason: str, alert: bool) -> str:
+    prefix = f"{_esc(item.flag)} " if item.flag else ""
+    if item.base_score is not None and item.adjustment_detail and item.base_score != item.score:
+        score = f"{item.score:.1f}/10 (base {item.base_score:.1f}, {_esc(item.adjustment_detail)})"
+    else:
+        score = f"{item.score:.1f}/10"
     lines = [
-        f"<b>{_esc(_clip(item.title, _MAX_TITLE))}</b> — {_esc(_clip(item.company, _MAX_COMPANY))}",
-        f"{item.score:.1f}/10 · {_esc(reason)}",
+        f"{prefix}<b>{_esc(_clip(item.title, _MAX_TITLE))}</b> — "
+        f"{_esc(_clip(item.company, _MAX_COMPANY))}",
+        f"{score} · {_esc(reason)}",
         f"Deadline: {item.deadline.isoformat() if item.deadline else 'no deadline'}",
     ]
     flags = [_clip(f, _MAX_FLAG) for f in item.red_flags[:_MAX_FLAGS] if f.strip()]

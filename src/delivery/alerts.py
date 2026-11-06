@@ -11,8 +11,10 @@ from zoneinfo import ZoneInfo
 from src import db
 from src.clock import Clock
 from src.config import AppConfig, Settings
-from src.delivery.digest import is_paused
+from src.delivery.digest import is_paused, item_from_row, load_weights_checked
 from src.delivery.format import Item, feedback_keyboard, render_item
+from src.ranking.adjust import recompute_adjusted
+from src.ranking.weights import Weights
 
 log = logging.getLogger(__name__)
 
@@ -20,20 +22,28 @@ DEFAULT_TZ = "Asia/Almaty"
 
 
 def select_alerts(
-    conn: sqlite3.Connection, cfg: AppConfig, clock: Clock, tz: str = DEFAULT_TZ
+    conn: sqlite3.Connection,
+    cfg: AppConfig,
+    clock: Clock,
+    tz: str = DEFAULT_TZ,
+    weights: Weights | None = None,
 ) -> list[Item]:
-    """Undelivered scored items that qualify for an instant alert, best first."""
+    """Undelivered scored items that qualify for an instant alert (base score, D-97)."""
+    if weights is None:
+        weights = load_weights_checked(cfg)[0]
+    recompute_adjusted(conn, weights)
     th = cfg.thresholds
     today = clock.now().astimezone(ZoneInfo(tz)).date()
     last = today + timedelta(days=th.alert_deadline_days)
     out = []
     for row in db.undelivered_scored(conn):
-        item = Item.from_row(row)
-        by_score = item.score >= th.alert_score
+        item = item_from_row(row, weights)
+        base = item.base_score if item.base_score is not None else item.score
+        by_score = base >= th.alert_score
         by_deadline = (
             item.deadline is not None
             and today <= item.deadline <= last
-            and item.score >= th.alert_deadline_min_score
+            and base >= th.alert_deadline_min_score
         )
         if by_score or by_deadline:
             out.append(item)

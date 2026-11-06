@@ -1395,7 +1395,7 @@ Per-type guidance in `draft.md`:
   - An invalid tmp weights file -> the digest still goes out with the default weights, plus exactly one notice. A second digest the same day sends no second notice.
   - Empty digest still sends "No new opportunities today."
 
-### W7 [ ] Flags and adjusted score in rendering; alerts on base score; /top re-ranked
+### W7 [x] Flags and adjusted score in rendering; alerts on base score; /top re-ranked
 - Depends on: W6.
 - Build:
   - `render_item` per 8.1.7. Flag text comes from the loaded weights and is passed through `Item.flag`, set by selection code.

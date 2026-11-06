@@ -67,8 +67,8 @@ def build_dispatcher(
         await handlers.cmd_start(m)
 
     @dp.message(Command("top"))
-    async def _top(m: Message, conn: sqlite3.Connection, clock: Clock) -> None:
-        await handlers.cmd_top(m, conn, clock)
+    async def _top(m: Message, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig) -> None:
+        await handlers.cmd_top(m, conn, clock, cfg)
 
     @dp.message(Command("saved"))
     async def _saved(m: Message, conn: sqlite3.Connection) -> None:

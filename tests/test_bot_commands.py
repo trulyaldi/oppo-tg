@@ -156,3 +156,29 @@ async def test_sources_exact_fixture(conn):
     assert len(m.sent) == 1
     assert m.sent[0][2] == "HTML"
     assert m.texts[0] == (FIXTURES / "sources_expected.txt").read_text().rstrip("\n")
+
+
+async def test_top_reranked_by_adjusted_with_flags(conn):
+    intl = add(conn, 1, score=6.5, company="Acme Robotics")
+    conn.execute("UPDATE scores SET employer_region='intl', region_confidence=0.9")
+    add(conn, 2, score=6.0, company="Arbuz.kz")
+    m = FakeMessage()
+    await cmd_top(m, conn, CLOCK, CFG)
+    assert m.texts[0].startswith("\U0001f1f0\U0001f1ff <b>Job 2</b>")
+    assert "7.0/10 (base 6.0, +1.0 KZ startup)" in m.texts[0]
+    assert m.texts[1].startswith("\U0001f30d <b>Job 1</b>") and intl
+    assert all(len(t) <= 3500 for t in m.texts)
+
+
+async def test_top_flag_disabled_in_yaml(conn, tmp_path):
+    import shutil
+
+    shutil.copytree(FIXTURES / "weights_snapshot", tmp_path / "w")
+    f = tmp_path / "w" / "weights.yaml"
+    f.write_text(f.read_text(encoding="utf-8").replace('kz: "🇰🇿"', 'kz: ""'), encoding="utf-8")
+    cfg = AppConfig.from_dict({"ranking": {"weights_file": str(f)}})
+    add(conn, 2, score=6.0, company="Arbuz.kz")
+    m = FakeMessage()
+    await cmd_top(m, conn, CLOCK, cfg)
+    assert m.texts[0].startswith("<b>Job 2</b>")
+    assert "7.0/10 (base 6.0" in m.texts[0]

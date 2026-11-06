@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import logging
 import sqlite3
+from dataclasses import replace
 from datetime import date
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -15,7 +16,7 @@ from src.config import AppConfig, Settings
 from src.delivery.format import Item, feedback_keyboard, render_digest_header, render_item
 from src.ranking.adjust import recompute_adjusted
 from src.ranking.quotas import pick_with_quotas
-from src.ranking.weights import BUILTIN_WEIGHTS, Weights, load_weights
+from src.ranking.weights import BUILTIN_WEIGHTS, Weights, bucket, load_weights
 
 log = logging.getLogger(__name__)
 
@@ -38,6 +39,14 @@ def load_weights_checked(cfg: AppConfig) -> tuple[Weights, str | None]:
         return BUILTIN_WEIGHTS, str(exc)
 
 
+def item_from_row(row: sqlite3.Row, weights: Weights) -> Item:
+    """Item with the flag for its employer bucket ("" when unknown or disabled, D-96)."""
+    item = Item.from_row(row)
+    b = bucket(item.employer_category)
+    flag = getattr(weights.flags, b) if b else ""
+    return replace(item, flag=flag)
+
+
 def select_digest(
     conn: sqlite3.Connection, cfg: AppConfig, weights: Weights | None = None
 ) -> list[Item]:
@@ -46,7 +55,7 @@ def select_digest(
         weights = load_weights_checked(cfg)[0]
     recompute_adjusted(conn, weights)
     floor = cfg.thresholds.digest_min_score
-    items = [Item.from_row(r) for r in db.undelivered_scored(conn)]
+    items = [item_from_row(r, weights) for r in db.undelivered_scored(conn)]
     items = [i for i in items if (i.base_score if i.base_score is not None else i.score) >= floor]
     items.sort(key=lambda i: (-i.score, i.deadline or date.max, -(i.base_score or 0.0)))
     return pick_with_quotas(items, weights.digest_quotas, lambda i: i.employer_category)
