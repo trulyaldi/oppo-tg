@@ -137,11 +137,15 @@ positive_title_keywords = [
   # Russian stems (prefix match): analyst, data, engineer, developer, programmer,
   # researcher, scientist, trader, machine, intern(ship), quant
   "аналитик", "данны", "инженер", "разработчик", "программист", "исследовател",
-  "учен", "трейдер", "машинн", "стаж", "квант",
+  "учены", "учёны", "трейдер", "машинн", "стаж", "квант",
 ]
 spam_keywords = ["crypto airdrop", "get rich", "mlm", "pyramid"]
 unpaid_keywords = ["unpaid", "no compensation", "volunteer only"]
-senior_only_keywords = ["senior", "staff", "principal", "director", "head of", "lead"]
+senior_only_keywords = [
+  "senior", "staff", "principal", "director", "head of", "lead",
+  # Russian seniority stems (prefix match): senior, leading, head, chief, director
+  "старш", "ведущ", "руководител", "главн", "директор",
+]
 max_age_days = 60
 
 [thresholds]

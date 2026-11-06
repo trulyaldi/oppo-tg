@@ -22,7 +22,10 @@ _NO_UNPAID_CHECK = (Kind.HACKATHON, Kind.COMPETITION, Kind.FELLOWSHIP)
 # Sources whose pages the user curates by hand: their items skip the title relevance check.
 _RELEVANCE_EXEMPT_SOURCES = ("pagewatch",)
 # PLAN 1.8 junior markers that waive senior_only (intern is handled by INTERN_RE).
-_JUNIOR_RE = re.compile(r"\b(?:junior|graduate|new grad|student|entry|trainee)\b|\bстаж", re.I)
+# Russian trainee forms only (стажер/стажёр/стажировка); bare 'стаж' means experience (D-82).
+_JUNIOR_RE = re.compile(
+    r"\b(?:junior|graduate|new grad|student|entry|trainee)\b|\bстаж(?:ер|ёр|ир)", re.I
+)
 _EARN_SPAM = re.compile(
     r"\bearn\s+(?:up to\s+)?[$€£]\s?\d[\d,]*\s*(?:/|per\s+)\s*(?:day|week|hour)", re.I
 )

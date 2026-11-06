@@ -161,3 +161,35 @@ def test_senior_only_still_applies():
 def test_unpaid_fellowship_passes():
     p = _p("Research Fellowship", Kind.FELLOWSHIP, description="This is an unpaid fellowship")
     assert hard_filter(p, CFG, TODAY) is None
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Старший аналитик данных",
+        "Ведущий разработчик Python",
+        "Руководитель отдела аналитики данных",
+        "Главный инженер",
+        "Senior Data Scientist (стаж от 5 лет)",
+    ],
+)
+def test_russian_senior_titles_filtered(title):
+    assert hard_filter(_p(title), CFG, TODAY) == "senior_only"
+
+
+def test_russian_trainee_waives_senior_only():
+    assert hard_filter(_p("Старший стажер-аналитик"), CFG, TODAY) is None
+    assert hard_filter(_p("Ведущий стажёр-аналитик"), CFG, TODAY) is None
+
+
+def test_russian_juniors_still_new():
+    titles = ["Стажер-аналитик данных", "Аналитик данных (стажировка)", "Аналитик данных"]
+    got = _run([_p(t, source="hh") for t in titles])
+    assert all(v == ("new", None) for v in got.values())
+
+
+def test_apprentice_irrelevant_scientist_relevant():
+    got = _run([_p(t, source="hh") for t in ["Ученик повара", "Ученик продавца-консультанта"]])
+    assert all(v == ("filtered", "irrelevant") for v in got.values())
+    for t in ["Учёный-физик", "Ученый по данным", "Ученые данных"]:
+        assert relevance_ok(_p(t), CFG)
