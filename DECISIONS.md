@@ -945,3 +945,10 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
 - **D-209 FC-12 digest order choices.**
   - **Clock.** `select_digest` gains an optional `clock` argument (default `SystemClock`); `send_digest` passes its clock. Freshness is `baseline=0` and `first_seen_at >= now - fresh_window_hours`, same as alerts.
   - **Band.** Computed on the adjusted score; a non-positive `digest_score_band` falls back to 1.0 to avoid division by zero. Quotas are applied after sorting, unchanged.
+
+- **D-210 FC-13 latency and /stats choices.**
+  - **Latency.** `record_delivery` computes `latency_s = sent_at - postings.first_seen_at` itself and logs `delivery kind=.. source=.. tier=.. latency_s=..` once per new delivery (no posting text). Tier comes from `target_state.tier` (joined on source+target), `unknown` when absent.
+  - **/stats scope.** FC-09/19/21/22 are cut (D-202), so the web-search spend and discovered-board lines of D-189 are dropped. There is no triage stage yet, so only scoring calls (`score`, `score_baseline`) are shown against `[scoring] daily_call_cap`. Percentiles use nearest rank. Postings without a `target_state` tier count under `unknown`.
+  - **/sources.** Each line shows the source tier (`[sources.x] tier`, else the source default); greenhouse, lever and ashby add `(boards: tierN count, ...)` from `target_state` when known.
+  - **FC-12 gap.** Already pinned by `test_fresh_first_within_band_but_band_wins` (fresh 7.2 above non-fresh 7.9 in the same band); no new test.
+

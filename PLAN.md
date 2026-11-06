@@ -2657,7 +2657,7 @@ Each migration gets a test that starts from the previous version with sample row
   - A non-fresh 8.1 is placed before a fresh 7.9.
   - Quota and fall-through tests still pass.
 
-### FC-13 [ ] Delivery latency, /stats, tiers in /sources
+### FC-13 [x] Delivery latency, /stats, tiers in /sources
 - Build (D-189):
   - `record_delivery` stores `latency_s` from `postings.first_seen_at` and logs `delivery kind=<k> source=<s> tier=<t> latency_s=<n>` (no posting text).
   - Add `render_stats(conn, settings, cfg, clock)` and a `/stats` command. It shows:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from datetime import datetime
 from enum import StrEnum
@@ -11,6 +12,8 @@ from typing import Any
 
 from src.models import Posting, ScoreResult
 from src.text import content_hash
+
+log = logging.getLogger(__name__)
 
 SCHEMA_VERSION = 8
 MAX_SCORE_ATTEMPTS = 3
@@ -454,13 +457,30 @@ def record_delivery(
     message_id: int | None,
     now: datetime,
 ) -> bool:
-    """Record a delivery; returns False (no change) if already delivered."""
+    """Record a delivery with its latency since first sight (D-210); False if already delivered."""
+    row = conn.execute(
+        "SELECT p.source, p.target, p.first_seen_at, ts.tier FROM postings p"
+        " LEFT JOIN target_state ts ON ts.source=p.source AND ts.target=p.target"
+        " WHERE p.id=?",
+        (posting_id,),
+    ).fetchone()
+    latency: float | None = None
+    if row is not None:
+        latency = (now - datetime.fromisoformat(row["first_seen_at"])).total_seconds()
     cur = conn.execute(
-        "INSERT OR IGNORE INTO deliveries (posting_id, kind, chat_id, message_id, sent_at)"
-        " VALUES (?,?,?,?,?)",
-        (posting_id, kind, str(chat_id), message_id, _iso(now)),
+        "INSERT OR IGNORE INTO deliveries (posting_id, kind, chat_id, message_id, sent_at,"
+        " latency_s) VALUES (?,?,?,?,?,?)",
+        (posting_id, kind, str(chat_id), message_id, _iso(now), latency),
     )
     conn.commit()
+    if cur.rowcount == 1 and row is not None:
+        log.info(
+            "delivery kind=%s source=%s tier=%s latency_s=%s",
+            kind,
+            row["source"],
+            row["tier"] or "unknown",
+            f"{latency:.0f}" if latency is not None else "n/a",
+        )
     return cur.rowcount == 1
 
 
