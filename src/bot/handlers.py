@@ -97,9 +97,12 @@ async def cmd_start(message: Any) -> None:
 async def cmd_top(message: Any, conn: sqlite3.Connection, clock: Clock) -> None:
     since = (clock.now() - timedelta(days=TOP_DAYS)).isoformat()
     rows = conn.execute(
-        "SELECT p.*, s.score AS score, s.reason AS reason, s.deadline AS llm_deadline,"
-        " s.red_flags AS red_flags FROM postings p JOIN scores s ON s.posting_id=p.id"
-        " WHERE s.scored_at >= ? ORDER BY s.score DESC, p.rowid LIMIT ?",
+        "SELECT p.*, s.base_score AS base_score, s.adjusted_score AS adjusted_score,"
+        " s.adjusted_score AS score, s.employer_category AS employer_category,"
+        " s.adjustment_detail AS adjustment_detail, s.reason AS reason,"
+        " s.deadline AS llm_deadline, s.red_flags AS red_flags"
+        " FROM postings p JOIN scores s ON s.posting_id=p.id"
+        " WHERE scored_at >= ? ORDER BY s.adjusted_score DESC, p.rowid LIMIT ?",
         (since, TOP_LIMIT),
     ).fetchall()
     if not rows:

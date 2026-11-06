@@ -68,7 +68,7 @@ async def test_valid_saved(conn):
     client = FakeClient([GOOD])
     await scorer(conn, client).score_pending(10)
     row = conn.execute("SELECT * FROM scores WHERE posting_id=?", (pid,)).fetchone()
-    assert row["score"] == 8.5 and row["model"] == "test-model" and row["prompt_version"]
+    assert row["base_score"] == 8.5 and row["model"] == "test-model" and row["prompt_version"]
     assert status(conn, pid)["status"] == "scored"
     kw = client.calls[0]
     assert kw["max_tokens"] == 300 and kw["model"] == "test-model"

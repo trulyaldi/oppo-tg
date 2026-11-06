@@ -10,7 +10,7 @@ from typing import Any
 
 from src.models import Posting, ScoreResult
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MAX_SCORE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
 _EXCLUSIVE = {"like": "dislike", "dislike": "like"}
@@ -65,6 +65,21 @@ CREATE TABLE page_snapshots (
 """
 
 
+SCHEMA_2 = """
+ALTER TABLE scores RENAME COLUMN score TO base_score;
+ALTER TABLE scores ADD COLUMN adjusted_score REAL;
+ALTER TABLE scores ADD COLUMN employer_region TEXT NOT NULL DEFAULT 'unknown';
+ALTER TABLE scores ADD COLUMN region_confidence REAL NOT NULL DEFAULT 0;
+ALTER TABLE scores ADD COLUMN employer_is_startup INTEGER;
+ALTER TABLE scores ADD COLUMN visa_barrier INTEGER;
+ALTER TABLE scores ADD COLUMN employer_category TEXT NOT NULL DEFAULT 'unknown';
+ALTER TABLE scores ADD COLUMN adjustment REAL NOT NULL DEFAULT 0;
+ALTER TABLE scores ADD COLUMN adjustment_detail TEXT NOT NULL DEFAULT '';
+ALTER TABLE scores ADD COLUMN weights_version TEXT;
+UPDATE scores SET adjusted_score = base_score WHERE adjusted_score IS NULL
+"""
+
+
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
 
@@ -86,6 +101,12 @@ def migrate(conn: sqlite3.Connection) -> None:
     if version < 1:
         with conn:
             for stmt in SCHEMA_1.split(";"):
+                if stmt.strip():
+                    conn.execute(stmt)
+            conn.execute("PRAGMA user_version=1")
+    if version < 2:
+        with conn:
+            for stmt in SCHEMA_2.split(";"):
                 if stmt.strip():
                     conn.execute(stmt)
             conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -161,10 +182,12 @@ def save_score(
 ) -> None:
     with conn:
         conn.execute(
-            "INSERT OR REPLACE INTO scores (posting_id, score, reason, deadline, red_flags, tags,"
-            " model, prompt_version, scored_at) VALUES (?,?,?,?,?,?,?,?,?)",
+            "INSERT OR REPLACE INTO scores (posting_id, base_score, adjusted_score, reason,"
+            " deadline, red_flags, tags, model, prompt_version, scored_at, weights_version)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,NULL)",
             (
                 posting_id,
+                result.score,
                 result.score,
                 result.reason,
                 result.deadline.isoformat() if result.deadline else None,
@@ -192,12 +215,14 @@ def record_score_error(conn: sqlite3.Connection, posting_id: str) -> None:
 def undelivered_scored(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     """Scored postings never delivered, with score columns joined (best first)."""
     return conn.execute(
-        "SELECT p.*, s.score AS score, s.reason AS reason, s.deadline AS llm_deadline,"
-        " s.red_flags AS red_flags, s.tags AS tags"
+        "SELECT p.*, s.base_score AS base_score, s.adjusted_score AS adjusted_score,"
+        " s.adjusted_score AS score, s.employer_category AS employer_category,"
+        " s.adjustment_detail AS adjustment_detail, s.reason AS reason,"
+        " s.deadline AS llm_deadline, s.red_flags AS red_flags, s.tags AS tags"
         " FROM postings p JOIN scores s ON s.posting_id=p.id"
         " LEFT JOIN deliveries d ON d.posting_id=p.id"
         " WHERE p.status='scored' AND d.posting_id IS NULL"
-        " ORDER BY s.score DESC, p.rowid"
+        " ORDER BY s.adjusted_score DESC, p.rowid"
     ).fetchall()
 
 
@@ -286,8 +311,8 @@ def recent_feedback_examples(
 ) -> list[dict[str, Any]]:
     """Active reactions of `action`, newest first, with title/company/tags/score."""
     rows = conn.execute(
-        "SELECT p.id, p.title, p.company, p.kind, p.raw_tags, s.score AS score, s.tags AS tags,"
-        " r.updated_at AS reacted_at FROM reactions r"
+        "SELECT p.id, p.title, p.company, p.kind, p.raw_tags, s.base_score AS score,"
+        " s.tags AS tags, r.updated_at AS reacted_at FROM reactions r"
         " JOIN postings p ON p.id=r.posting_id LEFT JOIN scores s ON s.posting_id=p.id"
         " WHERE r.action=? AND r.active=1 ORDER BY r.updated_at DESC, r.rowid DESC LIMIT ?",
         (action, limit),

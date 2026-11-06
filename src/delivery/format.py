@@ -33,6 +33,9 @@ class Item:
     reason: str
     deadline: date | None = None
     red_flags: tuple[str, ...] = field(default_factory=tuple)
+    base_score: float | None = None
+    employer_category: str = "unknown"
+    adjustment_detail: str = ""
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> Item:
@@ -43,10 +46,13 @@ class Item:
             title=row["title"],
             company=row["company"],
             url=row["url"],
-            score=row["score"],
+            score=row["adjusted_score"],
             reason=row["reason"],
             deadline=date.fromisoformat(deadline) if deadline else None,
             red_flags=tuple(json.loads(row["red_flags"] or "[]")),
+            base_score=row["base_score"],
+            employer_category=row["employer_category"],
+            adjustment_detail=row["adjustment_detail"],
         )
 
 

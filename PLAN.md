@@ -1309,7 +1309,7 @@ Per-type guidance in `draft.md`:
   - A grep test: `yaml.load(` does not appear in `src/` (only `safe_load`).
   - `import yaml, pypdf` works in the venv.
 
-### W2 [ ] DB migration: base_score, adjusted_score and classification columns
+### W2 [x] DB migration: base_score, adjusted_score and classification columns
 - Depends on: S5 (done); independent of W1.
 - Build: the `version < 2` migration from 8.1.8 in `src/db.py`. A fresh DB applies SCHEMA_1 and then v2, so there is one path. Then update every reader of `scores.score`:
   - `db.undelivered_scored`: exposes `base_score`, `adjusted_score`, `employer_category`, `adjustment_detail` and keeps `score` as an alias of `adjusted_score`; orders by `adjusted_score` desc.
