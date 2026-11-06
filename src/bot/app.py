@@ -106,6 +106,37 @@ def build_dispatcher(
     ) -> None:
         await outreach_handlers.cmd_prepare(m, conn, clock, cfg, client, command.args, http)
 
+    @dp.callback_query(F.data.startswith("dr:"))
+    async def _draft_cb(
+        cb: CallbackQuery, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, client: Any
+    ) -> None:
+        await outreach_handlers.on_draft_callback(cb, conn, clock, cfg, client)
+
+    @dp.message(Command(re.compile(r"draft_(\d{1,15})")))
+    async def _draft_link(
+        m: Message,
+        command: CommandObject,
+        conn: sqlite3.Connection,
+        clock: Clock,
+        cfg: AppConfig,
+        client: Any,
+    ) -> None:
+        match = command.regexp_match
+        await outreach_handlers.cmd_draft(
+            m, conn, clock, cfg, client, match.group(1) if match else None
+        )
+
+    @dp.message(Command("draft"))
+    async def _draft(
+        m: Message,
+        command: CommandObject,
+        conn: sqlite3.Connection,
+        clock: Clock,
+        cfg: AppConfig,
+        client: Any,
+    ) -> None:
+        await outreach_handlers.cmd_draft(m, conn, clock, cfg, client, command.args)
+
     @dp.message(Command("start"))
     async def _start(m: Message) -> None:
         await handlers.cmd_start(m)

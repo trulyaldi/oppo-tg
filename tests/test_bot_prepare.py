@@ -306,7 +306,7 @@ async def test_prepare_lists_contacts_and_linkedin_buttons(conn):
     btn_urls = [b.url for row in kb.inline_keyboard for b in row if b.url]
     assert len(btn_urls) == 2 and all("linkedin.com/search/results/people" in u for u in btn_urls)
     datas = [b.callback_data for row in kb.inline_keyboard for b in row if b.callback_data]
-    assert datas == [f"ac:{p.id}"]  # Add contact on; no dr: buttons until P6
+    assert datas[-1] == f"ac:{p.id}" and datas[0].startswith("dr:")  # Draft buttons on (P6)
     assert not any("linkedin" in u for u in urls)
     assert all(mk is None for mk in m.markups[:-1])
 

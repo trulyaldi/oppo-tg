@@ -79,6 +79,7 @@ START_TEXT = (
     "/prepare &lt;id&gt; - tailoring advice for a posting\n"
     "/contacts &lt;id&gt; - stored contacts for a posting\n"
     "/addcontact &lt;id&gt; - add a contact from pasted text\n"
+    "/draft &lt;contact id&gt; - outreach draft to copy (never sent)\n"
     "/cv - upload or paste your CV\n"
     "/forgetcv - delete the stored CV\n"
     "/cancel - cancel a pending input"

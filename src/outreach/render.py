@@ -163,3 +163,19 @@ def render_contacts(posting: Mapping, contacts: Sequence[Mapping]) -> list[str]:
         lines.append("none stored yet. Use the buttons below or /addcontact.")
     lines.append(FOOTER)
     return chunk_lines(lines, CHUNK_LIMIT)
+
+
+DRAFT_LIMIT = 4000
+
+
+def render_draft(name: Any, contact_type: Any, body: Any) -> str:
+    """Header line plus the body in `<pre>`; the raw body is clipped so the result fits 4000."""
+    header = (
+        f"Draft for {_esc(_clip(name, 100))} ({_esc(contact_type)}). Not sent: copy it yourself."
+    )
+    text = str(body or "").strip()
+    while True:
+        out = f"{header}\n<pre>{_esc(text)}</pre>"
+        if len(out) <= DRAFT_LIMIT or not text:
+            return out
+        text = text[: len(text) - max(1, (len(out) - DRAFT_LIMIT) // 5)].rstrip()

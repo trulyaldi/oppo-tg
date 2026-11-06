@@ -20,9 +20,12 @@ from src.cv.parse import parse_cv_sections
 from src.cv.store import current_cv, forget_cv, save_cv
 from src.delivery.digest import load_weights_checked
 from src.llm.budget import LlmBudget
+from src.outreach import draft as _draft  # noqa: F401  (registers cache hooks)
 from src.outreach import prepare as _prepare  # noqa: F401  (registers cache hooks)
+from src.outreach.draft import FALLBACK_REPLY, DraftError, DraftResult
+from src.outreach.draft import draft as make_draft
 from src.outreach.prepare import PrepareError, prepare
-from src.outreach.render import prepare_keyboard, render_contacts, render_prepare
+from src.outreach.render import prepare_keyboard, render_contacts, render_draft, render_prepare
 
 MIN_CV_CHARS = 200
 TOO_SHORT = "That looks too short for a CV; send the full text or a PDF."
@@ -57,6 +60,8 @@ async def cmd_cancel(message: Any, conn: sqlite3.Connection) -> None:
 
 async def cmd_forgetcv(message: Any, conn: sqlite3.Connection, clock: Clock) -> None:
     clear_pending(conn)
+    _prepare.register_hooks()
+    _draft.register_hooks()
     counts = forget_cv(conn)
     if not counts["cv_versions"]:
         await _say(message, NO_CV)
@@ -113,6 +118,7 @@ async def ingest_cv_text(
         return
     sec = res.sections
     _prepare.register_hooks()
+    _draft.register_hooks()
     before = conn.execute("SELECT COUNT(*) FROM tailoring_cache").fetchone()[0]
     version, changed = save_cv(
         conn, text, sec.model_dump_json(), source_kind, oc.cheap_model, clock.now()
@@ -242,8 +248,7 @@ async def run_prepare(
     chunks = render_prepare(
         posting, res.result, contacts, links, res.removed, unreachable=report.unreachable > 0
     )
-    # D-135: Add contact (ac:) has a handler now; Draft (dr:) buttons stay off until P6.
-    kb = prepare_keyboard(posting_id, [], links, add_contact=True)
+    kb = prepare_keyboard(posting_id, contacts, links, add_contact=True)
     for i, chunk in enumerate(chunks):
         last = i == len(chunks) - 1
         if last and kb.inline_keyboard:
@@ -329,7 +334,7 @@ async def cmd_contacts(
         return
     posting = conn.execute("SELECT * FROM postings WHERE id=?", (ref.posting_id,)).fetchone()
     contacts = contacts_for(conn, ref.posting_id, clock.now())
-    kb = prepare_keyboard(ref.posting_id, [], _link_set(posting), add_contact=True)
+    kb = prepare_keyboard(ref.posting_id, contacts, _link_set(posting), add_contact=True)
     chunks = render_contacts(posting, contacts)
     for i, chunk in enumerate(chunks):
         if i == len(chunks) - 1:
@@ -455,3 +460,89 @@ async def store_pasted_contact(
         return
     row = conn.execute("SELECT contact_type FROM contacts WHERE id=?", (cid,)).fetchone()
     await _say(message, f"Saved {_esc(row['contact_type'])} contact #{cid}. /draft_{cid}")
+
+
+# --- /draft (P6, 8.1.15): shows the draft, never sends it anywhere ----------------
+
+NO_CONTACT = "Contact not found or expired."
+
+
+def draft_error_text(kind: str, cap: int) -> str:
+    if kind == "no_cv":
+        return NO_CV_REPLY
+    if kind == "budget":
+        return (
+            f"Daily outreach LLM limit reached ({cap} calls). "
+            "Try tomorrow or raise [outreach].daily_llm_call_cap."
+        )
+    if kind == "no_contact":
+        return NO_CONTACT
+    if kind == "unsupported":
+        return FALLBACK_REPLY
+    return f"Could not draft right now ({kind}); try again later."
+
+
+async def run_draft(
+    message: Any,
+    conn: sqlite3.Connection,
+    clock: Clock,
+    cfg: AppConfig,
+    client: Any,
+    contact_id: int,
+) -> None:
+    """Reply into the (already whitelisted) chat of `message`. One message, nothing else sent."""
+    oc = OutreachConfig.from_cfg(cfg)
+    row = conn.execute(
+        "SELECT name, contact_type, expires_at FROM contacts WHERE id=?", (contact_id,)
+    ).fetchone()
+    if row is None:
+        await _say(message, NO_CONTACT)
+        return
+    if current_cv(conn) is None:
+        await _say(message, NO_CV_REPLY)
+        return
+    if client is None:
+        await _say(message, "Could not draft right now (no LLM client); try again later.")
+        return
+    budget = LlmBudget(conn, clock, oc.daily_llm_call_cap)
+    res = await make_draft(conn, client, contact_id, cfg, clock, budget)
+    if isinstance(res, DraftError):
+        await _say(message, draft_error_text(res.kind, oc.daily_llm_call_cap))
+        return
+    assert isinstance(res, DraftResult)
+    await _say(message, render_draft(row["name"], row["contact_type"], res.body))
+
+
+def parse_contact_id(text: str | None) -> int | None:
+    s = (text or "").strip().split(None, 1)[0] if (text or "").strip() else ""
+    if not s.isascii() or not s.isdigit() or len(s) > 15:
+        return None
+    return int(s)
+
+
+async def cmd_draft(
+    message: Any,
+    conn: sqlite3.Connection,
+    clock: Clock,
+    cfg: AppConfig,
+    client: Any,
+    arg: str | None,
+) -> None:
+    cid = parse_contact_id(arg)
+    if cid is None:
+        await _say(message, "Usage: /draft &lt;contact id&gt; (the number shown by /contacts).")
+        return
+    await run_draft(message, conn, clock, cfg, client, cid)
+
+
+async def on_draft_callback(
+    cb: Any, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, client: Any
+) -> None:
+    """`dr:<contact_id>`: answer the callback first, then do the LLM work."""
+    await cb.answer("Drafting...")
+    data = cb.data or ""
+    cid = parse_contact_id(data[3:] if data.startswith("dr:") else "")
+    message = getattr(cb, "message", None)
+    if message is None or cid is None:
+        return
+    await run_draft(message, conn, clock, cfg, client, cid)

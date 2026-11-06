@@ -1756,7 +1756,7 @@ Per-type guidance in `draft.md`:
   - `prune_contacts` after the contact expires deletes its draft (FK cascade).
   - Budget exhausted -> 0 calls.
 
-### P6 [ ] /draft command and Draft buttons (show only, never send)
+### P6 [x] /draft command and Draft buttons (show only, never send)
 - Depends on: P5, P3.
 - Build: handlers `/draft <id>`, `/draft_<id>` regex command and callback `dr:<id>`. They answer the callback first, then send `Draft for {name} ({type}). Not sent: copy it yourself.` plus `<pre>{escaped body}</pre>` to `settings.telegram_chat_id`. Error replies per 8.1.15. Unknown or expired contact -> "Contact not found or expired."
 - Files: `src/bot/outreach_handlers.py`, `src/bot/app.py`, `src/outreach/render.py`, `tests/test_bot_draft.py`.

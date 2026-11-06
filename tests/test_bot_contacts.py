@@ -155,7 +155,7 @@ async def test_contacts_list_with_linkedin_buttons(conn, pid):
     urls = [b.url for row in kb.inline_keyboard for b in row if b.url]
     datas = [b.callback_data for row in kb.inline_keyboard for b in row if b.callback_data]
     assert len(urls) == 2 and all("linkedin.com/search/results/people" in u for u in urls)
-    assert datas == [f"ac:{pid}"]
+    assert datas[0].startswith("dr:") and datas[-1] == f"ac:{pid}"
     m2 = Msg()
     await cmd_contacts(m2, conn, CLOCK, None)
     assert m2.sent[0].startswith("Usage")
