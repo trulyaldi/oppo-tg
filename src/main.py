@@ -10,6 +10,7 @@ import os
 import signal
 import sys
 from collections.abc import Awaitable, Callable, Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 from src import config as config_mod
@@ -18,6 +19,7 @@ from src.clock import SystemClock
 from src.config import AppConfig, Settings
 from src.delivery.digest import send_digest
 from src.http import build_client
+from src.lock import AlreadyRunning, InstanceLock
 from src.pipeline.run import collect_all, score_pending
 from src.pipeline.scoring_alert import is_total_failure
 
@@ -215,7 +217,16 @@ def main(argv: Sequence[str] | None = None, environ: Mapping[str, str] | None = 
     if is_probe:
         return asyncio.run(_probe(settings, args.db))
     if args.command == "run":
-        asyncio.run(_serve(settings))
+        lock = InstanceLock(Path(settings.db_path).with_suffix(".lock"))
+        try:
+            lock.acquire()
+        except AlreadyRunning as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 3
+        try:
+            asyncio.run(_serve(settings))
+        finally:
+            lock.release()
         return 0
     return asyncio.run(_run(args.command, settings))
 

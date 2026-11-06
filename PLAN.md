@@ -914,7 +914,7 @@ Filed 2026-11-06 on branch `feature/outreach-and-weights`. One commit per task, 
 ### S2 [x] Total scoring failure alerts Telegram and exits non-zero
 - Acceptance: when every scoring call fails, or nothing is scored although candidates existed, a clear error message goes to `TELEGRAM_CHAT_ID`; `collect` and `once` then exit non-zero (the rest of the run still completes); tested with a mocked bot.
 
-### S3 [ ] Single-instance lock for `run`
+### S3 [x] Single-instance lock for `run`
 - Acceptance: a PID lock file under `data/` (gitignored); a second `run` refuses to start with a clear message and non-zero exit; a stale lock (dead PID) is recovered; released on shutdown; tested.
 
 ### S4 [ ] Feedback persistence and chat whitelist verified
