@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example Research Fellowships</title>
+  <link href="https://example.org/fellowships" rel="alternate"/>
+  <updated>2026-11-04T10:00:00Z</updated>
+  <id>tag:example.org,2026:fellowships</id>
+  <entry>
+    <title>Summer Research Internship in Machine Learning</title>
+    <link rel="alternate" href="https://example.org/fellowships/ml-internship"/>
+    <id>tag:example.org,2026:ml-internship</id>
+    <published>2026-11-03T09:30:00Z</published>
+    <updated>2026-11-04T10:00:00Z</updated>
+    <author><name>Example Lab</name></author>
+    <summary type="html">&lt;p&gt;Ten-week &lt;b&gt;paid&lt;/b&gt; program. Apply by December 1.&lt;/p&gt;</summary>
+  </entry>
+  <entry>
+    <title>Visiting Fellow, Computational Biology</title>
+    <link rel="alternate" href="https://example.org/fellowships/visiting-fellow"/>
+    <id>tag:example.org,2026:visiting-fellow</id>
+    <updated>2026-11-02T08:00:00Z</updated>
+    <summary>Six-month fellowship for early-career researchers.</summary>
+  </entry>
+  <entry>
+    <title>Entry without a link</title>
+    <id>tag:example.org,2026:nolink</id>
+    <updated>2026-11-01T08:00:00Z</updated>
+    <summary>This one has no link and must be skipped.</summary>
+  </entry>
+</feed>

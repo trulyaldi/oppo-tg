@@ -5,4 +5,5 @@ from src.sources import (
     greenhouse,  # noqa: F401  (registers "greenhouse")
     hn,  # noqa: F401  (registers "hn")
     lever,  # noqa: F401  (registers "lever")
+    rss,  # noqa: F401  (registers "rss")
 )

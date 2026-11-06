@@ -390,7 +390,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Files: `src/sources/hn.py`, `tests/fixtures/hn_search.json`, `tests/fixtures/hn_item.json`, `tests/test_source_hn.py`.
 - Acceptance: fixture item with >=5 comments yields one posting per non-deleted top-level comment; header `Acme | ML Engineer Intern | Remote (EU)` -> company Acme, kind INTERNSHIP, remote True; search fixture containing a "Who wants to be hired" story picks the "Who is hiring" one; empty hits/malformed/500 -> `[]`; registered.
 
-### T15 [ ] Source: RSS/Atom feeds (fellowships, research programs, opportunities)
+### T15 [x] Source: RSS/Atom feeds (fellowships, research programs, opportunities)
 - `src/sources/rss.py`: for each `[[sources.rss.feeds]]` (`url`, `name`, `kind`), fetch via `PoliteClient.get_text` then `feedparser.parse(text)` (never let feedparser fetch). Map entry id/link, title, summary -> description, published -> posted_at; kind from feed config. Seed 2-4 feeds of fellowship/research/hackathon opportunities whose robots.txt allows the feed; record choices and ToS check in DECISIONS.md.
 - Files: `src/sources/rss.py`, `config.toml`, `tests/fixtures/rss_sample.xml`, `tests/fixtures/atom_sample.xml`, `tests/test_source_rss.py`.
 - Acceptance: RSS and Atom fixtures both parse (titles, links, dates); kind from config applied; entry without link skipped; garbage XML -> `[]`; 500 -> `[]`; registered.

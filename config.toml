@@ -48,7 +48,16 @@ queries = ["data scientist", "machine learning", "intern analyst"]
 
 [sources.rss]
 enabled = true
-feeds = []
+
+[[sources.rss.feeds]]
+url = "https://hnrss.org/jobs"
+name = "HN Jobs"
+kind = "job"
+
+[[sources.rss.feeds]]
+url = "https://www.nsf.gov/rss/rss_www_funding-upcoming/rss.xml"
+name = "NSF Upcoming Due Dates"
+kind = "research"
 
 [sources.pagewatch]
 enabled = true
