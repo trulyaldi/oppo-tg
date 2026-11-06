@@ -907,3 +907,8 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **Tier.** `Target.tier` stays "" until tier assignment lands. `record_target_attempt` keeps the stored tier when given "". `baselined_at` is untouched (FC-05).
 
 - **D-202** (2026-11-07): The user asked to shorten the plan. Cut FC-09 (Greenhouse light polling), FC-19 (record dropped sources), FC-21 (Arbeitnow) and FC-22 (web-search discovery). Reason: speed. FC-09 only saves bandwidth, FC-19 is already covered by D-174..D-177 and D-180 (plus a README note in FC-31), FC-21 is a second aggregator, FC-22 is optional and costs money. They are marked `[-]` in PLAN.md and are skipped by the build loop. Any reference in other tasks to web-search spend or light polling is moot.
+
+- **D-203 FC-05 baseline choices.**
+  - **Where.** `collect_all` reads `target_state.baselined_at` before storing a target's postings (missing row or NULL means new), inserts with `baseline=1`, records the attempt, then `db.mark_baselined` sets `baselined_at` only if it is still NULL. Failed results never reach it, so a failed first fetch stays new. A first ok fetch with zero items still baselines the target.
+  - **Alerts.** `select_alerts` skips `baseline=1` rows before any rule. `undelivered_scored` already returns `p.*`, so it carries `baseline`; the digest does not filter on it.
+  - **Tests.** The HTTP cache is cleared between collects in `tests/test_baseline.py`, since fixtures would otherwise be served from cache. Scoring order is tested after resetting status, because the fixture dates are stale against the fixed clock.

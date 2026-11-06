@@ -53,11 +53,18 @@ async def collect_all(
         n_new = 0
         n_items = 0
         for tr in results:
+            state = db.get_target_state(conn, source.name, tr.target.key)
+            is_new = state is None or state["baselined_at"] is None
             if tr.ok:
                 n_items += len(tr.items)
                 for p in tr.items:
                     outcome = db.upsert_posting(
-                        conn, p, fingerprint(p), clock.now(), target=tr.target.key
+                        conn,
+                        p,
+                        fingerprint(p),
+                        clock.now(),
+                        target=tr.target.key,
+                        baseline=is_new,
                     )
                     if outcome is db.Upsert.INSERTED:
                         n_new += 1
@@ -71,6 +78,8 @@ async def collect_all(
                 tier=tr.target.tier,
                 has_validators=tr.has_validators,
             )
+            if tr.ok and is_new:
+                db.mark_baselined(conn, source.name, tr.target.key, clock.now())
         failed = [tr for tr in results if not tr.ok]
         ok = not (results and len(failed) == len(results))
         db.finish_source_run(

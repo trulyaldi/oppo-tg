@@ -37,6 +37,8 @@ def select_alerts(
     last = today + timedelta(days=th.alert_deadline_days)
     out = []
     for row in db.undelivered_scored(conn):
+        if row["baseline"]:  # first-fetch backlog is never alerted (D-188)
+            continue
         item = item_from_row(row, weights)
         base = item.base_score if item.base_score is not None else item.score
         by_score = base >= th.alert_score

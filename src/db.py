@@ -345,6 +345,16 @@ def record_target_attempt(
     conn.commit()
 
 
+def mark_baselined(conn: sqlite3.Connection, source: str, target: str, now: datetime) -> None:
+    """Set baselined_at once, after the first ok fetch of a target (D-188)."""
+    conn.execute(
+        "UPDATE target_state SET baselined_at=? WHERE source=? AND target=?"
+        " AND baselined_at IS NULL",
+        (_iso(now), source, target),
+    )
+    conn.commit()
+
+
 def get_target_state(conn: sqlite3.Connection, source: str, target: str) -> sqlite3.Row | None:
     return conn.execute(
         "SELECT * FROM target_state WHERE source=? AND target=?", (source, target)

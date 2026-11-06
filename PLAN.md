@@ -2527,7 +2527,7 @@ Each migration gets a test that starts from the previous version with sample row
   - `postings.target` is set.
   - `source_runs` ok/failed results match the pre-change behavior. `test_e2e_slice.py`, `test_e2e_all_sources.py` and `test_probe.py` pass unchanged or with a recorded reason.
 
-### FC-05 [ ] Baseline mode in the collect layer
+### FC-05 [x] Baseline mode in the collect layer
 - Build (D-188):
   - A target with `target_state.baselined_at IS NULL` is new.
   - On its first `ok` result, insert its postings with `baseline=1`, then set `baselined_at`. Failed results never set it.
