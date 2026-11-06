@@ -1433,7 +1433,7 @@ Per-type guidance in `draft.md`:
   - A caplog test: on an invalid reply containing `CANARY-LLM-OUT`, the canary is not in the logs.
   - Migration v3 is applied on top of a v2 DB with rows.
 
-### C2 [ ] CV text normalization, hash and LLM section parse with grounding
+### C2 [x] CV text normalization, hash and LLM section parse with grounding
 - Depends on: C1.
 - Build:
   - `src/cv/extract.py`:

@@ -1,0 +1,7 @@
+{"education": [{"institution": "Example University of Technology", "degree": "BSc Computer Science", "field": "Computer Science", "start": "2022", "end": "2026", "details": ["Dean's list in 2024 and 2025"]}],
+ "experience": [
+  {"organization": "Sample Labs", "role": "Research Intern", "start": "Summer 2025", "end": "", "bullets": ["Built a latency benchmark harness in Python for order book replay", "Reduced replay time by 30% with a C++ parser"]},
+  {"organization": "Optiver", "role": "Quant Intern", "start": "2024", "end": "", "bullets": ["Priced options at scale"]}],
+ "projects": [{"name": "Toy Matching Engine", "bullets": ["Implemented a limit order book matching engine in Rust"], "tech": ["Rust", "Python"]}],
+ "skills": ["Python", "C++", "Rust", "SQL", "Kubernetes"],
+ "other": []}

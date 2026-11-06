@@ -1,0 +1,22 @@
+FAKE FIXTURE - fictional CV, not a real person.
+
+Alex Example
+alex@example.invalid
+
+EDUCATION
+Example University of Technology
+BSc Computer Science, 2022 - 2026
+- Dean's list in 2024 and 2025
+
+EXPERIENCE
+Sample Labs - Research Intern, Summer 2025
+- Built a latency benchmark harness in Python for order book replay
+- Reduced replay time by 30% with a C++ parser
+
+PROJECTS
+Toy Matching Engine
+- Implemented a limit order book matching engine in Rust
+Tech: Rust, Python
+
+SKILLS
+Python, C++, Rust, SQL
