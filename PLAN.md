@@ -2678,7 +2678,7 @@ Each migration gets a test that starts from the previous version with sample row
 
 ### Part 3: coverage by auto-discovery
 
-### FC-14 [ ] ATS board URL extraction (including malicious URLs)
+### FC-14 [x] ATS board URL extraction (including malicious URLs)
 - Build (D-190):
   - `src/discovery/extract.py` with:
     - `board_ref(url) -> BoardRef(source, token) | None`;

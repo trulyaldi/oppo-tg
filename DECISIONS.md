@@ -952,3 +952,8 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **/sources.** Each line shows the source tier (`[sources.x] tier`, else the source default); greenhouse, lever and ashby add `(boards: tierN count, ...)` from `target_state` when known.
   - **FC-12 gap.** Already pinned by `test_fresh_first_within_band_but_band_wins` (fresh 7.2 above non-fresh 7.9 in the same band); no new test.
 
+
+- **D-211 FC-14 extractor choices.**
+  - **Casing.** Greenhouse and Workable tokens are lowercased; Lever and Ashby tokens keep their case (their boards are case-sensitive or unknown). Ashby also allows dots.
+  - **Rejection.** Any `:` or `@` in the netloc is rejected (so `:443` too), as is any non-ASCII or control/space char anywhere in the URL, which also covers Cyrillic and punycode lookalikes. `..` tokens, `%` tokens and a wider reserved-segment list (`embed`, `api`, `j`, `jobs`, ...) are rejected. The embed `?for=` form is accepted on `boards.greenhouse.io` only.
+  - **Text scan.** URLs are matched with a regex, trailing punctuation is stripped, and the first 50 matches are scanned (not the first 50 valid ones). URLs over 2048 chars are skipped.

@@ -1,0 +1,185 @@
+[
+ {
+  "url": "https://boards.greenhouse.io/Acme/jobs/123",
+  "expected": [
+   "greenhouse",
+   "acme"
+  ]
+ },
+ {
+  "url": "https://job-boards.greenhouse.io/acme?gh_jid=1",
+  "expected": [
+   "greenhouse",
+   "acme"
+  ]
+ },
+ {
+  "url": "https://BOARDS.GREENHOUSE.IO./acme",
+  "expected": [
+   "greenhouse",
+   "acme"
+  ]
+ },
+ {
+  "url": "https://boards.greenhouse.io/embed/job_board?for=acme",
+  "expected": [
+   "greenhouse",
+   "acme"
+  ]
+ },
+ {
+  "url": "https://boards.greenhouse.io/embed/job_app?for=Acme&token=1",
+  "expected": [
+   "greenhouse",
+   "acme"
+  ]
+ },
+ {
+  "url": "https://job-boards.greenhouse.io/embed/job_board?for=acme",
+  "expected": null
+ },
+ {
+  "url": "https://boards.greenhouse.io/embed/job_board",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co/acme/abc-123?lever-source=x",
+  "expected": [
+   "lever",
+   "acme"
+  ]
+ },
+ {
+  "url": "HTTPS://JOBS.LEVER.CO/Acme",
+  "expected": [
+   "lever",
+   "Acme"
+  ]
+ },
+ {
+  "url": "https://jobs.ashbyhq.com/Acme/uuid",
+  "expected": [
+   "ashby",
+   "Acme"
+  ]
+ },
+ {
+  "url": "https://apply.workable.com/Acme/j/ABC123/",
+  "expected": [
+   "workable",
+   "acme"
+  ]
+ },
+ {
+  "url": "https://boards.greenhouse.io@evil.com/x",
+  "expected": null
+ },
+ {
+  "url": "https://user:pw@jobs.lever.co/acme",
+  "expected": null
+ },
+ {
+  "url": "https://boards.greenhouse.io.evil.com/x",
+  "expected": null
+ },
+ {
+  "url": "https://evilboards.greenhouse.io/x",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co:8443/x",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co:443/x",
+  "expected": null
+ },
+ {
+  "url": "javascript:alert(1)//jobs.lever.co/x",
+  "expected": null
+ },
+ {
+  "url": "data:text/html,https://jobs.lever.co/x",
+  "expected": null
+ },
+ {
+  "url": "ftp://jobs.lever.co/acme",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co/%2e%2e",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co/ac%6de",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co/../acme",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co/./acme",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co/..",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co/",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.leve\u0433.co/acme",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co/acm\u0435",
+  "expected": null
+ },
+ {
+  "url": "https://xn--jobs-lever-9kb.co/acme",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.eu.lever.co/acme",
+  "expected": null
+ },
+ {
+  "url": "https://job-boards.eu.greenhouse.io/acme",
+  "expected": null
+ },
+ {
+  "url": "https://boards.greenhouse.io/api/x",
+  "expected": null
+ },
+ {
+  "url": "https://boards.greenhouse.io/j",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co/ acme",
+  "expected": null
+ },
+ {
+  "url": "https://jobs.lever.co/acme/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x",
+  "expected": null
+ },
+ {
+  "url": "https://[::1/acme",
+  "expected": null
+ },
+ {
+  "url": "",
+  "expected": null
+ }
+]
