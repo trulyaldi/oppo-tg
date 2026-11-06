@@ -52,9 +52,11 @@ class Fake:
 class Msg:
     def __init__(self):
         self.sent = []
+        self.markups = []
 
     async def answer(self, text, parse_mode=None, **kw):
         self.sent.append(text)
+        self.markups.append(kw.get("reply_markup"))
 
 
 @pytest.fixture(autouse=True)
@@ -269,3 +271,49 @@ async def test_prepare_does_not_log_content(conn, caplog):
     caplog.set_level(logging.DEBUG)
     await cmd_prepare(Msg(), conn, CLOCK, CFG, Fake(), pid)
     assert BAIT["description"][:30] not in caplog.text and CV[:30] not in caplog.text
+
+
+# --- N6: contact discovery wired into /prepare --------------------------------
+
+
+async def test_prepare_lists_contacts_and_linkedin_buttons(conn):
+    import httpx
+
+    from src.http import build_client
+
+    team = (FX / "contacts/team_page_cards.html").read_text()
+    urls = []
+
+    def handler(req):
+        urls.append(str(req.url))
+        if req.url.path == "/robots.txt":
+            return httpx.Response(200, text="User-agent: *\nAllow: /\n")
+        return httpx.Response(200, text=team) if req.url.path == "/team" else httpx.Response(404)
+
+    p = Posting(
+        source="t", external_id="9", title="Quant Researcher", company="Acme Fake",
+        url="https://acme-fake.test/jobs/1", description=BAIT["description"], kind=Kind.JOB,
+    )  # fmt: skip
+    db.upsert_posting(conn, p, "fp" + p.id, NOW)
+    with_cv(conn)
+    http = build_client(conn, CLOCK, transport=httpx.MockTransport(handler), min_interval_s=0)
+    m = Msg()
+    await cmd_prepare(m, conn, CLOCK, CFG, Fake(), p.id, http)
+    await http.aclose()
+    text = "\n".join(m.sent)
+    assert "Dana Mockson" in text and "(" in text and "@" not in text
+    kb = m.markups[-1]
+    btn_urls = [b.url for row in kb.inline_keyboard for b in row if b.url]
+    assert len(btn_urls) == 2 and all("linkedin.com/search/results/people" in u for u in btn_urls)
+    datas = [b.callback_data for row in kb.inline_keyboard for b in row if b.callback_data]
+    assert datas == []  # no dead ac:/dr: buttons until N7/P6
+    assert not any("linkedin" in u for u in urls)
+    assert all(mk is None for mk in m.markups[:-1])
+
+
+async def test_prepare_without_http_still_works_offline(conn):
+    pid = add(conn)
+    with_cv(conn)
+    m = Msg()
+    await cmd_prepare(m, conn, CLOCK, CFG, Fake(), pid)
+    assert "Fit: partial" in m.sent[1]

@@ -166,7 +166,7 @@ async def _serve(settings: Settings) -> None:
             collect_hours=settings.collect_cron_hours,
         )
     )
-    dp = build_dispatcher(conn, settings, cfg, clock, client)
+    dp = build_dispatcher(conn, settings, cfg, clock, client, http)
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):

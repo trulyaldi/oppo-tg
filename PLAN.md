@@ -1688,7 +1688,7 @@ Per-type guidance in `draft.md`:
   - Garbage HTML -> [].
   - No email addresses in the output even when the page shows them (`mailto:` links ignored).
 
-### N6 [ ] Contact discovery orchestrator, wired into /prepare
+### N6 [x] Contact discovery orchestrator, wired into /prepare
 - Depends on: N2, N3, N4, N5, P4, W1 (watchlist domains).
 - Build: `src/contacts/discover.py` `discover_contacts(conn, http, posting_row, cfg, clock, weights) -> DiscoveryReport(added, unreachable)`:
   - Skips if `contacts:discovered:<id>` is newer than `rediscover_after_days`.

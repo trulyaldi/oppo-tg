@@ -79,6 +79,8 @@ class PoliteClient:
         self._sleep = sleep
         self._monotonic = monotonic
         self._locks: dict[str, asyncio.Lock] = {}
+        # Hosts that answered 401/403/429; callers that must not evade (N6) check this.
+        self.denied: set[str] = set()
         self._last_request: dict[str, float] = {}
         self._client = httpx.AsyncClient(
             transport=transport,
@@ -177,6 +179,8 @@ class PoliteClient:
                 finally:
                     self._last_request[host] = self._monotonic()
             if resp is not None:
+                if resp.status_code in (401, 403, 429):
+                    self.denied.add((urlsplit(url).hostname or "").lower())
                 if resp.status_code not in RETRY_STATUSES:
                     if resp.status_code >= 400 and not raw:
                         log.info("HTTP %s for %s", resp.status_code, url)

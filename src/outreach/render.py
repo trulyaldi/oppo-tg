@@ -120,7 +120,10 @@ def chunk_lines(lines: Sequence[str], limit: int = CHUNK_LIMIT) -> list[str]:
 
 
 def prepare_keyboard(
-    posting_id: str, contacts: Sequence[Mapping], links: Sequence[tuple[str, str]]
+    posting_id: str,
+    contacts: Sequence[Mapping],
+    links: Sequence[tuple[str, str]],
+    add_contact: bool = True,
 ) -> InlineKeyboardMarkup:
     """URL buttons for links, up to 5 Draft buttons (`dr:<id>`), and Add contact (`ac:<id>`)."""
     rows: list[list[InlineKeyboardButton]] = []
@@ -137,7 +140,8 @@ def prepare_keyboard(
                 )
             ]
         )
-    rows.append([InlineKeyboardButton(text="Add contact", callback_data=_cb("ac", posting_id))])
+    if add_contact:
+        rows.append([InlineKeyboardButton(text="Add contact", callback_data=_cb("ac", posting_id))])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 

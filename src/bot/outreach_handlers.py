@@ -11,13 +11,17 @@ from src.bot.pending import clear_pending, peek_pending, set_pending, take_pendi
 from src.bot.refs import resolve_ref
 from src.clock import Clock
 from src.config import AppConfig, OutreachConfig
+from src.contacts.discover import discover_contacts
+from src.contacts.links import linkedin_search_urls, yc_company_url
+from src.contacts.store import contacts_for
 from src.cv.extract import CvInputError, cv_sha, normalize_cv_text, pdf_to_text
 from src.cv.parse import parse_cv_sections
 from src.cv.store import current_cv, forget_cv, save_cv
+from src.delivery.digest import load_weights_checked
 from src.llm.budget import LlmBudget
 from src.outreach import prepare as _prepare  # noqa: F401  (registers cache hooks)
 from src.outreach.prepare import PrepareError, prepare
-from src.outreach.render import render_prepare
+from src.outreach.render import prepare_keyboard, render_prepare
 
 MIN_CV_CHARS = 200
 TOO_SHORT = "That looks too short for a CV; send the full text or a PDF."
@@ -193,6 +197,12 @@ def prepare_error_text(kind: str, cap: int) -> str:
     return f"Could not prepare right now ({kind}); try again later."
 
 
+def _is_yc_source(posting: Any) -> bool:
+    return posting["source"] == "hn" or (
+        posting["source"] == "rss" and str(posting["external_id"]).startswith("HN Jobs:")
+    )
+
+
 async def run_prepare(
     message: Any,
     conn: sqlite3.Connection,
@@ -200,6 +210,7 @@ async def run_prepare(
     cfg: AppConfig,
     client: Any,
     posting_id: str,
+    http: Any = None,
 ) -> None:
     """Reply into the chat of `message` (already whitelisted) with tailoring advice."""
     oc = OutreachConfig.from_cfg(cfg)
@@ -214,14 +225,31 @@ async def run_prepare(
         await _say(message, "Could not prepare right now (no LLM client); try again later.")
         return
     await _say(message, f"Preparing {_esc(posting['title'][:200])}...")
+    weights = load_weights_checked(cfg)[0]
+    report = await discover_contacts(conn, http, posting, cfg, clock, weights)
     budget = LlmBudget(conn, clock, oc.daily_llm_call_cap)
     res = await prepare(conn, client, posting_id, cfg, clock, budget)
     if isinstance(res, PrepareError):
         await _say(message, prepare_error_text(res.kind, oc.daily_llm_call_cap))
         return
-    # Contacts and links arrive with N6; the contacts table does not exist yet.
-    for chunk in render_prepare(posting, res.result, [], [], res.removed):
-        await _say(message, chunk)
+    contacts = contacts_for(conn, posting_id, clock.now())
+    links = linkedin_search_urls(posting["company"], posting["title"])
+    if _is_yc_source(posting):
+        yc = yc_company_url(posting["company"])
+        if yc:
+            links.append(("YC companies", yc))
+    chunks = render_prepare(
+        posting, res.result, contacts, links, res.removed, unreachable=report.unreachable > 0
+    )
+    # D-134: URL buttons only. Draft (dr:) and Add contact (ac:) buttons have no handler
+    # until P6/N7, and a dead button is worse than none.
+    kb = prepare_keyboard(posting_id, [], links, add_contact=False) if links else None
+    for i, chunk in enumerate(chunks):
+        last = i == len(chunks) - 1
+        if last and kb is not None and kb.inline_keyboard:
+            await _say(message, chunk, reply_markup=kb)
+        else:
+            await _say(message, chunk)
 
 
 async def cmd_prepare(
@@ -231,16 +259,22 @@ async def cmd_prepare(
     cfg: AppConfig,
     client: Any,
     ref_text: str | None,
+    http: Any = None,
 ) -> None:
     ref = resolve_ref(conn, ref_text)
     if ref.posting_id is None:
         await _say(message, _esc(ref.error))
         return
-    await run_prepare(message, conn, clock, cfg, client, ref.posting_id)
+    await run_prepare(message, conn, clock, cfg, client, ref.posting_id, http)
 
 
 async def on_prepare_callback(
-    cb: Any, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, client: Any
+    cb: Any,
+    conn: sqlite3.Connection,
+    clock: Clock,
+    cfg: AppConfig,
+    client: Any,
+    http: Any = None,
 ) -> None:
     """`pr:<posting_id>`: answer the callback first, then do the LLM work."""
     await cb.answer("Preparing...")
@@ -249,4 +283,4 @@ async def on_prepare_callback(
     message = getattr(cb, "message", None)
     if message is None or not posting_id:
         return
-    await run_prepare(message, conn, clock, cfg, client, posting_id)
+    await run_prepare(message, conn, clock, cfg, client, posting_id, http)

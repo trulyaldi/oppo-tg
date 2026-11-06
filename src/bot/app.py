@@ -59,8 +59,9 @@ def build_dispatcher(
     cfg: AppConfig,
     clock: Clock,
     client: Any = None,
+    http: Any = None,
 ) -> Dispatcher:
-    dp = Dispatcher(conn=conn, settings=settings, cfg=cfg, clock=clock, client=client)
+    dp = Dispatcher(conn=conn, settings=settings, cfg=cfg, clock=clock, client=client, http=http)
     dp.update.outer_middleware(WhitelistMiddleware(settings.telegram_chat_id))
 
     @dp.callback_query(F.data.startswith("fb:"))
@@ -69,9 +70,14 @@ def build_dispatcher(
 
     @dp.callback_query(F.data.startswith("pr:"))
     async def _prepare_cb(
-        cb: CallbackQuery, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, client: Any
+        cb: CallbackQuery,
+        conn: sqlite3.Connection,
+        clock: Clock,
+        cfg: AppConfig,
+        client: Any,
+        http: Any,
     ) -> None:
-        await outreach_handlers.on_prepare_callback(cb, conn, clock, cfg, client)
+        await outreach_handlers.on_prepare_callback(cb, conn, clock, cfg, client, http)
 
     @dp.message(Command(re.compile(r"prepare_([0-9a-f]{16})")))
     async def _prepare_link(
@@ -81,10 +87,11 @@ def build_dispatcher(
         clock: Clock,
         cfg: AppConfig,
         client: Any,
+        http: Any,
     ) -> None:
         match = command.regexp_match
         await outreach_handlers.cmd_prepare(
-            m, conn, clock, cfg, client, match.group(1) if match else None
+            m, conn, clock, cfg, client, match.group(1) if match else None, http
         )
 
     @dp.message(Command("prepare"))
@@ -95,8 +102,9 @@ def build_dispatcher(
         clock: Clock,
         cfg: AppConfig,
         client: Any,
+        http: Any,
     ) -> None:
-        await outreach_handlers.cmd_prepare(m, conn, clock, cfg, client, command.args)
+        await outreach_handlers.cmd_prepare(m, conn, clock, cfg, client, command.args, http)
 
     @dp.message(Command("start"))
     async def _start(m: Message) -> None:
