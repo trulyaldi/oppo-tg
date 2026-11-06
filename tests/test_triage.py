@@ -308,3 +308,28 @@ def test_config_validation_and_defaults():
     with pytest.raises(ValueError):
         TriageConfig(daily_call_cap=-1)
     assert ScoringConfig().daily_call_cap == 200  # unchanged
+
+
+async def test_turning_triage_off_scores_already_triaged_rows(conn):
+    a, _ = add(conn, "a")
+    b, _ = add(conn, "b")
+    client = FakeClient([YES, YES])
+    await triager(conn, client).triage_pending()
+    assert status(conn, a)[0] == "triaged" and status(conn, b)[0] == "triaged"
+    assert len(client.triage_calls) == 2 and client.score_calls == []
+    await score_pending(
+        conn, client, "m", FixedClock(NOW), 10, triage_cfg=TriageConfig(enabled=False)
+    )
+    assert len(client.triage_calls) == 2
+    assert len(client.score_calls) == 2
+    assert status(conn, a)[0] == "scored" and status(conn, b)[0] == "scored"
+
+
+def test_pending_for_scoring_selection_by_triage_flag(conn):
+    new, _ = add(conn, "n")
+    tri, _ = add(conn, "t")
+    conn.execute("UPDATE postings SET status='triaged' WHERE id=?", (tri.id,))
+    on = {r["id"] for r in db.pending_for_scoring(conn, 10, triage=True)}
+    off = {r["id"] for r in db.pending_for_scoring(conn, 10, triage=False)}
+    assert on == {tri.id}
+    assert off == {new.id, tri.id}

@@ -439,12 +439,15 @@ def pending_for_scoring(
     """Postings to score under MAX_SCORE_ATTEMPTS: non-baseline first, then newest.
 
     With triage enabled only `triaged` (and `score_error`) postings qualify (D-196).
+    With triage off, `new` and `triaged` both qualify, so rows triage already judged
+    relevant are not stranded when the user turns triage off (FIX-43, D-227).
     """
-    first = "triaged" if triage else "new"
+    statuses = ("triaged",) if triage else ("new", "triaged")
+    marks = ",".join("?" for _ in statuses)
     return conn.execute(
-        "SELECT * FROM postings WHERE status IN (?,'score_error') AND score_attempts < ?"
+        f"SELECT * FROM postings WHERE status IN ({marks},'score_error') AND score_attempts < ?"
         " ORDER BY baseline ASC, first_seen_at DESC, rowid DESC LIMIT ?",
-        (first, MAX_SCORE_ATTEMPTS, limit),
+        (*statuses, MAX_SCORE_ATTEMPTS, limit),
     ).fetchall()
 
 

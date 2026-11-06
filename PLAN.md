@@ -3109,7 +3109,7 @@ Verified with evidence, no FIX needed:
   - `_page_targets` for a remoteok posting and for a workable posting, with an unknown company, returns no team or about URL, and MockTransport sees zero requests to remoteok.com or workable.com during `discover_contacts`.
   - A watchlist company posted via Remote OK still uses its watchlist domain.
 
-### FIX-43 [ ] Turning triage off strands every already-triaged posting
+### FIX-43 [x] Turning triage off strands every already-triaged posting
 - Severity: BLOCKING. FC-29 acceptance says "`enabled=false` restores the pre-triage flow", and the README offers `[triage] enabled = false` as the way out. The stranded rows are exactly the ones triage judged relevant.
 - Problem:
   - `src/db.py:443` `pending_for_scoring(..., triage=False)` selects only `status IN ('new','score_error')`.
