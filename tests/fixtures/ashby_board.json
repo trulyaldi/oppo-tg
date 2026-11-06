@@ -1,0 +1,347 @@
+{
+ "jobs": [
+  {
+   "id": "73bd3e2b-6597-4124-b64b-1e5dbc32e785",
+   "title": "Research Internship (Winter 2027)",
+   "department": "Internships",
+   "team": "Internships",
+   "employmentType": "Intern",
+   "location": "Canada",
+   "secondaryLocations": [
+    {
+     "location": "San Francisco",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "California",
+       "addressCountry": "United States",
+       "addressLocality": "San Francisco"
+      }
+     }
+    },
+    {
+     "location": "Europe",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "European Union"
+      }
+     }
+    },
+    {
+     "location": "London",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "London",
+       "addressCountry": "United Kingdom",
+       "addressLocality": "London"
+      }
+     }
+    },
+    {
+     "location": "United States",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "California",
+       "addressCountry": "United States",
+       "addressLocality": "San Francisco"
+      }
+     }
+    },
+    {
+     "location": "United Kingdom",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "United Kingdom"
+      }
+     }
+    },
+    {
+     "location": "Toronto",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Ontario",
+       "addressCountry": "Canada",
+       "addressLocality": "Toronto"
+      }
+     }
+    },
+    {
+     "location": "Montreal",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Quebec ",
+       "addressCountry": "Canada",
+       "addressLocality": "Montreal"
+      }
+     }
+    }
+   ],
+   "publishedAt": "2026-05-01T20:26:46.572+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Remote",
+   "address": {
+    "postalAddress": {
+     "addressCountry": "Canada"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/cohere/73bd3e2b-6597-4124-b64b-1e5dbc32e785",
+   "applyUrl": "https://jobs.ashbyhq.com/cohere/73bd3e2b-6597-4124-b64b-1e5dbc32e785/application",
+   "descriptionHtml": "<h2><strong>Who are we?</strong></h2><p style=\"min-height:1.5em\">Cohere is the leading security-first enterprise AI company.  We build cutting-edge foundation AI models and end-to-end products that are designed to solve real-world business problems.</p><p style=\"min-height:1.5em\">We’re training and deploying frontier models for enterprises who are building AI systems. We believe that our work is instrumental to the widespread adoption of AI and we are looking for folks that want to be part of that.</p><p style=\"min-height:1.5em\">We obsess over what we build. Each one of us is responsible for c",
+   "descriptionPlain": "WHO ARE WE?\n\nCohere is the leading security-first enterprise AI company.  We build cutting-edge foundation AI models and end-to-end products that are designed to solve real-world business problems.\n\nWe’re training and deploying frontier models for enterprises who are building AI systems. We believe that our work is instrumental to the widespread adoption of AI and we are looking for folks that want to be part of that.\n\nWe obsess over what we build. Each one of us is responsible for contributing to increasing the capabilities of our models and the value they drive for our customers. Cohere is a team of researchers, engineers, designers, and more, who are all passionate about their craft.\n\nWe are a global technology company headquartered in Toronto with key offices in London, New York City, San Francisco, Montreal, Paris, Berlin and Seoul. Join us!\n\nWhy this role?\n\nTo have the opportunity to collaborate with Cohere researchers and tools on designing and implementing novel research ideas and shipping state-of-the-art models to production. We have openings in teams covering base model training, retrieval augmented generation, data and evaluation, safety, and finetuning, to name a few; and we are open to receiving intern applications in any research area relating to LLMs to broaden your research connections while obtaining deep experience in a growing AI startup. \nPlease Note: To be eligible for a Research Internship, you must be currently pursuing a PhD in Machine Learning, NLP, "
+  },
+  {
+   "id": "36d1f52f-8270-4652-adf5-5303a0ff341b",
+   "title": "Machine Learning Intern/Co-op  (Winter 2027)",
+   "department": "Internships",
+   "team": "Internships",
+   "employmentType": "Intern",
+   "location": "Canada",
+   "secondaryLocations": [
+    {
+     "location": "Europe",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "European Union"
+      }
+     }
+    },
+    {
+     "location": "United States",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "California",
+       "addressCountry": "United States",
+       "addressLocality": "San Francisco"
+      }
+     }
+    },
+    {
+     "location": "United Kingdom",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "United Kingdom"
+      }
+     }
+    }
+   ],
+   "publishedAt": "2026-05-13T17:16:14.014+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Remote",
+   "address": {
+    "postalAddress": {
+     "addressCountry": "Canada"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/cohere/36d1f52f-8270-4652-adf5-5303a0ff341b",
+   "applyUrl": "https://jobs.ashbyhq.com/cohere/36d1f52f-8270-4652-adf5-5303a0ff341b/application",
+   "descriptionHtml": "<h2><strong>Who are we?</strong></h2><p style=\"min-height:1.5em\">Cohere is the leading security-first enterprise AI company.  We build cutting-edge foundation AI models and end-to-end products that are designed to solve real-world business problems.</p><p style=\"min-height:1.5em\">We’re training and deploying frontier models for enterprises who are building AI systems. We believe that our work is instrumental to the widespread adoption of AI and we are looking for folks that want to be part of that.</p><p style=\"min-height:1.5em\">We obsess over what we build. Each one of us is responsible for c",
+   "descriptionPlain": "WHO ARE WE?\n\nCohere is the leading security-first enterprise AI company.  We build cutting-edge foundation AI models and end-to-end products that are designed to solve real-world business problems.\n\nWe’re training and deploying frontier models for enterprises who are building AI systems. We believe that our work is instrumental to the widespread adoption of AI and we are looking for folks that want to be part of that.\n\nWe obsess over what we build. Each one of us is responsible for contributing to increasing the capabilities of our models and the value they drive for our customers. Cohere is a team of researchers, engineers, designers, and more, who are all passionate about their craft.\n\nWe are a global technology company headquartered in Toronto with key offices in London, New York City, San Francisco, Montreal, Paris, Berlin and Seoul. Join us!\n\nWhy this role?\n\nShip state of the art models to production.\n\nDesign and implement novel research ideas.\n\nBuild elegant training/deployment pipelines.\n\nJoin us at a pivotal moment, shape what we build and wear multiple hats as an intern!\n\n\nOur recruitment process will begin in the upcoming weeks, and we will be carefully reviewing applications and assessing potential candidates for our internships. Should we find a suitable match with your qualifications and our requirements, we will be in touch to discuss the opportunity further and to advance your application to the next stage\n\nPlease Note: To be eligible for this position you shou"
+  },
+  {
+   "id": "7133d205-5421-4336-a8e2-6037b5f55073",
+   "title": "Senior Full-Stack Engineer, Internal Applications ",
+   "department": "Engineering & Infra",
+   "team": "Internal Applications",
+   "employmentType": "FullTime",
+   "location": "Toronto",
+   "secondaryLocations": [
+    {
+     "location": "Canada",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Canada"
+      }
+     }
+    }
+   ],
+   "publishedAt": "2026-09-15T18:21:37.401+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Remote",
+   "address": {
+    "postalAddress": {
+     "addressRegion": "Ontario",
+     "addressCountry": "Canada",
+     "addressLocality": "Toronto"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/cohere/7133d205-5421-4336-a8e2-6037b5f55073",
+   "applyUrl": "https://jobs.ashbyhq.com/cohere/7133d205-5421-4336-a8e2-6037b5f55073/application",
+   "descriptionHtml": "<h2><strong>Who are we?</strong></h2><p style=\"min-height:1.5em\">Cohere is the leading security-first enterprise AI company.  We build cutting-edge foundation AI models and end-to-end products that are designed to solve real-world business problems.</p><p style=\"min-height:1.5em\">We’re training and deploying frontier models for enterprises who are building AI systems. We believe that our work is instrumental to the widespread adoption of AI and we are looking for folks that want to be part of that.</p><p style=\"min-height:1.5em\">We obsess over what we build. Each one of us is responsible for c",
+   "descriptionPlain": "WHO ARE WE?\n\nCohere is the leading security-first enterprise AI company.  We build cutting-edge foundation AI models and end-to-end products that are designed to solve real-world business problems.\n\nWe’re training and deploying frontier models for enterprises who are building AI systems. We believe that our work is instrumental to the widespread adoption of AI and we are looking for folks that want to be part of that.\n\nWe obsess over what we build. Each one of us is responsible for contributing to increasing the capabilities of our models and the value they drive for our customers. Cohere is a team of researchers, engineers, designers, and more, who are all passionate about their craft.\n\nWe are a global technology company headquartered in Toronto with key offices in London, New York City, San Francisco, Montreal, Paris, Berlin and Seoul. Join us!\n\n\n\n\nWHY THIS ROLE?\n\nThis role is for people who love building tools for their coworkers. The Internal Applications team creates tools that help us create better models. In this role you will collaborate with internal stakeholders, which include annotators, ML researchers, product managers and more. Join our team of builders who create tooling that will pave the way for the next generation of large language models!\n\n\n\n\nAS A FULL-STACK SOFTWARE ENGINEER ON THE INTERNAL APPLICATIONS TEAM, YOU WILL:\n\n - Work with a small talented and enthusiastic team of software engineers\n\n - Contribute to delightful experiences for our user-facing prod"
+  },
+  {
+   "id": "b9306620-a110-46b5-b4c4-7363e1d03a8d",
+   "title": "Member of Technical Staff - Sovereign AI",
+   "department": "Modeling",
+   "team": "Sovereign AI ",
+   "employmentType": "FullTime",
+   "location": "Canada",
+   "secondaryLocations": [
+    {
+     "location": "Toronto",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Ontario",
+       "addressCountry": "Canada",
+       "addressLocality": "Toronto"
+      }
+     }
+    }
+   ],
+   "publishedAt": "2025-11-12T14:58:28.312+00:00",
+   "isListed": true,
+   "isRemote": false,
+   "workplaceType": "OnSite",
+   "address": {
+    "postalAddress": {
+     "addressCountry": "Canada"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/cohere/b9306620-a110-46b5-b4c4-7363e1d03a8d",
+   "applyUrl": "https://jobs.ashbyhq.com/cohere/b9306620-a110-46b5-b4c4-7363e1d03a8d/application",
+   "descriptionHtml": "<h2><strong>Who are we?</strong></h2><p style=\"min-height:1.5em\">Cohere is the leading security-first enterprise AI company.  We build cutting-edge foundation AI models and end-to-end products that are designed to solve real-world business problems.</p><p style=\"min-height:1.5em\">We’re training and deploying frontier models for enterprises who are building AI systems. We believe that our work is instrumental to the widespread adoption of AI and we are looking for folks that want to be part of that.</p><p style=\"min-height:1.5em\">We obsess over what we build. Each one of us is responsible for c",
+   "descriptionPlain": "WHO ARE WE?\n\nCohere is the leading security-first enterprise AI company.  We build cutting-edge foundation AI models and end-to-end products that are designed to solve real-world business problems.\n\nWe’re training and deploying frontier models for enterprises who are building AI systems. We believe that our work is instrumental to the widespread adoption of AI and we are looking for folks that want to be part of that.\n\nWe obsess over what we build. Each one of us is responsible for contributing to increasing the capabilities of our models and the value they drive for our customers. Cohere is a team of researchers, engineers, designers, and more, who are all passionate about their craft.\n\nWe are a global technology company headquartered in Toronto with key offices in London, New York City, San Francisco, Montreal, Paris, Berlin and Seoul. Join us!\n\n\n\nRole Overview:\n\nDesign and implement novel research ideas, ship state of the art models to production, and maintain deep connections to academia and the government. We have one of the highest ratio of compute to engineers in the world. We do not delineate strongly between engineering and research. Everyone will contribute to writing production code and conducting research depending on individual interest and organizational needs. We have all the compute, data, and talent available for you to do your best work.\n\n\n\nKey Responsibilities:\n\n - Design, build and scale agentic AI systems for serving mission critical use cases.\n\n - Resear"
+  },
+  {
+   "id": "acec6038-117b-400b-92e3-0745fbb4cf53",
+   "title": "Data Annotation Specialist - German Writer/Translator",
+   "department": "Data Quality (Contract)",
+   "team": "Multilingual Annotation - German",
+   "employmentType": "Contract",
+   "location": "Canada",
+   "secondaryLocations": [
+    {
+     "location": "Calgary",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Alberta",
+       "addressCountry": "Canada",
+       "addressLocality": "Calgary"
+      }
+     }
+    },
+    {
+     "location": "Boston",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Massachusetts",
+       "addressCountry": "United States",
+       "addressLocality": "Boston"
+      }
+     }
+    },
+    {
+     "location": "Nashville",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Tennessee",
+       "addressCountry": "United States",
+       "addressLocality": "Nashville"
+      }
+     }
+    },
+    {
+     "location": "Richmond",
+     "address": {
+      "postalAddress": {
+       "postalCode": "23173",
+       "addressRegion": "Virginia",
+       "addressCountry": "United States",
+       "addressLocality": "Richmond"
+      }
+     }
+    },
+    {
+     "location": "Phoenix",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Arizona",
+       "addressCountry": "United States",
+       "addressLocality": "Phoenix"
+      }
+     }
+    },
+    {
+     "location": "Seattle",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Washington",
+       "addressCountry": "United States",
+       "addressLocality": "Seattle"
+      }
+     }
+    },
+    {
+     "location": "United States",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "California",
+       "addressCountry": "United States",
+       "addressLocality": "San Francisco"
+      }
+     }
+    },
+    {
+     "location": "Vancouver",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "British Columbia",
+       "addressCountry": "Canada",
+       "addressLocality": "Vancouver"
+      }
+     }
+    },
+    {
+     "location": "North America | Utah",
+     "address": null
+    },
+    {
+     "location": "Ottawa",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Ontario",
+       "addressCountry": "Canada",
+       "addressLocality": "Ottawa"
+      }
+     }
+    },
+    {
+     "location": "Toronto",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Ontario",
+       "addressCountry": "Canada",
+       "addressLocality": "Toronto"
+      }
+     }
+    },
+    {
+     "location": "Montreal",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Quebec ",
+       "addressCountry": "Canada",
+       "addressLocality": "Montreal"
+      }
+     }
+    }
+   ],
+   "publishedAt": "2026-10-27T17:10:01.833+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Remote",
+   "address": {
+    "postalAddress": {
+     "addressCountry": "Canada"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/cohere/acec6038-117b-400b-92e3-0745fbb4cf53",
+   "applyUrl": "https://jobs.ashbyhq.com/cohere/acec6038-117b-400b-92e3-0745fbb4cf53/application",
+   "descriptionHtml": "<p style=\"min-height:1.5em\"><strong>Who are we?</strong></p><p style=\"min-height:1.5em\">Our mission is to scale intelligence to serve humanity. We’re training and deploying frontier models for developers and enterprises who are building AI systems to power magical experiences like content generation, semantic search, RAG, and agents. We believe that our work is instrumental to the widespread adoption of AI.</p><p style=\"min-height:1.5em\">We obsess over what we build. Each one of us is responsible for contributing to increasing the capabilities of our models and the value they drive for our cus",
+   "descriptionPlain": "Who are we?\n\nOur mission is to scale intelligence to serve humanity. We’re training and deploying frontier models for developers and enterprises who are building AI systems to power magical experiences like content generation, semantic search, RAG, and agents. We believe that our work is instrumental to the widespread adoption of AI.\n\nWe obsess over what we build. Each one of us is responsible for contributing to increasing the capabilities of our models and the value they drive for our customers. We like to work hard and move fast to do what’s best for our customers.\n\nCohere is a team of researchers, engineers, designers, and more, who are passionate about their craft. Each person is one of the best in the world at what they do. We believe that a diverse range of perspectives is a requirement for building great products.\n\nJoin us on our mission and shape the future!\n\n\n\nWhy this role?\n\nWe are on a mission to build machines that understand the world and make them safely accessible to all. Data quality is foundational to this process. Machines (or Large Language Models to be exact) learn in similar ways to humans - by way of feedback. By labelling, ranking, auditing, and correcting text output, you will improve Large Language Model’s performance for iterations to come, thus having a lasting impact on Cohere’s tech.\n\n\nCohere seeks dynamic and dedicated Data Annotators with exceptional Modern Standard German Writing, Translation, and Data Manipulation skill.\n\n\n\nPlease Note: This "
+  }
+ ],
+ "apiVersion": "1"
+}

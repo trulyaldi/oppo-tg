@@ -380,7 +380,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Files: `src/sources/lever.py`, `config.toml`, `tests/fixtures/lever_postings.json`, `tests/test_source_lever.py`.
 - Acceptance: fixture parses N>=2 postings with correct url/title/posted_at (UTC aware); `commitment: Intern` -> INTERNSHIP; empty list, malformed JSON, HTTP 500 each -> `[]`; registered in `REGISTRY`.
 
-### T13 [ ] Source: Ashby
+### T13 [x] Source: Ashby
 - `src/sources/ashby.py`: GET `https://api.ashbyhq.com/posting-api/job-board/{board}?includeCompensation=false` for `[sources.ashby].boards`. Map id, title, location, isRemote, jobUrl, descriptionPlain, publishedAt, employmentType. Verify candidates (e.g. OpenAI, Cohere, Mistral-tier labs and ML startups) at implementation time.
 - Files: `src/sources/ashby.py`, `config.toml`, `tests/fixtures/ashby_board.json`, `tests/test_source_ashby.py`.
 - Acceptance: fixture parses with `remote=True` for `isRemote`; `employmentType: Intern` -> INTERNSHIP; empty/malformed/500 -> `[]`; registered.

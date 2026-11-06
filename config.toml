@@ -30,7 +30,13 @@ weride = "WeRide"
 
 [sources.ashby]
 enabled = true
-boards = []
+# Ashby board names (api.ashbyhq.com/posting-api/job-board/<name>)
+boards = ["cohere", "perplexity", "ramp"]
+
+[sources.ashby.names]
+cohere = "Cohere"
+perplexity = "Perplexity"
+ramp = "Ramp"
 
 [sources.hn]
 enabled = true
