@@ -14,6 +14,7 @@ from src.cv.extract import CvInputError, cv_sha, normalize_cv_text, pdf_to_text
 from src.cv.parse import parse_cv_sections
 from src.cv.store import current_cv, forget_cv, save_cv
 from src.llm.budget import LlmBudget
+from src.outreach import prepare as _prepare  # noqa: F401  (registers cache hooks)
 
 MIN_CV_CHARS = 200
 TOO_SHORT = "That looks too short for a CV; send the full text or a PDF."
@@ -103,15 +104,21 @@ async def ingest_cv_text(
         await _say(message, f"Could not parse the CV right now ({res.error}); try again later.")
         return
     sec = res.sections
+    _prepare.register_hooks()
+    before = conn.execute("SELECT COUNT(*) FROM tailoring_cache").fetchone()[0]
     version, changed = save_cv(
         conn, text, sec.model_dump_json(), source_kind, oc.cheap_model, clock.now()
+    )
+    after = conn.execute("SELECT COUNT(*) FROM tailoring_cache").fetchone()[0]
+    cleared = (
+        f" Cleared {before - after} cached results for older CV versions." if before > after else ""
     )
     await _say(
         message,
         f"CV v{version} saved ({len(text)} chars, sha {cv_sha(text)[:8]}): "
         f"education {len(sec.education)}, experience {len(sec.experience)}, "
         f"projects {len(sec.projects)}, skills {len(sec.skills)}. "
-        "The CV text was sent to the Anthropic API for parsing.",
+        "The CV text was sent to the Anthropic API for parsing." + cleared,
     )
 
 

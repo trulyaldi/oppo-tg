@@ -205,3 +205,20 @@ async def test_canary_not_logged(conn, clock, caplog):
 def test_start_lists_commands():
     for c in ("/cv", "/forgetcv", "/cancel"):
         assert c in START_TEXT
+
+
+async def test_new_version_reports_cleared_cache(conn, clock):
+    client = FakeClient()
+    await start_cv(conn, clock)
+    await on_text(Msg(CV), conn, clock, CFG, client)
+    conn.execute(
+        "INSERT INTO postings (id, source, external_id, title, url, fingerprint,"
+        " first_seen_at, last_seen_at) VALUES ('p1','t','1','T','https://e.com','f','x','x')"
+    )
+    conn.execute("INSERT INTO tailoring_cache VALUES ('p1', 1, '{}', 0, 'm', 'v', 'x')")
+    conn.commit()
+    await start_cv(conn, clock)
+    m = Msg(CV + "\nExtra achievement line FAKE FIXTURE")
+    await on_text(m, conn, clock, CFG, client)
+    assert "CV v2 saved" in m.sent[0]
+    assert "Cleared 1 cached results for older CV versions." in m.sent[0]

@@ -1536,7 +1536,7 @@ Per-type guidance in `draft.md`:
   - V1 ignores case, curly quotes and whitespace differences, and rejects evidence shorter than 8 chars.
   - Russian inflation stem "руководил" without evidence is removed.
 
-### P2 [ ] Tailoring service with cache, budget, injection defense
+### P2 [x] Tailoring service with cache, budget, injection defense
 - Depends on: P1, C1, C3.
 - Build:
   - Migration v5 `tailoring_cache`.

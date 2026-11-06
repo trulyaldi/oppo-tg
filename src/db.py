@@ -10,7 +10,7 @@ from typing import Any
 
 from src.models import Posting, ScoreResult
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 MAX_SCORE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
 _EXCLUSIVE = {"like": "dislike", "dislike": "like"}
@@ -99,6 +99,18 @@ CREATE TABLE cv_versions (
 """
 
 
+SCHEMA_5 = """
+CREATE TABLE tailoring_cache (
+  posting_id TEXT NOT NULL REFERENCES postings(id) ON DELETE CASCADE,
+  cv_version INTEGER NOT NULL,
+  result TEXT NOT NULL,
+  removed_claims INTEGER NOT NULL DEFAULT 0,
+  model TEXT NOT NULL, prompt_version TEXT NOT NULL, created_at TEXT NOT NULL,
+  PRIMARY KEY (posting_id, cv_version)
+)
+"""
+
+
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
 
@@ -138,6 +150,12 @@ def migrate(conn: sqlite3.Connection) -> None:
     if version < 4:
         with conn:
             for stmt in SCHEMA_4.split(";"):
+                if stmt.strip():
+                    conn.execute(stmt)
+            conn.execute("PRAGMA user_version=4")
+    if version < 5:
+        with conn:
+            for stmt in SCHEMA_5.split(";"):
                 if stmt.strip():
                     conn.execute(stmt)
             conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
