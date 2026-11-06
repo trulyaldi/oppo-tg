@@ -111,3 +111,37 @@ async def test_item_send_failure_not_recorded(conn):
 
     n = await send_digest(Flaky(), conn, SETTINGS, CFG, FixedClock(NOW))
     assert n == 1 and not db.is_delivered(conn, ids[0]) and db.is_delivered(conn, ids[1])
+
+
+def _seed(conn, ext, score, first_seen, baseline=False):
+    p = Posting(
+        source="t",
+        external_id=ext,
+        title=f"R{ext}",
+        company="Acme",
+        url="https://example.com/x",
+        kind=Kind.JOB,
+    )
+    db.upsert_posting(conn, p, fingerprint(p), first_seen, baseline=baseline)
+    db.save_score(
+        conn,
+        p.id,
+        ScoreResult(score=score, reason="ok", deadline=None, red_flags=[], tags=[]),
+        "m",
+        "v",
+        first_seen,
+    )
+    return p.id
+
+
+def test_fresh_first_within_band_but_band_wins(conn):
+    from datetime import timedelta
+
+    old = NOW - timedelta(days=10)
+    clock = FixedClock(NOW)
+    old79 = _seed(conn, "a", 7.9, old)
+    fresh72 = _seed(conn, "b", 7.2, NOW)
+    old81 = _seed(conn, "c", 8.1, old)
+    fresh79 = _seed(conn, "d", 7.9, NOW)
+    order = [i.posting_id for i in select_digest(conn, CFG, clock=clock)]
+    assert order == [old81, fresh79, fresh72, old79]

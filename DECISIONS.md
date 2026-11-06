@@ -941,3 +941,7 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **Cap counting.** Today's `fresh_alert` deliveries are counted in Python by converting `sent_at` to the Asia/Almaty date (no timezone arithmetic in SQL). An item meeting an existing rule is sent as `alert` and never uses the cap.
   - **Header.** Fresh alerts use `<b>NEW</b>` instead of `<b>ALERT</b>`.
   - **Paused** sends nothing: `send_alerts` already returns early; no change.
+
+- **D-209 FC-12 digest order choices.**
+  - **Clock.** `select_digest` gains an optional `clock` argument (default `SystemClock`); `send_digest` passes its clock. Freshness is `baseline=0` and `first_seen_at >= now - fresh_window_hours`, same as alerts.
+  - **Band.** Computed on the adjusted score; a non-positive `digest_score_band` falls back to 1.0 to avoid division by zero. Quotas are applied after sorting, unchanged.

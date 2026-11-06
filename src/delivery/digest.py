@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import html
 import logging
+import math
 import sqlite3
 from dataclasses import replace
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from src import db
-from src.clock import Clock
+from src.clock import Clock, SystemClock
 from src.config import AppConfig, Settings
 from src.delivery.format import Item, feedback_keyboard, render_digest_header, render_item
 from src.ranking.adjust import recompute_adjusted
@@ -48,16 +49,38 @@ def item_from_row(row: sqlite3.Row, weights: Weights) -> Item:
 
 
 def select_digest(
-    conn: sqlite3.Connection, cfg: AppConfig, weights: Weights | None = None
+    conn: sqlite3.Connection,
+    cfg: AppConfig,
+    weights: Weights | None = None,
+    clock: Clock | None = None,
 ) -> list[Item]:
-    """Quota-picked undelivered items, base score >= digest_min_score, adjusted order (D-95)."""
+    """Quota-picked undelivered items, base score >= digest_min_score (D-95).
+
+    Order: score band desc, fresh first within a band, then adjusted score (D-189).
+    """
     if weights is None:
         weights = load_weights_checked(cfg)[0]
     recompute_adjusted(conn, weights)
-    floor = cfg.thresholds.digest_min_score
-    items = [item_from_row(r, weights) for r in db.undelivered_scored(conn)]
-    items = [i for i in items if (i.base_score if i.base_score is not None else i.score) >= floor]
-    items.sort(key=lambda i: (-i.score, i.deadline or date.max, -(i.base_score or 0.0)))
+    th = cfg.thresholds
+    cutoff = (clock or SystemClock()).now() - timedelta(hours=th.fresh_window_hours)
+    band = th.digest_score_band if th.digest_score_band > 0 else 1.0
+    keyed: list[tuple[tuple, Item]] = []
+    for r in db.undelivered_scored(conn):
+        item = item_from_row(r, weights)
+        base = item.base_score if item.base_score is not None else item.score
+        if base < th.digest_min_score:
+            continue
+        fresh = not r["baseline"] and datetime.fromisoformat(r["first_seen_at"]) >= cutoff
+        key = (
+            -math.floor(item.score / band),
+            not fresh,
+            -item.score,
+            item.deadline or date.max,
+            -(item.base_score or 0.0),
+        )
+        keyed.append((key, item))
+    keyed.sort(key=lambda t: t[0])
+    items = [i for _, i in keyed]
     return pick_with_quotas(items, weights.digest_quotas, lambda i: i.employer_category)
 
 
@@ -92,7 +115,7 @@ async def send_digest(
         log.info("paused: digest skipped")
         return 0
     chat_id = settings.telegram_chat_id
-    items = select_digest(conn, cfg, weights)
+    items = select_digest(conn, cfg, weights, clock)
     if not items:
         await bot.send_message(chat_id, EMPTY_TEXT)
         return 0

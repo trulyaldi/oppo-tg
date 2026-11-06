@@ -2647,7 +2647,7 @@ Each migration gets a test that starts from the previous version with sample row
   - A fresh 9.2 is sent as `alert` and does not count toward the cap.
   - Deadline alerts are unchanged, paused sends nothing, and `test_alerts.py` stays green.
 
-### FC-12 [ ] Digest prefers fresh items within score bands
+### FC-12 [x] Digest prefers fresh items within score bands
 - Build (D-189):
   - The `select_digest` sort key is `(-floor(adjusted / digest_score_band), not fresh, -adjusted, deadline, -base)`.
   - Quotas are unchanged.
