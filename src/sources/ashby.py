@@ -11,6 +11,7 @@ from src.sources.base import (
     SourceContext,
     SourceUnavailable,
     Target,
+    discovered_targets,
     fetch_all_targets,
     fetch_board_json,
     register,
@@ -89,7 +90,10 @@ class AshbySource:
         return cfg.source_enabled("ashby") and bool(_boards(cfg))
 
     def targets(self, ctx: SourceContext) -> list[Target]:
-        return [Target("ashby", board, company=company) for board, company in _boards(ctx.cfg)]
+        boards = _boards(ctx.cfg)
+        return [Target("ashby", b, company=c) for b, c in boards] + discovered_targets(
+            ctx, "ashby", [b for b, _ in boards]
+        )
 
     async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
         board = target.key

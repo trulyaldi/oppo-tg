@@ -121,6 +121,18 @@ async def run_source(src: Source, ctx: SourceContext) -> SourceResult:
     return SourceResult(src.name, True, list(items))
 
 
+def discovered_targets(ctx: SourceContext, source: str, configured: list[str]) -> list[Target]:
+    """Active discovered boards as tier2 targets; config tokens win (FC-15, D-212)."""
+    if not ctx.cfg.discovery.enabled:
+        return []
+    from src.discovery import store
+
+    return [
+        Target(source, e.token, company=e.company, origin="discovered", tier="tier2")
+        for e in store.active_boards(ctx.cfg.discovery.boards_file, source, set(configured))
+    ]
+
+
 def source_targets(src: Source, ctx: SourceContext) -> list[Target]:
     """The source's own targets, or one empty-key target for single-endpoint sources."""
     fn = getattr(src, "targets", None)

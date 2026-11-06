@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -275,6 +276,35 @@ class PolitenessConfig:
 
 
 @dataclass(frozen=True)
+class DiscoveryConfig:
+    enabled: bool = True
+    boards_file: str = "data/discovered_boards.toml"
+    max_validations_per_day: int = 40
+    max_new_boards_per_day: int = 20
+    negative_cache_days: int = 30
+    run_time: str = "05:30"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.enabled, bool):
+            raise ValueError("[discovery] enabled must be a boolean")
+        if not isinstance(self.boards_file, str) or not self.boards_file:
+            raise ValueError("[discovery] boards_file must be a non-empty string")
+        for name in ("max_validations_per_day", "max_new_boards_per_day", "negative_cache_days"):
+            _check_number(f"[discovery] {name}", getattr(self, name), integer=True)
+        if not isinstance(self.run_time, str) or not re.fullmatch(
+            r"([01]\d|2[0-3]):[0-5]\d", self.run_time
+        ):
+            raise ValueError("[discovery] run_time must be HH:MM")
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> DiscoveryConfig:
+        unknown = set(data) - set(cls.__dataclass_fields__)
+        if unknown:
+            raise ValueError(f"unknown discovery keys: {sorted(unknown)}")
+        return cls(**data)
+
+
+@dataclass(frozen=True)
 class AppConfig:
     sources: dict[str, dict[str, Any]] = field(default_factory=dict)
     filters: dict[str, Any] = field(default_factory=dict)
@@ -284,6 +314,7 @@ class AppConfig:
     scoring: dict[str, Any] = field(default_factory=dict)
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
     politeness: PolitenessConfig = field(default_factory=PolitenessConfig)
+    discovery: DiscoveryConfig = field(default_factory=DiscoveryConfig)
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> AppConfig:
@@ -308,6 +339,7 @@ class AppConfig:
             scoring=scoring,
             scheduler=SchedulerConfig.from_mapping(dict(data.get("scheduler", {}))),
             politeness=PolitenessConfig.from_mapping(dict(data.get("politeness", {}))),
+            discovery=DiscoveryConfig.from_mapping(dict(data.get("discovery", {}))),
         )
 
     @classmethod

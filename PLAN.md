@@ -2706,7 +2706,7 @@ Each migration gets a test that starts from the previous version with sample row
   - the `/embed/job_board?for=acme` form;
   - text containing 200 URLs (only 50 are scanned).
 
-### FC-15 [ ] discovered_boards.toml store and tier2 targets
+### FC-15 [x] discovered_boards.toml store and tier2 targets
 - Build (D-190):
   - `src/discovery/store.py` with `load`, `add`, `tombstone` and `is_known` (removed entries included), working on `[discovery] boards_file` (default `data/discovered_boards.toml`).
   - Writes go to a temp file, then `os.replace`. Strings are escaped by an in-house writer. A corrupt file loads as `[]` with a warning, and `add` refuses to write until it is fixed.

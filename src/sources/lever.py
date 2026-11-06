@@ -12,6 +12,7 @@ from src.sources.base import (
     SourceContext,
     SourceUnavailable,
     Target,
+    discovered_targets,
     fetch_all_targets,
     fetch_board_json,
     register,
@@ -93,7 +94,10 @@ class LeverSource:
         return cfg.source_enabled("lever") and bool(_companies(cfg))
 
     def targets(self, ctx: SourceContext) -> list[Target]:
-        return [Target("lever", slug, company=company) for slug, company in _companies(ctx.cfg)]
+        companies = _companies(ctx.cfg)
+        return [Target("lever", s, company=c) for s, c in companies] + discovered_targets(
+            ctx, "lever", [s for s, _ in companies]
+        )
 
     async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
         slug = target.key

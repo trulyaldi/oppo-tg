@@ -13,6 +13,7 @@ from src.sources.base import (
     SourceContext,
     SourceUnavailable,
     Target,
+    discovered_targets,
     fetch_all_targets,
     fetch_board_json,
     register,
@@ -105,7 +106,10 @@ class GreenhouseSource:
         return cfg.source_enabled("greenhouse") and bool(_boards(cfg))
 
     def targets(self, ctx: SourceContext) -> list[Target]:
-        return [Target("greenhouse", token, company=company) for token, company in _boards(ctx.cfg)]
+        boards = _boards(ctx.cfg)
+        return [Target("greenhouse", t, company=c) for t, c in boards] + discovered_targets(
+            ctx, "greenhouse", [t for t, _ in boards]
+        )
 
     async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
         token = target.key

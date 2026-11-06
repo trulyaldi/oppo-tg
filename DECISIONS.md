@@ -957,3 +957,9 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **Casing.** Greenhouse and Workable tokens are lowercased; Lever and Ashby tokens keep their case (their boards are case-sensitive or unknown). Ashby also allows dots.
   - **Rejection.** Any `:` or `@` in the netloc is rejected (so `:443` too), as is any non-ASCII or control/space char anywhere in the URL, which also covers Cyrillic and punycode lookalikes. `..` tokens, `%` tokens and a wider reserved-segment list (`embed`, `api`, `j`, `jobs`, ...) are rejected. The embed `?for=` form is accepted on `boards.greenhouse.io` only.
   - **Text scan.** URLs are matched with a regex, trailing punctuation is stripped, and the first 50 matches are scanned (not the first 50 valid ones). URLs over 2048 chars are skipped.
+
+- **D-212 FC-15 discovered-board store choices.**
+  - **Format.** `data/discovered_boards.toml` holds `[[board]]` tables with `source`, `token`, `company`, `status` (`active` or `removed`) and `added_at`. The file is runtime data and already gitignored by `data/*`; tests use tmp paths (the snapshot config points at a non-existent fixture path).
+  - **Lookup.** Tokens compare case-insensitively within a source, so a config token `acme` beats a discovered `Acme`. `tombstone` of an unseen board adds a removed entry so it is never discovered later.
+  - **Targets.** `discovered_targets` in `src/sources/base.py` appends active boards as `tier2`, origin `discovered`, only when `[discovery] enabled`. A source is still enabled only when its config list is non-empty (unchanged `enabled()`), so discovered boards need at least one config board of that ATS; accepted to keep FC-15 small.
+  - **Config.** `[discovery]` is validated (`DiscoveryConfig`): positive integer caps, `run_time` as HH:MM, unknown keys rejected.
