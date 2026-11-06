@@ -317,7 +317,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - robots fetched once for two URLs on the same host.
   - Second `get_text` within TTL makes no network request; after TTL, request carries `If-None-Match`; a 304 returns the cached body.
 
-### T06 [ ] Source interface, registry, and Greenhouse source (first real source)
+### T06 [x] Source interface, registry, and Greenhouse source (first real source)
 - Build `src/sources/base.py` (Protocol, `SourceContext`, `SourceResult`, `REGISTRY`, `register`, `run_source`) and `src/sources/greenhouse.py`: for each board token in `config.toml [sources.greenhouse].boards`, GET `https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true` (public Job Board API, D-22). Map: external_id=`{token}:{id}`, title, company=board display name from config, url=`absolute_url`, location=`location.name`, description=`html_to_text(unescape(content))`, posted_at=`updated_at`, kind=INTERNSHIP if title matches intern/internship/summer else JOB, remote from location text.
 - Seed `config.toml` greenhouse boards with candidate tokens (verify each with one request at implementation time; drop 404s and record kept list in DECISIONS.md). Candidates: IMC, Jump Trading, Hudson River Trading, DRW, Anthropic, Databricks, Scale AI.
 - Files: `src/sources/__init__.py`, `src/sources/base.py`, `src/sources/greenhouse.py`, `tests/fixtures/greenhouse_jobs.json`, `tests/test_sources_base.py`, `tests/test_source_greenhouse.py`.

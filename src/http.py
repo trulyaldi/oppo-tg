@@ -210,6 +210,23 @@ class PoliteClient:
             return None
 
 
+def build_client(
+    db: Any,
+    clock: Any,
+    *,
+    contact: str = "https://github.com/oppo-tg",
+    transport: httpx.AsyncBaseTransport | None = None,
+    **kwargs: Any,
+) -> PoliteClient:
+    """Construct a PoliteClient with robots checking and caching active (D-34).
+
+    db and clock are required positional arguments so they cannot be forgotten.
+    """
+    if db is None or clock is None:
+        raise ValueError("build_client requires db and clock")
+    return PoliteClient(db=db, clock=clock, contact=contact, transport=transport, **kwargs)
+
+
 def _parse_retry_after(value: str | None) -> float | None:
     if value is None:
         return None

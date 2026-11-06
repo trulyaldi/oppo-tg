@@ -3,7 +3,20 @@
 [sources.greenhouse]
 enabled = true
 # Greenhouse board tokens (boards-api.greenhouse.io/v1/boards/<token>/jobs)
-boards = ["anthropic", "databricks", "stripe", "janestreet"]
+boards = [
+  "anthropic", "databricks", "stripe", "janestreet",
+  "imc", "jumptrading", "drweng", "scaleai",
+]
+
+[sources.greenhouse.names]
+anthropic = "Anthropic"
+databricks = "Databricks"
+stripe = "Stripe"
+janestreet = "Jane Street"
+imc = "IMC Trading"
+jumptrading = "Jump Trading"
+drweng = "DRW"
+scaleai = "Scale AI"
 
 [sources.lever]
 enabled = true
