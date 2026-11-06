@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import random
 import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
@@ -14,7 +15,8 @@ from urllib.robotparser import RobotFileParser
 
 import httpx
 
-from src.config import DEFAULT_HTTP_CONTACT
+from src.config import DEFAULT_HTTP_CONTACT, PolitenessConfig
+from src.politeness import HostLimiter
 
 log = logging.getLogger(__name__)
 
@@ -91,6 +93,8 @@ class PoliteClient:
         max_retries: int = 3,
         sleep: SleepFn = asyncio.sleep,
         monotonic: Callable[[], float] = time.monotonic,
+        politeness: PolitenessConfig | None = None,
+        rand: Callable[[], float] = random.random,
     ) -> None:
         self.db = db
         self.clock = clock
@@ -99,10 +103,18 @@ class PoliteClient:
         self.max_retries = max_retries
         self._sleep = sleep
         self._monotonic = monotonic
-        self._locks: dict[str, asyncio.Lock] = {}
+        # An explicit politeness config wins; otherwise min_interval_s (may be 0 in tests).
+        self.limiter = HostLimiter(
+            politeness,
+            db=db,
+            clock=clock,
+            monotonic=monotonic,
+            sleep=sleep,
+            rand=rand,
+            default_interval_s=None if politeness is not None else min_interval_s,
+        )
         # Hosts that answered 401/403/429; callers that must not evade (N6) check this.
         self.denied: set[str] = set()
-        self._last_request: dict[str, float] = {}
         self._client = httpx.AsyncClient(
             transport=transport,
             timeout=timeout_s,
@@ -112,13 +124,6 @@ class PoliteClient:
 
     async def aclose(self) -> None:
         await self._client.aclose()
-
-    async def _throttle(self, host: str) -> None:
-        last = self._last_request.get(host)
-        if last is not None:
-            wait = self.min_interval_s - (self._monotonic() - last)
-            if wait > 0:
-                await self._sleep(wait)
 
     async def _fetch(
         self,
@@ -192,36 +197,44 @@ class PoliteClient:
         raw: bool = False,
     ) -> httpx.Response | None:
         """Single GET with rate limiting and retries (no redirect handling)."""
-        host = urlsplit(url).netloc.lower()
-        lock = self._locks.setdefault(host, asyncio.Lock())
+        host = (urlsplit(url).hostname or "").lower()
+        if self.limiter.in_backoff(host):
+            self.limiter.skip_logged(host)
+            return None
+        resp: httpx.Response | None = None
+        outcome: int | BaseException = 599
         for attempt in range(self.max_retries + 1):
             retry_after: float | None = None
-            async with lock:
-                await self._throttle(host)
+            async with self.limiter.slot(host):
                 try:
                     resp = await self._client.get(url, params=params, headers=headers)
                 except httpx.HTTPError as exc:
                     log.warning("request error for %s: %r", url, exc)
                     resp = None
-                finally:
-                    self._last_request[host] = self._monotonic()
+                    outcome = exc
             if resp is not None:
                 if resp.status_code in (401, 403, 429):
-                    self.denied.add((urlsplit(url).hostname or "").lower())
+                    self.denied.add(host)
+                outcome = resp.status_code
                 if resp.status_code not in RETRY_STATUSES:
+                    self.limiter.record(host, resp.status_code)
                     if resp.status_code >= 400 and not raw:
                         log.info("HTTP %s for %s", resp.status_code, url)
                         return None
                     return resp
                 retry_after = _parse_retry_after(resp.headers.get("Retry-After"))
+                if retry_after is not None and retry_after > RETRY_AFTER_CAP_S:
+                    # Too long to wait here: persist a backoff instead of sleeping.
+                    self.limiter.record(host, resp.status_code, retry_after)
+                    log.warning(
+                        "Retry-After %.0fs from %s; backing off the host", retry_after, host
+                    )
+                    return None
             if attempt >= self.max_retries:
                 break
-            delay = (
-                min(retry_after, RETRY_AFTER_CAP_S)
-                if retry_after is not None
-                else float(2**attempt)
-            )
+            delay = float(2**attempt) if retry_after is None else retry_after
             await self._sleep(delay)
+        self.limiter.record(host, outcome)
         log.warning("giving up on %s after %d retries", url, self.max_retries)
         return None
 

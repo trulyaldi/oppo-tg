@@ -47,7 +47,9 @@ async def _run(command: str, settings: Settings) -> int:
     exit_code = 0
     try:
         if command in ("collect", "once"):
-            http = build_client(conn, clock, contact=settings.http_contact)
+            http = build_client(
+                conn, clock, contact=settings.http_contact, politeness=cfg.politeness
+            )
             try:
                 stats = await collect_all(conn, http, settings, cfg, clock)
             finally:
@@ -125,7 +127,7 @@ async def _serve(settings: Settings) -> None:
     cfg = AppConfig.load(settings.oppo_config)
     conn = db.connect(settings.db_path)
     db.migrate(conn)
-    http = build_client(conn, clock, contact=settings.http_contact)
+    http = build_client(conn, clock, contact=settings.http_contact, politeness=cfg.politeness)
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
     bot = Bot(settings.telegram_bot_token)
 
@@ -195,7 +197,7 @@ async def _probe(settings: Settings, db_path: str) -> int:
     conn = db.connect(db_path)
     db.migrate(conn)
     reset_probe_state(conn)  # pagewatch must see its pages as new on every probe run (FIX-01)
-    http = build_client(conn, clock, contact=settings.http_contact)
+    http = build_client(conn, clock, contact=settings.http_contact, politeness=cfg.politeness)
     try:
         return await run_probe(http, settings, cfg, clock, sys.stdout)
     finally:

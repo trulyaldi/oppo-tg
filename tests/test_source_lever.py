@@ -117,7 +117,7 @@ async def test_http_500_and_isolation():
             "bad": httpx.Response(500, text="boom"),
             "palantir": httpx.Response(200, text=FIXTURE),
         },
-        _cfg(["bad", "palantir"]),
+        _cfg(["palantir", "bad"]),
     )
     res = await run_source(LeverSource(), ctx)
     assert res.ok and len(res.items) == 5

@@ -114,7 +114,7 @@ async def test_http_error():
 
 async def test_one_bad_board_does_not_block_other():
     routes = {"bad": httpx.Response(500), "good": httpx.Response(200, text=FIXTURE)}
-    ctx, _ = _ctx(routes, _cfg(["bad", "good"]))
+    ctx, _ = _ctx(routes, _cfg(["good", "bad"]))
     res = await run_source(GreenhouseSource(), ctx)
     assert res.ok
     assert len(res.items) >= 3

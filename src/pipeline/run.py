@@ -43,6 +43,9 @@ async def collect_all(
     clock: Clock,
 ) -> dict[str, int]:
     """Run all enabled sources concurrently, store postings, dedupe and filter."""
+    limiter = getattr(http, "limiter", None)
+    if limiter is not None:
+        limiter.new_run()  # log "host in backoff" once per host per run (FC-07)
     ctx = SourceContext(http=http, settings=settings, cfg=cfg, clock=clock)
     sources = [f() for f in base.REGISTRY.values()]
     sources = [s for s in sources if s.enabled(settings, cfg)]

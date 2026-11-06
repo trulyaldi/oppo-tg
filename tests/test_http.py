@@ -47,8 +47,8 @@ async def test_retry_after_and_cap():
     assert await e.client.get_text("https://x.test/a") == ""
     assert e.sleeps == [7]
     e = Env([httpx.Response(429, headers={"Retry-After": "999"}), 200])
-    await e.client.get_text("https://x.test/a")
-    assert e.sleeps == [60]
+    assert await e.client.get_text("https://x.test/a") is None
+    assert e.sleeps == []  # above the cap: backoff recorded (FC-07), not slept
 
 
 async def test_404_no_retry():

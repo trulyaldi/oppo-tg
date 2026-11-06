@@ -2562,7 +2562,7 @@ Each migration gets a test that starts from the previous version with sample row
   - Bad tier names, a negative interval, an unknown key or `jitter_fraction > 1` each raise with the key name.
   - Old configs without the new sections load.
 
-### FC-07 [ ] Politeness limiter: per-host rates, jitter, global concurrency, persistent backoff
+### FC-07 [x] Politeness limiter: per-host rates, jitter, global concurrency, persistent backoff
 - Build (D-187):
   - New `src/politeness.py`, `HostLimiter(config, db, clock, monotonic, sleep, rand)`:
     - per-host lock;

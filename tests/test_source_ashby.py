@@ -115,7 +115,7 @@ def test_malformed_shape_and_entries():
 async def test_http_500_and_isolation():
     ctx, _ = _ctx(
         {"bad": httpx.Response(500, text="boom"), "cohere": httpx.Response(200, text=FIXTURE)},
-        _cfg(["bad", "cohere"]),
+        _cfg(["cohere", "bad"]),
     )
     res = await run_source(AshbySource(), ctx)
     assert res.ok and len(res.items) == 5

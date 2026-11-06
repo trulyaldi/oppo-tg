@@ -94,7 +94,7 @@ async def test_empty_malformed_and_http_error():
 
 async def test_one_failing_query_keeps_the_other():
     def api(req):
-        if req.url.params["industry"] == "data-science":
+        if req.url.params["industry"] == "engineering":
             return httpx.Response(500, text="boom")
         return httpx.Response(200, json=DATA)
 

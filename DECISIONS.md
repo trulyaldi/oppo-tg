@@ -918,3 +918,9 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **Validation.** All new numbers must be positive (ints where a count or seconds, `default_min_interval_s` and `digest_score_band` may be floats); bools are rejected. Errors name the section and key. `[politeness.hosts]` values are validated as positive numbers, keyed by host suffix.
   - **Thresholds.** `Thresholds.__post_init__` validates only the new fields, so existing zero-valued thresholds stay legal.
   - **README.** The `COLLECT_CRON_HOURS` table row was updated to match the new `ENV_VARS` description.
+
+- **D-205 FC-07 limiter choices.**
+  - **Scope of a failure.** `record()` is called once per request run (after retries), not per attempt, so "three 429 runs" give +300/+600/+1200 s. 2xx/3xx (incl. 304) reset; 429, 5xx, timeouts/transport errors and 403 back off; other 4xx (404 etc.) leave the count alone. Backoff and `host_state` are keyed by lowercase hostname (no port); the interval rule uses the longest host suffix.
+  - **Retry-After.** Above `RETRY_AFTER_CAP_S` (60 s) the run stops at once and records `backoff_until = now + min(max(exponential, retry_after), backoff_max_s)`; at or below the cap it still sleeps and retries.
+  - **Back-compat.** With no `politeness` config, `PoliteClient` uses `min_interval_s` (0 allowed, for tests) as the default interval; without a db the backoff lives in memory only. `build_client` forwards `politeness`; `main.py` passes `cfg.politeness`. `collect_all` calls `limiter.new_run()` so the skip is logged once per host per run.
+  - **Existing tests.** Hosts are shared (e.g. one ATS API host for many boards), so one board's 500 now backs the whole host off. Source isolation tests (ashby, lever, greenhouse, jobicy) list the failing target last; `test_retry_after_and_cap` expects no sleep above the cap; the baseline test clears `host_state` between its two collects.

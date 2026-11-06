@@ -127,6 +127,7 @@ async def test_failed_first_fetch_then_success_baselines_on_success():
     await env.collect()
     assert dbm.get_target_state(env.conn, "greenhouse", "a")["baselined_at"] is None
     env.status["a"] = 200
+    env.conn.execute("DELETE FROM host_state")  # past the failed run's backoff
     await env.collect()
     assert env.baselines("a") == [1] * len(FIXTURE["jobs"])
     assert dbm.get_target_state(env.conn, "greenhouse", "a")["baselined_at"]
