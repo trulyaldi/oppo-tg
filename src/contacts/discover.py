@@ -21,7 +21,7 @@ from src.contacts.parsers.hn import fetch_hn_contacts
 from src.contacts.parsers.posting_text import parse_posting_contacts
 from src.contacts.parsers.team_page import parse_team_page
 from src.contacts.store import RawContact, add_contact
-from src.http import is_blocked_host
+from src.http import is_blocked_host, is_unsafe_host
 from src.llm.budget import TZ
 from src.ranking.employer import normalize_company
 from src.ranking.weights import Weights
@@ -87,6 +87,20 @@ def employer_host(posting: Any, weights: Weights) -> str | None:
     if not host or is_aggregator_host(host) or is_blocked_host(f"https://{host}/"):
         return None
     return host
+
+
+def _default_port(url: str) -> bool:
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError:
+        return False
+    return port is None or (port, parts.scheme) in ((80, "http"), (443, "https"))
+
+
+def safe_target(url: str) -> bool:
+    """FIX-24: no localhost, IP literals or explicit non-default ports (D-149)."""
+    return not is_unsafe_host(url) and _default_port(url)
 
 
 def _day(clock: Clock) -> str:
@@ -156,7 +170,9 @@ async def discover_contacts(
     if http is None:
         stamp = False
     else:
-        targets = _page_targets(posting_row, weights)
+        raw_targets = _page_targets(posting_row, weights)
+        targets = [t for t in raw_targets if safe_target(t[0])]
+        unreachable += len(raw_targets) - len(targets)
         day_key = f"contacts:pages:{_day(clock)}"
         used_today = int(db.get_state(conn, day_key, "0") or 0)
         fetched = 0

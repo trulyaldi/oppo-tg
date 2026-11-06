@@ -1983,7 +1983,7 @@ Verified with evidence, no FIX needed:
   - A second `InstanceLock` in the same test, while the first is held, raises `AlreadyRunning`.
   - Release then re-acquire works. Existing lock tests stay green or are updated with a reason.
 
-### FIX-24 [ ] Contact discovery can be pointed at loopback, private or link-local addresses by posting data
+### FIX-24 [x] Contact discovery can be pointed at loopback, private or link-local addresses by posting data
 - Severity: non-blocking (personal bot, response content is only parsed for names; still, posting data should not steer where the bot connects).
 - Problem:
   - For hackathon and competition postings, `_page_targets` fetches the posting URL itself (http allowed). For other kinds it fetches `https://<posting host>/team` and `/about`.

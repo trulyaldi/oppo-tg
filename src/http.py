@@ -54,6 +54,27 @@ def is_blocked_host(url: str) -> bool:
     return any(host == b or host.endswith("." + b) for b in BLOCKED_HOSTS)
 
 
+INTERNAL_SUFFIXES = (".localhost", ".local", ".internal", ".lan", ".home.arpa")
+
+
+def is_unsafe_host(url: str) -> bool:
+    """True for localhost, internal-looking names and IP literals (any form, v4 or v6).
+
+    Posting URLs come from third-party feeds, so they must not steer the bot at
+    loopback, private, link-local or cloud-metadata addresses (FIX-24, D-149).
+    """
+    try:
+        host = (urlsplit(url).hostname or "").lower().rstrip(".")
+    except ValueError:
+        return True
+    if not host or host == "localhost" or host.endswith(INTERNAL_SUFFIXES):
+        return True
+    if ":" in host:  # IPv6 literal (hostname has the brackets stripped)
+        return True
+    last = host.rsplit(".", 1)[-1]
+    return last.isdigit() or last.startswith("0x")  # 1.2.3.4, 2130706433, 0x7f.1
+
+
 SleepFn = Callable[[float], Awaitable[None]]
 
 
@@ -115,6 +136,9 @@ class PoliteClient:
         if is_blocked_host(url):
             log.info("blocked host, not fetching %s", urlsplit(url).hostname)
             return None
+        if is_unsafe_host(url):
+            log.info("unsafe host (local or IP literal), not fetching")
+            return None
         resp = await self._fetch_once(url, params, headers, raw)
         hops = 0
         while resp is not None and _is_redirect(resp):
@@ -133,6 +157,9 @@ class PoliteClient:
             nxt_url = str(nxt)
             if is_blocked_host(nxt_url):
                 log.info("blocked host on redirect, not fetching %s", nxt.host)
+                return None
+            if is_unsafe_host(nxt_url):
+                log.info("unsafe host on redirect, not fetching")
                 return None
             if check_robots and not await self._robots_allowed(nxt_url):
                 log.info("robots.txt disallows redirect target %s", nxt_url)

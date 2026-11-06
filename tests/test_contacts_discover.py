@@ -226,3 +226,53 @@ def test_discover_not_referenced_from_pipeline_or_scheduler():
     ]
     for f in files:
         assert not re.search(r"discover_contacts|contacts\.discover", f.read_text()), f
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1:8080/event",
+        "http://169.254.169.254/latest",
+        "http://[::1]/",
+        "http://localhost/event",
+        "http://2130706433/",
+    ],
+)
+async def test_unsafe_hackathon_target_makes_no_request(conn, url):
+    site = Site({})
+    row = add(conn, url, kind=Kind.HACKATHON, title="FakeHack")
+    rep = await run(conn, site, row)
+    assert site.urls == [] and rep.unreachable >= 1 and rep.added == 0
+
+
+async def test_client_refuses_ip_literal_and_redirect_to_it(conn):
+    def handler(req):
+        if req.url.host == "ok-fake.test":
+            return httpx.Response(302, headers={"location": "http://169.254.169.254/x"})
+        return httpx.Response(200, text="leak")
+
+    seen = []
+
+    def rec(req):
+        seen.append(str(req.url))
+        return handler(req)
+
+    http = build_client(conn, FixedClock(NOW), transport=httpx.MockTransport(rec), min_interval_s=0)
+    assert await http.get_text("http://10.0.0.5/a", check_robots=False) is None
+    assert await http.get_text("https://ok-fake.test/a", check_robots=False) is None
+    assert all("169.254" not in u and "10.0.0.5" not in u for u in seen)
+    await http.aclose()
+
+
+async def test_normal_job_host_still_fetches_team(conn):
+    site = Site({})
+    row = add(conn, "https://acme-fake.test/jobs/1")
+    await run(conn, site, row)
+    assert "https://acme-fake.test/team" in site.pages()
+
+
+async def test_non_default_port_event_page_skipped_but_team_fetched(conn):
+    site = Site({})
+    row = add(conn, "https://hack-fake.test:8443/event", kind=Kind.HACKATHON, title="FakeHack")
+    rep = await run(conn, site, row)
+    assert site.pages() == ["https://hack-fake.test/team"] and rep.unreachable == 2
