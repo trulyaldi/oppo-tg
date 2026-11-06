@@ -1709,7 +1709,7 @@ Per-type guidance in `draft.md`:
   - `grep` test: `discover_contacts` is not referenced from `src/pipeline/` or `src/scheduler.py`.
   - The `/prepare` output lists the discovered contacts with type and the LinkedIn buttons.
 
-### N7 [ ] /contacts and /addcontact (pasted profile text or URL, never fetched)
+### N7 [x] /contacts and /addcontact (pasted profile text or URL, never fetched)
 - Depends on: N6, C1, C4 (pending input).
 - Build:
   - `src/contacts/pasted.py` `parse_pasted(text) -> (url | None, RawContact | None, needs_llm)`:

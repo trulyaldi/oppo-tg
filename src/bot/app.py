@@ -151,6 +151,45 @@ def build_dispatcher(
     async def _pending_cv(message: Message, conn: sqlite3.Connection, clock: Clock) -> bool:
         return outreach_handlers.has_pending_cv(conn, clock)
 
+    async def _pending_contact(message: Message, conn: sqlite3.Connection, clock: Clock) -> bool:
+        return outreach_handlers.has_pending_contact(conn, clock)
+
+    @dp.callback_query(F.data.startswith("ac:"))
+    async def _addcontact_cb(
+        cb: CallbackQuery, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig
+    ) -> None:
+        await outreach_handlers.on_add_contact_callback(cb, conn, clock, cfg)
+
+    @dp.message(Command(re.compile(r"contacts_([0-9a-f]{16})")))
+    async def _contacts_link(
+        m: Message, command: CommandObject, conn: sqlite3.Connection, clock: Clock
+    ) -> None:
+        match = command.regexp_match
+        await outreach_handlers.cmd_contacts(m, conn, clock, match.group(1) if match else None)
+
+    @dp.message(Command("contacts"))
+    async def _contacts(
+        m: Message, command: CommandObject, conn: sqlite3.Connection, clock: Clock
+    ) -> None:
+        await outreach_handlers.cmd_contacts(m, conn, clock, command.args)
+
+    @dp.message(Command("addcontact"))
+    async def _addcontact(
+        m: Message,
+        command: CommandObject,
+        conn: sqlite3.Connection,
+        clock: Clock,
+        cfg: AppConfig,
+        client: Any,
+    ) -> None:
+        await outreach_handlers.cmd_addcontact(m, conn, clock, cfg, client, command.args)
+
+    @dp.message(F.text, ~F.text.startswith("/"), _pending_contact)
+    async def _contact_text(
+        m: Message, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, client: Any
+    ) -> None:
+        await outreach_handlers.on_contact_text(m, conn, clock, cfg, client)
+
     # Non-command text is consumed only while a CV is pending; otherwise it falls through.
     @dp.message(F.text, ~F.text.startswith("/"), _pending_cv)
     async def _text(

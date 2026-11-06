@@ -13,7 +13,8 @@ from src.clock import Clock
 from src.config import AppConfig, OutreachConfig
 from src.contacts.discover import discover_contacts
 from src.contacts.links import linkedin_search_urls, yc_company_url
-from src.contacts.store import contacts_for
+from src.contacts.pasted import extract_with_llm, parse_pasted
+from src.contacts.store import RawContact, add_contact, contacts_for
 from src.cv.extract import CvInputError, cv_sha, normalize_cv_text, pdf_to_text
 from src.cv.parse import parse_cv_sections
 from src.cv.store import current_cv, forget_cv, save_cv
@@ -21,7 +22,7 @@ from src.delivery.digest import load_weights_checked
 from src.llm.budget import LlmBudget
 from src.outreach import prepare as _prepare  # noqa: F401  (registers cache hooks)
 from src.outreach.prepare import PrepareError, prepare
-from src.outreach.render import prepare_keyboard, render_prepare
+from src.outreach.render import prepare_keyboard, render_contacts, render_prepare
 
 MIN_CV_CHARS = 200
 TOO_SHORT = "That looks too short for a CV; send the full text or a PDF."
@@ -241,12 +242,11 @@ async def run_prepare(
     chunks = render_prepare(
         posting, res.result, contacts, links, res.removed, unreachable=report.unreachable > 0
     )
-    # D-134: URL buttons only. Draft (dr:) and Add contact (ac:) buttons have no handler
-    # until P6/N7, and a dead button is worse than none.
-    kb = prepare_keyboard(posting_id, [], links, add_contact=False) if links else None
+    # D-135: Add contact (ac:) has a handler now; Draft (dr:) buttons stay off until P6.
+    kb = prepare_keyboard(posting_id, [], links, add_contact=True)
     for i, chunk in enumerate(chunks):
         last = i == len(chunks) - 1
-        if last and kb is not None and kb.inline_keyboard:
+        if last and kb.inline_keyboard:
             await _say(message, chunk, reply_markup=kb)
         else:
             await _say(message, chunk)
@@ -284,3 +284,174 @@ async def on_prepare_callback(
     if message is None or not posting_id:
         return
     await run_prepare(message, conn, clock, cfg, client, posting_id, http)
+
+
+# --- /contacts and /addcontact (N7, D-135) ---------------------------------
+
+URL_ONLY = "Paste the person's name and headline with the URL; I never open LinkedIn links."
+CONTACT_PROMPT = (
+    "Send the person's name and headline (for example: Alex Example - Senior Recruiter at "
+    "Acme), or paste their profile text. You may include their LinkedIn URL; I store it but "
+    "never open it. Long pasted text is sent to the Anthropic API (Claude) to extract the "
+    "name and role. Nothing is ever sent to the person. /cancel to stop."
+)
+NOT_UNDERSTOOD = (
+    "I could not find a name and role. Send it as: Name - Role at Company "
+    "(or paste more of their profile text). /cancel to stop."
+)
+
+
+def has_pending_contact(conn: sqlite3.Connection, clock: Clock) -> bool:
+    p = peek_pending(conn, clock.now())
+    return p is not None and p.kind == "contact" and bool(p.posting_id)
+
+
+def _link_set(posting: Any) -> list[tuple[str, str]]:
+    links = linkedin_search_urls(posting["company"], posting["title"])
+    if _is_yc_source(posting):
+        yc = yc_company_url(posting["company"])
+        if yc:
+            links.append(("YC companies", yc))
+    return links
+
+
+async def cmd_contacts(
+    message: Any, conn: sqlite3.Connection, clock: Clock, ref_text: str | None
+) -> None:
+    if not (ref_text or "").strip():
+        await _say(
+            message, "Usage: /contacts &lt;id&gt; (a posting id or a prefix of 6+ characters)."
+        )
+        return
+    ref = resolve_ref(conn, ref_text.split()[0])
+    if ref.posting_id is None:
+        await _say(message, _esc(ref.error))
+        return
+    posting = conn.execute("SELECT * FROM postings WHERE id=?", (ref.posting_id,)).fetchone()
+    contacts = contacts_for(conn, ref.posting_id, clock.now())
+    kb = prepare_keyboard(ref.posting_id, [], _link_set(posting), add_contact=True)
+    chunks = render_contacts(posting, contacts)
+    for i, chunk in enumerate(chunks):
+        if i == len(chunks) - 1:
+            await _say(message, chunk, reply_markup=kb)
+        else:
+            await _say(message, chunk)
+
+
+async def start_add_contact(
+    message: Any, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, posting_id: str
+) -> None:
+    oc = OutreachConfig.from_cfg(cfg)
+    set_pending(conn, "contact", posting_id, clock.now(), oc.pending_input_minutes)
+    await _say(message, _esc(CONTACT_PROMPT))
+
+
+async def cmd_addcontact(
+    message: Any,
+    conn: sqlite3.Connection,
+    clock: Clock,
+    cfg: AppConfig,
+    client: Any,
+    args: str | None,
+) -> None:
+    parts = (args or "").strip().split(None, 1)
+    if not parts:
+        await _say(message, "Usage: /addcontact &lt;id&gt; [name - role, or pasted profile text]")
+        return
+    ref = resolve_ref(conn, parts[0])
+    if ref.posting_id is None:
+        await _say(message, _esc(ref.error))
+        return
+    if len(parts) == 1:
+        await start_add_contact(message, conn, clock, cfg, ref.posting_id)
+        return
+    await store_pasted_contact(message, conn, clock, cfg, client, ref.posting_id, parts[1])
+
+
+async def on_add_contact_callback(
+    cb: Any, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig
+) -> None:
+    """`ac:<posting_id>`: answer first, then set the pending input."""
+    await cb.answer()
+    data = cb.data or ""
+    ref = resolve_ref(conn, data[3:] if data.startswith("ac:") else "")
+    message = getattr(cb, "message", None)
+    if message is None or ref.posting_id is None:
+        return
+    await start_add_contact(message, conn, clock, cfg, ref.posting_id)
+
+
+async def on_contact_text(
+    message: Any, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, client: Any
+) -> None:
+    p = peek_pending(conn, clock.now())
+    if p is None or p.kind != "contact" or not p.posting_id:
+        return
+    await store_pasted_contact(
+        message, conn, clock, cfg, client, p.posting_id, message.text or "", pending=True
+    )
+
+
+async def store_pasted_contact(
+    message: Any,
+    conn: sqlite3.Connection,
+    clock: Clock,
+    cfg: AppConfig,
+    client: Any,
+    posting_id: str,
+    text: str,
+    pending: bool = False,
+) -> None:
+    """Parse pasted text as data (never fetched, never logged) and store one contact."""
+    oc = OutreachConfig.from_cfg(cfg)
+    posting = conn.execute("SELECT * FROM postings WHERE id=?", (posting_id,)).fetchone()
+    if posting is None:
+        clear_pending(conn)
+        await _say(message, "Posting not found.")
+        return
+    url, raw, needs_llm = parse_pasted(text)
+    company = posting["company"]
+    if raw is None and not needs_llm:
+        # pending stays so the user can retry
+        await _say(message, _esc(URL_ONLY if url else NOT_UNDERSTOOD))
+        return
+    if needs_llm:
+        if client is None:
+            await _say(message, "Could not read that right now (no LLM client); try again later.")
+            return
+        budget = LlmBudget(conn, clock, oc.daily_llm_call_cap)
+        raw, found_company, err = await extract_with_llm(client, text, oc, budget)
+        if err == "budget":
+            await _say(
+                message,
+                f"Daily outreach LLM limit reached ({oc.daily_llm_call_cap} calls). "
+                "Try tomorrow or raise [outreach].daily_llm_call_cap.",
+            )
+            return
+        if err == "rejected":
+            if pending:
+                clear_pending(conn)
+            await _say(message, "I could not find a clear name and role in that text; not saved.")
+            return
+        if err or raw is None:
+            await _say(message, f"Could not read that right now ({err}); try again later.")
+            return
+        company = found_company or company
+    assert isinstance(raw, RawContact)
+    cid = add_contact(
+        conn,
+        posting_id,
+        raw,
+        source_kind="pasted",
+        source_url=url or "",
+        company=company,
+        now=clock.now(),
+        ttl_days=oc.contact_ttl_days,
+        max_per_posting=oc.max_contacts_per_posting,
+    )
+    clear_pending(conn)
+    if cid is None:
+        await _say(message, "Not saved: that contact already exists or the limit is reached.")
+        return
+    row = conn.execute("SELECT contact_type FROM contacts WHERE id=?", (cid,)).fetchone()
+    await _say(message, f"Saved {_esc(row['contact_type'])} contact #{cid}. /draft_{cid}")

@@ -150,3 +150,16 @@ def _cb(prefix: str, ident: Any) -> str:
     if len(data.encode()) > MAX_CALLBACK_BYTES:
         raise ValueError(f"callback data too long: {data!r}")
     return data
+
+
+def render_contacts(posting: Mapping, contacts: Sequence[Mapping]) -> list[str]:
+    """Contacts list for `/contacts`; link buttons come from `prepare_keyboard`."""
+    lines = [
+        f"<b>Contacts: {_esc(_clip(posting['title']))}</b> — {_esc(_clip(posting['company'], 100))}"
+    ]
+    if contacts:
+        lines += [_contact_line(c) for c in contacts]
+    else:
+        lines.append("none stored yet. Use the buttons below or /addcontact.")
+    lines.append(FOOTER)
+    return chunk_lines(lines, CHUNK_LIMIT)
