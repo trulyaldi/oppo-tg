@@ -2915,7 +2915,7 @@ Each migration gets a test that starts from the previous version with sample row
   - "clearance sale" does not match (phrase match).
   - The migration test passes.
 
-### FC-29 [ ] Cheap triage before full scoring (schema v12)
+### FC-29 [x] Cheap triage before full scoring (schema v12)
 - Build (D-196):
   - `SCHEMA_12` adds `triage_results(posting_id FK ON DELETE CASCADE, content_hash, relevant, reason, model, prompt_version, created_at, PRIMARY KEY(posting_id, content_hash))` and `postings.triage_attempts`.
   - Add `src/scoring/triage.md` (static system prompt) and `src/scoring/triage.py` (a `Triager` using `call_json`).

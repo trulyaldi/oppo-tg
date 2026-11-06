@@ -107,3 +107,26 @@ async def test_stats_other_chat_ignored(conn, monkeypatch):
     calls = await feed(conn, None, upd(42, "/stats"), monkeypatch)
     assert any("Stats" in (getattr(c, "text", "") or "") for c in calls)
     assert Bot
+
+
+def test_stats_triage_line_counts_today(conn):
+    p1 = seed(conn, "hn", "t1", NOW)
+    p2 = seed(conn, "hn", "t2", NOW)
+    p3 = seed(conn, "hn", "t3", NOW)
+    for pid, rel, at in (
+        (p1, 1, NOW),
+        (p2, 0, NOW),
+        (p3, 1, NOW - timedelta(days=2)),  # not today
+    ):
+        conn.execute(
+            "INSERT INTO triage_results VALUES (?,?,?,?,?,?,?)",
+            (pid, "h", rel, "r", "m", "v", at.isoformat()),
+        )
+    conn.execute("UPDATE postings SET status='triage_error' WHERE id=?", (p3,))
+    conn.execute("INSERT INTO llm_usage (day, purpose, calls) VALUES ('2026-11-06','triage',3)")
+    conn.execute(
+        "INSERT INTO llm_usage (day, purpose, calls) VALUES ('2026-11-06','triage_baseline',2)"
+    )
+    conn.commit()
+    out = render_stats(conn, SETTINGS, CFG, CLOCK)
+    assert "Triage today: yes 1, no 1, errors 1, calls 5/600" in out

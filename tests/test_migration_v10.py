@@ -24,7 +24,7 @@ def test_v9_to_v10_adds_tg_channels_and_is_idempotent(tmp_path):
     c.close()
     conn = db.connect(path)
     db.migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 11
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 12
     assert conn.execute("SELECT COUNT(*) FROM postings").fetchone()[0] == 1
     cols = [r["name"] for r in conn.execute("PRAGMA table_info(tg_channels)")]
     assert cols == ["handle", "state", "updated_at"]

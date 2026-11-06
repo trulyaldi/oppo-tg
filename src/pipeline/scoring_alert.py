@@ -28,12 +28,14 @@ def is_total_failure(stats: dict[str, int]) -> bool:
     return stats.get("errors", 0) > 0 and stats.get("scored", 0) == 0
 
 
-def render_failure(stats: dict[str, int], last_error: str | None, model: str) -> str:
+def render_failure(
+    stats: dict[str, int], last_error: str | None, model: str, stage: str = "scoring"
+) -> str:
     error = html.escape(last_error or "unknown error, see the bot log")
     n = stats.get("errors", 0)
     return (
-        "<b>ERROR: scoring failed</b>\n"
-        f"All {n} scoring attempts in this run failed, "
+        f"<b>ERROR: {stage} failed</b>\n"
+        f"All {n} {stage} attempts in this run failed, "
         "so no new items will reach your digest.\n"
         f"Model: <code>{html.escape(model)}</code>\n"
         f"Last error: <code>{error}</code>\n"
@@ -42,11 +44,19 @@ def render_failure(stats: dict[str, int], last_error: str | None, model: str) ->
     )
 
 
-def cap_state_key(day: str) -> str:
-    return f"cap_warned:score:{day}"
+def cap_state_key(day: str, stage: str = "scoring") -> str:
+    return f"cap_warned:{'score' if stage == 'scoring' else stage}:{day}"
 
 
-def render_cap_warning(stats: dict[str, int], cap: int) -> str:
+def render_cap_warning(stats: dict[str, int], cap: int, stage: str = "scoring") -> str:
+    if stage == "triage":
+        return (
+            "<b>Triage cap reached</b>\n"
+            f"The daily triage cap of {cap} calls is used up, so {stats.get('capped', 0)} "
+            "postings wait until tomorrow (Asia/Almaty).\n"
+            "Raise <code>[triage] daily_call_cap</code> in config.toml to triage more per day. "
+            "Baseline postings are limited by <code>[triage] baseline_max_share</code>."
+        )
     return (
         "<b>Scoring cap reached</b>\n"
         f"The daily scoring cap of {cap} calls is used up, so {stats.get('capped', 0)} "
@@ -63,15 +73,16 @@ async def warn_cap_once(
     clock: Clock,
     stats: dict[str, int],
     cap: int,
+    stage: str = "scoring",
 ) -> bool:
     """One cap warning per Asia/Almaty day, however many runs hit the cap. Never raises."""
     try:
         if stats.get("capped", 0) <= 0:
             return False
-        key = cap_state_key(clock.now().astimezone(TZ).date().isoformat())
+        key = cap_state_key(clock.now().astimezone(TZ).date().isoformat(), stage)
         if db.get_state(conn, key):
             return False
-        await bot.send_message(chat_id, render_cap_warning(stats, cap), parse_mode="HTML")
+        await bot.send_message(chat_id, render_cap_warning(stats, cap, stage), parse_mode="HTML")
         db.set_state(conn, key, clock.now().isoformat())
         return True
     except Exception:
@@ -88,24 +99,31 @@ async def report_scoring_outcome(
     last_error: str | None,
     model: str,
     cap: int | None = None,
+    stage: str = "scoring",
 ) -> bool:
-    """Alert on total failure (throttled); re-arm on success. Never raises. True if sent."""
+    """Alert on total failure (throttled); re-arm on success. Never raises. True if sent.
+
+    `stage` is "scoring" or "triage"; each has its own throttle and cap-warning keys.
+    """
+    state_key = STATE_KEY if stage == "scoring" else f"{stage}_failure_alerted_at"
     if cap is not None:
-        await warn_cap_once(bot, chat_id, conn, clock, stats, cap)
+        await warn_cap_once(bot, chat_id, conn, clock, stats, cap, stage)
     try:
         if stats.get("scored", 0) > 0:
-            if db.get_state(conn, STATE_KEY):
-                db.set_state(conn, STATE_KEY, "")
+            if db.get_state(conn, state_key):
+                db.set_state(conn, state_key, "")
             return False
         if not is_total_failure(stats):
             return False
         now = clock.now()
-        previous = db.get_state(conn, STATE_KEY)
+        previous = db.get_state(conn, state_key)
         if previous and now - datetime.fromisoformat(previous) < REALERT_AFTER:
             log.warning("scoring failing again, alert suppressed (sent recently)")
             return False
-        await bot.send_message(chat_id, render_failure(stats, last_error, model), parse_mode="HTML")
-        db.set_state(conn, STATE_KEY, now.isoformat())
+        await bot.send_message(
+            chat_id, render_failure(stats, last_error, model, stage), parse_mode="HTML"
+        )
+        db.set_state(conn, state_key, now.isoformat())
         return True
     except Exception:
         log.exception("could not send the scoring failure alert")

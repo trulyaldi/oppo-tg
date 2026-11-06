@@ -22,9 +22,9 @@ def test_v10_to_v11_adds_hard_blocker_and_is_idempotent(tmp_path):
     c.close()
     conn = db.connect(path)
     db.migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 11
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 12
     row = conn.execute("SELECT * FROM postings WHERE id='p1'").fetchone()
     assert row["hard_blocker"] is None
     db.migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 11
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 12
     assert conn.execute("SELECT COUNT(*) FROM postings").fetchone()[0] == 1

@@ -14,13 +14,14 @@ from typing import Any
 import src.sources  # noqa: F401,I001  (registers the sources)
 from src import db
 from src.clock import Clock
-from src.config import TIERS, AppConfig, ScoringConfig, Settings
+from src.config import TIERS, AppConfig, ScoringConfig, Settings, TriageConfig
 from src.http import PoliteClient
 from src.llm.budget import LlmBudget
 from src.pipeline.dedupe import fingerprint, mark_duplicates
 from src.pipeline.filters import apply_filters
 from src.pipeline.scoring_alert import report_scoring_outcome
 from src.scoring.scorer import Scorer
+from src.scoring.triage import Triager
 from src.sources import base
 from src.sources.base import SourceContext, Target, TargetResult, run_target, source_targets
 
@@ -270,6 +271,33 @@ async def run_tier_cycle(
                 log.exception("tier %s step %s failed", tier, name)
 
 
+async def triage_pending(
+    conn: sqlite3.Connection,
+    client: Any,
+    clock: Clock,
+    triage_cfg: TriageConfig,
+    bot: Any | None = None,
+    chat_id: int | str | None = None,
+) -> dict[str, int]:
+    """Triage `new` postings (D-196); warns once per day at the cap, alerts on total failure."""
+    triager = Triager(client, conn, clock, triage_cfg)
+    stats = await triager.triage_pending()
+    if bot is not None and chat_id is not None:
+        decided = stats["yes"] + stats["no"] + stats["cached"] + stats["exempt"]
+        await report_scoring_outcome(
+            bot,
+            chat_id,
+            conn,
+            clock,
+            {"scored": decided, "errors": stats["errors"], "capped": stats["capped"]},
+            triager.last_error,
+            triager.model,
+            triage_cfg.daily_call_cap,
+            stage="triage",
+        )
+    return stats
+
+
 async def score_pending(
     conn: sqlite3.Connection,
     client: Any,
@@ -280,13 +308,25 @@ async def score_pending(
     bot: Any | None = None,
     chat_id: int | str | None = None,
     scoring_cfg: ScoringConfig | None = None,
+    triage_cfg: TriageConfig | None = None,
 ) -> dict[str, int]:
     """Score pending postings, at most `max_calls` API calls (retries count).
 
     With `bot` and `chat_id`, a run where every posting failed sends a Telegram
-    error notice (D-83) instead of failing silently.
+    error notice (D-83) instead of failing silently. With an enabled `triage_cfg`, a cheap
+    triage pass runs first and only `triaged` postings are scored (D-196).
     """
     sc = scoring_cfg or ScoringConfig()
+    triage_failed = False
+    triage_on = triage_cfg is not None and triage_cfg.enabled
+    if triage_on:
+        assert triage_cfg is not None
+        tstats = await triage_pending(conn, client, clock, triage_cfg, bot, chat_id)
+        log.info("triage: %s", tstats)
+        triage_failed = (
+            tstats["errors"] > 0
+            and tstats["yes"] + tstats["no"] + tstats["cached"] + tstats["exempt"] == 0
+        )
     scorer = Scorer(
         client,
         model,
@@ -295,6 +335,7 @@ async def score_pending(
         max_calls,
         budget=LlmBudget(conn, clock, sc.daily_call_cap, ("score", "score_baseline")),
         baseline_budget=LlmBudget(conn, clock, sc.baseline_cap, ("score_baseline",)),
+        triage=triage_on,
     )
     stats = await scorer.score_pending(limit if limit is not None else max_calls)
     if bot is not None and chat_id is not None:
@@ -304,4 +345,6 @@ async def score_pending(
         from src.sources.hh import notify_auth_error_once
 
         await notify_auth_error_once(bot, chat_id, conn, clock)  # FC-25, D-219
+    if triage_failed and stats["scored"] == 0:
+        stats["errors"] += tstats["errors"]  # total triage failure counts for the exit code
     return stats

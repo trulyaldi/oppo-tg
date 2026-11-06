@@ -222,6 +222,52 @@ class ScoringConfig:
 
 
 @dataclass(frozen=True)
+class TriageConfig:
+    """Cheap relevance pass before full scoring (D-196)."""
+
+    enabled: bool = True
+    model: str = "claude-haiku-4-5"  # D-183
+    max_desc_chars: int = 500
+    daily_call_cap: int = 600  # 0 means "no triage"
+    baseline_max_share: float = 0.5
+    exempt_sources: tuple[str, ...] = ("pagewatch",)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.enabled, bool):
+            raise ValueError("[triage] enabled must be a boolean")
+        if not isinstance(self.model, str) or not self.model.strip():
+            raise ValueError("[triage] model must be a non-empty string")
+        _check_number("[triage] max_desc_chars", self.max_desc_chars, integer=True)
+        cap = self.daily_call_cap
+        if isinstance(cap, bool) or not isinstance(cap, int) or cap < 0:
+            raise ValueError("[triage] daily_call_cap must be a non-negative integer")
+        share = self.baseline_max_share
+        if isinstance(share, bool) or not isinstance(share, int | float) or not 0 <= share <= 1:
+            raise ValueError("[triage] baseline_max_share must be a number between 0 and 1")
+        ex = self.exempt_sources
+        if not isinstance(ex, list | tuple) or not all(isinstance(x, str) for x in ex):
+            raise ValueError("[triage] exempt_sources must be a list of strings")
+
+    @property
+    def baseline_cap(self) -> int:
+        return int(self.baseline_max_share * self.daily_call_cap)
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> TriageConfig:
+        unknown = set(data) - set(cls.__dataclass_fields__)
+        if unknown:
+            raise ValueError(f"unknown triage keys: {sorted(unknown)}")
+        d = dict(data)
+        if isinstance(d.get("exempt_sources"), list):
+            d["exempt_sources"] = tuple(d["exempt_sources"])
+        return cls(**d)
+
+    @classmethod
+    def from_cfg(cls, cfg: AppConfig) -> TriageConfig:
+        return cls.from_mapping(cfg.triage)
+
+
+@dataclass(frozen=True)
 class SchedulerConfig:
     tier1_minutes: int = 15
     tier2_minutes: int = 90
@@ -312,6 +358,7 @@ class AppConfig:
     ranking: dict[str, Any] = field(default_factory=dict)
     outreach: dict[str, Any] = field(default_factory=dict)
     scoring: dict[str, Any] = field(default_factory=dict)
+    triage: dict[str, Any] = field(default_factory=dict)
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
     politeness: PolitenessConfig = field(default_factory=PolitenessConfig)
     discovery: DiscoveryConfig = field(default_factory=DiscoveryConfig)
@@ -330,6 +377,8 @@ class AppConfig:
         OutreachConfig.from_mapping(outreach)  # fail fast at load (D-147)
         scoring = dict(data.get("scoring", {}))
         ScoringConfig.from_mapping(scoring)  # fail fast at load
+        triage = dict(data.get("triage", {}))
+        TriageConfig.from_mapping(triage)  # fail fast at load
         return cls(
             sources=sources,
             filters=dict(data.get("filters", {})),
@@ -337,6 +386,7 @@ class AppConfig:
             ranking=dict(data.get("ranking", {})),
             outreach=outreach,
             scoring=scoring,
+            triage=triage,
             scheduler=SchedulerConfig.from_mapping(dict(data.get("scheduler", {}))),
             politeness=PolitenessConfig.from_mapping(dict(data.get("politeness", {}))),
             discovery=DiscoveryConfig.from_mapping(dict(data.get("discovery", {}))),

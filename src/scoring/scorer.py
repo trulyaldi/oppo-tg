@@ -64,7 +64,9 @@ class Scorer:
         max_calls: int,
         budget: LlmBudget | None = None,
         baseline_budget: LlmBudget | None = None,
+        triage: bool = False,
     ) -> None:
+        self.triage = triage  # only `triaged` postings are pending when triage is on (D-196)
         self.budget = budget  # purposes score + score_baseline, the daily cap (D-184)
         self.baseline_budget = baseline_budget  # purpose score_baseline, the sub-cap (D-188)
         self.client = client
@@ -154,7 +156,7 @@ class Scorer:
         return None
 
     async def score_pending(self, limit: int) -> dict[str, int]:
-        rows = db.pending_for_scoring(self.conn, limit)
+        rows = db.pending_for_scoring(self.conn, limit, self.triage)
         examples = self._examples()
         sem = asyncio.Semaphore(CONCURRENCY)
         stats = {"scored": 0, "errors": 0, "skipped": 0, "capped": 0}

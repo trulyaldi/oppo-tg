@@ -1,6 +1,6 @@
 """Eval runner (T28). The only code that may call the real Claude API, on manual run only.
 
-Usage: .venv/bin/python -m src.evals.run [--threshold 0.8] [--limit N]
+Usage: .venv/bin/python -m src.evals.run [--threshold 0.8] [--limit N] [--triage]
 Needs ANTHROPIC_API_KEY in the environment. Tests inject a fake client instead.
 """
 
@@ -12,23 +12,27 @@ import json
 import os
 import sys
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
 from src import db
 from src.clock import FixedClock
-from src.config import AppConfig
+from src.config import AppConfig, TriageConfig
 from src.logging_setup import configure_logging
 from src.models import Kind, Posting
 from src.pipeline.filters import hard_filter, relevance_ok
 from src.scoring.prompt import prompt_version
 from src.scoring.scorer import Scorer
+from src.scoring.triage import Triager, triage_prompt_version
 
 ROOT = Path(__file__).resolve().parents[2]
 LABELED = ROOT / "evals" / "labeled.jsonl"
 LAST_RUN = ROOT / "evals" / "last_run.json"
+LAST_TRIAGE_RUN = ROOT / "evals" / "last_triage_run.json"
+TRIAGE_THRESHOLD = 0.9  # recall: triage may drop noise, but must not drop good items
+POSITIVE_MIN = 5.0  # items labeled at least this good must survive triage (digest_min_score)
 # Fixed "today" so deadline/stale behaviour does not drift as the calendar moves.
 EVAL_NOW = datetime(2026, 11, 6, 6, 0, tzinfo=UTC)
 DEFAULT_THRESHOLD = 0.8
@@ -143,6 +147,79 @@ async def run_eval(
     }
 
 
+async def run_triage_eval(
+    items: list[EvalItem],
+    client: Any,
+    cfg: AppConfig,
+    threshold: float = TRIAGE_THRESHOLD,
+    model: str | None = None,
+) -> dict[str, Any]:
+    """Triage recall on the labeled set: how many items labeled >= 5 get relevant=true.
+
+    Hard filters run first, as in the pipeline; filtered items never reach triage and are
+    skipped. Negatives (labeled max < 5) report how many triage rejected, for information.
+    """
+    today = EVAL_NOW.date()
+    conn = db.connect(":memory:")
+    db.migrate(conn)
+    tcfg = TriageConfig.from_cfg(cfg)
+    triager = Triager(
+        client, conn, FixedClock(EVAL_NOW), replace(tcfg, daily_call_cap=10**6), model
+    )
+    rows = []
+    for it in items:
+        p = it.posting
+        if hard_filter(p, cfg, today) or not relevance_ok(p, cfg):
+            continue
+        verdict, error = await triager.triage_posting(p)
+        positive = it.expected_min >= POSITIVE_MIN
+        rows.append(
+            {
+                "id": p.external_id,
+                "title": p.title,
+                "positive": positive,
+                "relevant": None if verdict is None else verdict.relevant,
+                "error": error,
+                "reason": None if verdict is None else verdict.reason,
+            }
+        )
+    pos = [r for r in rows if r["positive"]]
+    neg = [r for r in rows if not r["positive"]]
+    kept = sum(r["relevant"] is True for r in pos)
+    recall = kept / len(pos) if pos else 1.0
+    conn.close()
+    return {
+        "prompt_version": triage_prompt_version(),
+        "model": triager.model,
+        "run_at": datetime.now(UTC).isoformat(),
+        "threshold": threshold,
+        "positives": len(pos),
+        "kept": kept,
+        "recall": recall,
+        "negatives": len(neg),
+        "rejected": sum(r["relevant"] is False for r in neg),
+        "errors": sum(r["error"] is not None for r in rows),
+        "ok": recall >= threshold,
+        "results": rows,
+    }
+
+
+def format_triage_report(summary: Mapping[str, Any]) -> str:
+    lines = []
+    for r in summary["results"]:
+        got = "error" if r["relevant"] is None else ("yes" if r["relevant"] else "no")
+        want = "yes" if r["positive"] else "any"
+        bad = r["positive"] and r["relevant"] is not True
+        lines.append(f"{'FAIL' if bad else 'ok'} {r['id']}: triage {got} (wanted {want})")
+    lines.append(
+        f"prompt_version={summary['prompt_version']} model={summary['model']} "
+        f"recall {summary['kept']}/{summary['positives']} = {summary['recall']:.0%} "
+        f"(threshold {summary['threshold']:.0%}) rejected {summary['rejected']}/"
+        f"{summary['negatives']} negatives, {summary['errors']} errors"
+    )
+    return "\n".join(lines)
+
+
 def format_report(summary: Mapping[str, Any]) -> str:
     lines = []
     for r in summary["results"]:
@@ -170,9 +247,15 @@ def main(
     client_factory: Callable[[str], Any] = _real_client,
     items_path: Path = LABELED,
     out_path: Path = LAST_RUN,
+    triage_out_path: Path = LAST_TRIAGE_RUN,
 ) -> int:
     ap = argparse.ArgumentParser(prog="python -m src.evals.run", description=__doc__)
-    ap.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
+    ap.add_argument("--threshold", type=float, default=None)
+    ap.add_argument(
+        "--triage",
+        action="store_true",
+        help="measure triage recall (uses [triage] model) instead of scoring accuracy",
+    )
     ap.add_argument("--limit", type=int, default=None)
     args = ap.parse_args(argv)
     env = os.environ if environ is None else environ
@@ -188,9 +271,20 @@ def main(
         return 2
     items = load_items(items_path)[: args.limit]
     cfg = AppConfig.load(env.get("OPPO_CONFIG") or ROOT / "config.toml")
+    if args.triage:
+        threshold = TRIAGE_THRESHOLD if args.threshold is None else args.threshold
+        tmodel = TriageConfig.from_cfg(cfg).model
+        print(f"triage_prompt_version={triage_prompt_version()} model={tmodel} items={len(items)}")
+        report = asyncio.run(run_triage_eval(items, client_factory(key), cfg, threshold))
+        print(format_triage_report(report))
+        triage_out_path.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        return 0 if report["ok"] else 1
+    threshold = DEFAULT_THRESHOLD if args.threshold is None else args.threshold
     model = (env.get("SCORING_MODEL") or "").strip() or DEFAULT_MODEL
     print(f"prompt_version={prompt_version()} model={model} items={len(items)}")
-    summary = asyncio.run(run_eval(items, client_factory(key), model, cfg, args.threshold))
+    summary = asyncio.run(run_eval(items, client_factory(key), model, cfg, threshold))
     print(format_report(summary))
     out_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return 0 if summary["ok"] else 1

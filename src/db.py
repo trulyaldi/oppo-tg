@@ -15,8 +15,9 @@ from src.text import content_hash
 
 log = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 MAX_SCORE_ATTEMPTS = 3
+MAX_TRIAGE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
 _EXCLUSIVE = {"like": "dislike", "dislike": "like"}
 
@@ -199,6 +200,16 @@ SCHEMA_11 = """
 ALTER TABLE postings ADD COLUMN hard_blocker TEXT
 """
 
+SCHEMA_12 = """
+CREATE TABLE triage_results (
+  posting_id TEXT NOT NULL REFERENCES postings(id) ON DELETE CASCADE,
+  content_hash TEXT NOT NULL, relevant INTEGER NOT NULL, reason TEXT NOT NULL DEFAULT '',
+  model TEXT NOT NULL, prompt_version TEXT NOT NULL, created_at TEXT NOT NULL,
+  PRIMARY KEY (posting_id, content_hash)
+);
+ALTER TABLE postings ADD COLUMN triage_attempts INTEGER NOT NULL DEFAULT 0
+"""
+
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
@@ -227,6 +238,7 @@ _MIGRATIONS = (
     SCHEMA_9,
     SCHEMA_10,
     SCHEMA_11,
+    SCHEMA_12,
 )
 
 
@@ -333,7 +345,17 @@ def upsert_posting(
     elif old_hash != chash:
         conn.execute(
             "UPDATE postings SET last_seen_at=?, title=?, location=?, description=?,"
-            " content_hash=?, source_published_at=? WHERE id=?",
+            " content_hash=?, source_published_at=?,"
+            # a posting that was never scored gets a fresh look (D-196); scored ones never do
+            " status=CASE WHEN status IN ('triaged','triage_error','score_error','filtered')"
+            " THEN 'new' ELSE status END,"
+            " filter_reason=CASE WHEN status IN ('triaged','triage_error','score_error','filtered')"
+            " THEN NULL ELSE filter_reason END,"
+            " triage_attempts=CASE WHEN status IN ('triaged','triage_error','score_error',"
+            "'filtered') THEN 0 ELSE triage_attempts END,"
+            " score_attempts=CASE WHEN status IN ('triaged','triage_error','score_error',"
+            "'filtered') THEN 0 ELSE score_attempts END"
+            " WHERE id=?",
             (ts, p.title, p.location, p.description, chash, published, p.id),
         )
         outcome = Upsert.CHANGED
@@ -411,13 +433,73 @@ def set_status(
     conn.commit()
 
 
-def pending_for_scoring(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
-    """New/score_error postings under MAX_SCORE_ATTEMPTS: non-baseline first, then newest."""
+def pending_for_scoring(
+    conn: sqlite3.Connection, limit: int, triage: bool = False
+) -> list[sqlite3.Row]:
+    """Postings to score under MAX_SCORE_ATTEMPTS: non-baseline first, then newest.
+
+    With triage enabled only `triaged` (and `score_error`) postings qualify (D-196).
+    """
+    first = "triaged" if triage else "new"
     return conn.execute(
-        "SELECT * FROM postings WHERE status IN ('new','score_error') AND score_attempts < ?"
+        "SELECT * FROM postings WHERE status IN (?,'score_error') AND score_attempts < ?"
         " ORDER BY baseline ASC, first_seen_at DESC, rowid DESC LIMIT ?",
-        (MAX_SCORE_ATTEMPTS, limit),
+        (first, MAX_SCORE_ATTEMPTS, limit),
     ).fetchall()
+
+
+def pending_for_triage(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
+    """`new` postings under MAX_TRIAGE_ATTEMPTS: non-baseline first, then newest (D-196)."""
+    return conn.execute(
+        "SELECT * FROM postings WHERE status='new' AND triage_attempts < ?"
+        " ORDER BY baseline ASC, first_seen_at DESC, rowid DESC LIMIT ?",
+        (MAX_TRIAGE_ATTEMPTS, limit),
+    ).fetchall()
+
+
+def get_triage_result(conn: sqlite3.Connection, posting_id: str, chash: str) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM triage_results WHERE posting_id=? AND content_hash=?", (posting_id, chash)
+    ).fetchone()
+
+
+def save_triage_result(
+    conn: sqlite3.Connection,
+    posting_id: str,
+    chash: str,
+    relevant: bool,
+    reason: str,
+    model: str,
+    prompt_version: str,
+    now: datetime,
+) -> None:
+    with conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO triage_results (posting_id, content_hash, relevant, reason,"
+            " model, prompt_version, created_at) VALUES (?,?,?,?,?,?,?)",
+            (posting_id, chash, int(relevant), reason, model, prompt_version, _iso(now)),
+        )
+
+
+def apply_triage_verdict(
+    conn: sqlite3.Connection, posting_id: str, relevant: bool, reason: str
+) -> None:
+    """yes -> `triaged`; no -> `filtered`, reason `triage_no` (text kept in triage_results)."""
+    if relevant:
+        set_status(conn, posting_id, "triaged")
+    else:
+        set_status(conn, posting_id, "filtered", "triage_no")
+
+
+def record_triage_error(conn: sqlite3.Connection, posting_id: str) -> None:
+    """Count a failed triage; the posting stays `new` until MAX_TRIAGE_ATTEMPTS, then errors."""
+    conn.execute(
+        "UPDATE postings SET triage_attempts=triage_attempts+1,"
+        " status=CASE WHEN triage_attempts+1 >= ? THEN 'triage_error' ELSE status END"
+        " WHERE id=?",
+        (MAX_TRIAGE_ATTEMPTS, posting_id),
+    )
+    conn.commit()
 
 
 def save_score(

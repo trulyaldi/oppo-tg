@@ -16,7 +16,7 @@ from typing import Any
 from src import config as config_mod
 from src import db
 from src.clock import SystemClock
-from src.config import AppConfig, ScoringConfig, Settings
+from src.config import AppConfig, ScoringConfig, Settings, TriageConfig
 from src.delivery.digest import send_digest
 from src.http import build_client
 from src.lock import AlreadyRunning, InstanceLock
@@ -91,6 +91,7 @@ async def _run(command: str, settings: Settings) -> int:
                     bot=bot,
                     chat_id=settings.telegram_chat_id,
                     scoring_cfg=ScoringConfig.from_cfg(cfg),
+                    triage_cfg=TriageConfig.from_cfg(cfg),
                 )
                 log.info("scored: %s", scored)
                 if is_total_failure(scored):
@@ -155,6 +156,7 @@ async def _serve(settings: Settings) -> None:
     bot = Bot(settings.telegram_bot_token)
 
     scoring_cfg = ScoringConfig.from_cfg(cfg)
+    triage_cfg = TriageConfig.from_cfg(cfg)
 
     async def collect_t(tier: str) -> None:
         stats = await collect_tier(conn, http, settings, cfg, clock, tier, process=False)
@@ -175,6 +177,7 @@ async def _serve(settings: Settings) -> None:
                 bot=bot,
                 chat_id=settings.telegram_chat_id,
                 scoring_cfg=scoring_cfg,
+                triage_cfg=triage_cfg,
             ),
         )
 

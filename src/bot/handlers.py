@@ -16,7 +16,7 @@ from aiogram.exceptions import TelegramBadRequest
 import src.sources  # noqa: F401  (registers the sources for /sources)
 from src import db
 from src.clock import Clock
-from src.config import TIERS, AppConfig, ScoringConfig, Settings
+from src.config import TIERS, AppConfig, ScoringConfig, Settings, TriageConfig
 from src.delivery.digest import item_from_row, load_weights_checked
 from src.delivery.format import feedback_keyboard, render_item
 from src.llm.budget import LlmBudget
@@ -278,6 +278,21 @@ def render_stats(conn: sqlite3.Connection, settings: Settings, cfg: AppConfig, c
     cap = ScoringConfig.from_cfg(cfg).daily_call_cap
     used = LlmBudget(conn, clock, cap, ("score", "score_baseline")).used()
     lines.append(f"Scoring calls today: {used}/{cap}")
+    tcfg = TriageConfig.from_cfg(cfg)
+    day = str(today)
+    yes = no = 0
+    for r in conn.execute("SELECT relevant, created_at FROM triage_results"):
+        if datetime.fromisoformat(r["created_at"]).astimezone(zone).date().isoformat() == day:
+            yes += bool(r["relevant"])
+            no += not r["relevant"]
+    t_errors = conn.execute("SELECT COUNT(*) FROM postings WHERE status='triage_error'").fetchone()[
+        0
+    ]
+    t_used = LlmBudget(conn, clock, tcfg.daily_call_cap, ("triage", "triage_baseline")).used()
+    lines.append(
+        f"Triage today: yes {yes}, no {no}, errors {t_errors}, "
+        f"calls {t_used}/{tcfg.daily_call_cap}" + ("" if tcfg.enabled else " (off)")
+    )
 
     day_ago = (now - timedelta(hours=24)).isoformat()
     per_tier = dict.fromkeys(TIERS, 0)

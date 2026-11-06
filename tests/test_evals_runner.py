@@ -1,3 +1,4 @@
+import asyncio
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -139,3 +140,64 @@ def test_main_pins_sdk_loggers_even_with_anthropic_log_debug(tmp_path, monkeypat
     finally:
         for n, lvl in old.items():
             logging.getLogger(n).setLevel(lvl)
+
+
+class TriageFake:
+    """Triage replies: relevant=false for titles containing a marker, else true."""
+
+    def __init__(self, reject=("Nurse",)):
+        self.reject, self.calls = reject, []
+        self.messages = self
+
+    async def create(self, **kw):
+        self.calls.append(kw)
+        text = kw["messages"][0]["content"]
+        body = json.dumps({"relevant": not any(k in text for k in self.reject), "reason": "r"})
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text=body)])
+
+
+def test_triage_eval_reports_recall_offline():
+    items = [
+        item("Quant Intern A", 8, 10),  # positive, kept
+        item("Quant Intern B", 7, 9),  # positive, kept
+        item("ML Intern C", 6, 8),  # positive, kept
+        item("Nurse Intern D", 0, 2),  # negative, rejected
+        item("Unpaid Intern", 7, 9, description="This is an unpaid internship"),  # filtered first
+    ]
+    client = TriageFake()
+    s = asyncio.run(ev.run_triage_eval(items, client, CFG))
+    assert s["positives"] == 3 and s["kept"] == 3 and s["recall"] == 1.0 and s["ok"]
+    assert s["negatives"] == 1 and s["rejected"] == 1 and len(client.calls) == 4
+    assert "recall 3/3" in ev.format_triage_report(s)
+    s = asyncio.run(ev.run_triage_eval(items, TriageFake(("Quant Intern A",)), CFG))
+    assert s["kept"] == 2 and not s["ok"]
+
+
+def test_triage_main_flag_writes_separate_report(tmp_path, capsys):
+    p = tmp_path / "set.jsonl"
+    p.write_text(
+        json.dumps(
+            {
+                "source": "eval",
+                "external_id": "a",
+                "title": "Quant Intern",
+                "company": "Co",
+                "url": "https://example.com/a",
+                "kind": "internship",
+                "expected_min": 7,
+                "expected_max": 10,
+            }
+        )
+        + "\n"
+    )
+    env = {
+        "ANTHROPIC_API_KEY": "k",
+        "OPPO_CONFIG": str(ROOT / "tests" / "fixtures" / "config_repo_snapshot.toml"),
+    }
+    out, tout = tmp_path / "last.json", tmp_path / "triage.json"
+    rc = ev.main(["--triage"], env, lambda key: TriageFake(), p, out, tout)
+    assert rc == 0 and not out.exists()
+    assert json.loads(tout.read_text())["recall"] == 1.0
+    assert "recall 1/1" in capsys.readouterr().out
+    rc = ev.main(["--triage"], env, lambda key: TriageFake(("Quant",)), p, out, tout)
+    assert rc == 1

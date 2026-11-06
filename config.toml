@@ -238,6 +238,15 @@ weights_file = "config/weights.yaml"
 daily_call_cap = 200       # all scoring calls per Asia/Almaty day, retries included; 0 = no scoring
 baseline_max_share = 0.5   # baseline postings may use at most this share of the cap
 
+[triage]
+# Cheap relevance pass before full scoring (D-196). A "no" never reaches the scorer.
+enabled = true
+model = "claude-haiku-4-5"     # D-183
+max_desc_chars = 500           # description characters sent to the model
+daily_call_cap = 600           # triage calls per Asia/Almaty day, retries included; 0 = no triage
+baseline_max_share = 0.5       # baseline postings may use at most this share of the cap
+exempt_sources = ["pagewatch"] # hand-curated pages skip triage
+
 [outreach]
 cheap_model = "claude-haiku-4-5"     # CV parsing, pasted-contact extraction
 tailor_model = "claude-sonnet-4-6"   # /prepare and /draft

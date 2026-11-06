@@ -11,7 +11,7 @@ import pytest
 
 import src.main as main_mod
 from src import db
-from src.config import Settings
+from src.config import Settings, TriageConfig
 from src.models import Kind, Posting
 from src.pipeline.dedupe import fingerprint
 
@@ -72,6 +72,8 @@ def setup(tmp_path, monkeypatch):
     async def fake_alerts(*a, **k):
         return 0
 
+    # these tests are about scoring; triage has its own tests (test_triage.py, below)
+    monkeypatch.setattr(main_mod.TriageConfig, "from_cfg", lambda cfg: TriageConfig(enabled=False))
     monkeypatch.setattr(main_mod, "collect_all", fake_collect)
     monkeypatch.setattr(main_mod, "build_client", lambda *a, **k: FakeHttp())
     monkeypatch.setattr(aiogram, "Bot", FakeBot)
@@ -132,3 +134,11 @@ async def test_cap_only_run_exits_zero_and_warns_not_fails(setup, monkeypatch):
     assert await main_mod._run("collect", setup) == 0
     assert len(SENT) == 1 and "Scoring cap reached" in SENT[0][1]
     assert "ERROR: scoring failed" not in SENT[0][1]
+
+
+async def test_triage_total_failure_alerts_by_stage_and_exits_nonzero(setup, monkeypatch):
+    monkeypatch.setattr(main_mod.TriageConfig, "from_cfg", lambda cfg: TriageConfig())
+    monkeypatch.setattr(anthropic, "AsyncAnthropic", make_client(RuntimeError("401 bad key")))
+    assert await main_mod._run("collect", setup) == 1
+    assert len(SENT) == 1
+    assert "ERROR: triage failed" in SENT[0][1]
