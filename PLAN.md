@@ -412,7 +412,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Files: `src/sources/devpost.py`, `tests/fixtures/devpost_hackathons.json`, `tests/test_source_devpost.py` (or DECISIONS.md only).
 - Acceptance (if implemented): fixture parses with deadline parsed from e.g. "Oct 01 - Nov 30, 2026" -> 2026-11-30 (and cross-year ranges); Online -> remote True; empty/malformed/500 -> `[]`; registered.
 
-### T19 [ ] Source: MLH events (probe-dependent)
+### T19 [x] Source: MLH events (probe-dependent)
 - Probe `https://mlh.io/robots.txt`. If allowed: `src/sources/mlh.py` fetches the current season events page (season derived from clock: month >= 7 -> year+1; test both), parses event cards with BeautifulSoup (name, url, dates, location, "Digital"/"In-Person"), kind HACKATHON, deadline = event start date.
 - Exit: if disallowed, DECISIONS entry, task done.
 - Files: `src/sources/mlh.py`, `tests/fixtures/mlh_events.html`, `tests/test_source_mlh.py`.

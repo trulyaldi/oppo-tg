@@ -7,6 +7,7 @@ from src.sources import (
     hh,  # noqa: F401  (registers "hh")
     hn,  # noqa: F401  (registers "hn")
     lever,  # noqa: F401  (registers "lever")
+    mlh,  # noqa: F401  (registers "mlh")
     pagewatch,  # noqa: F401  (registers "pagewatch")
     rss,  # noqa: F401  (registers "rss")
 )

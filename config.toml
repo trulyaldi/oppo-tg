@@ -102,7 +102,8 @@ name = "OIST Research Internship"
 kind = "research"
 
 [sources.devpost]
-enabled = true
+# Disabled: Devpost ToS forbids automated access (D-50)
+enabled = false
 
 [sources.mlh]
 enabled = true
