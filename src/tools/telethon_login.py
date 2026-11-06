@@ -26,12 +26,21 @@ async def login(api_id: int, api_hash: str, session_path: str) -> None:
 
 
 def main() -> int:
-    api_id, api_hash = os.environ.get("TG_API_ID"), os.environ.get("TG_API_HASH")
-    if not api_id or not api_hash:
+    from src.config import Settings
+
+    settings = Settings.from_env(os.environ, require_secrets=False)  # empty means default
+    if not settings.tg_api_id or not settings.tg_api_hash:
         print("Set TG_API_ID and TG_API_HASH in the environment first.", file=sys.stderr)
         return 2
-    session = os.environ.get("TG_SESSION_PATH", "data/telethon.session")
-    asyncio.run(login(int(api_id), api_hash, session))
+    try:
+        api_id = int(settings.tg_api_id)
+    except ValueError:
+        print(
+            "TG_API_ID must be an integer (the numeric api_id from my.telegram.org).",
+            file=sys.stderr,
+        )
+        return 2
+    asyncio.run(login(api_id, settings.tg_api_hash, settings.tg_session_path))
     return 0
 
 

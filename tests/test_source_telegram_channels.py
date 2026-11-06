@@ -214,3 +214,25 @@ def test_repo_config_channels_are_valid_handles():
     assert isinstance(raw, list)
     assert all(isinstance(c, str) for c in raw)
     assert channels(cfg) == [c for c in channels(cfg) if normalize_channel(c) == c]
+
+
+def test_default_client_factory_builds_client(monkeypatch, tmp_path):
+    import telethon
+
+    from src.sources.telegram_channels import FLOOD_SLEEP_THRESHOLD_S, default_client_factory
+
+    made = []
+
+    class Fake:
+        def __init__(self, *args, **kwargs):
+            made.append((args, kwargs))
+
+    monkeypatch.setattr(telethon, "TelegramClient", Fake)
+    sess = tmp_path / "x" / "t.session"
+    settings = Settings.from_env(
+        {"TG_API_ID": "123", "TG_API_HASH": "hh", "TG_SESSION_PATH": str(sess)},
+        require_secrets=False,
+    )
+    assert isinstance(default_client_factory(settings), Fake)
+    assert made == [((str(sess), 123, "hh"), {"flood_sleep_threshold": FLOOD_SLEEP_THRESHOLD_S})]
+    assert sess.parent.is_dir()
