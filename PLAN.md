@@ -903,3 +903,23 @@ Filed by the third reviewer pass. It re-checked FIX-11..FIX-13 against their acc
   - Existing FIX-04 and FIX-11 filter tests stay green, `tests/test_source_count.py` is unaffected, all tests are green and ruff is clean.
 
 REVIEW PASSED 2026-11-06
+
+## 7. Stabilization (outreach-and-weights branch)
+
+Filed 2026-11-06 on branch `feature/outreach-and-weights`. One commit per task, marked done in the same commit.
+
+### S1 [x] Scoring call verified against the installed SDK, with a real-client test
+- Acceptance: the scorer sends only parameters that `anthropic`'s `AsyncMessages.create()` accepts (checked with `pip show anthropic` and the SDK source); the model id is checked against the SDK `Model` literal; a test runs `Scorer` through a real `AsyncAnthropic` client on an `httpx2.MockTransport` (no network), so an unsupported kwarg raises `TypeError`; DECISIONS records the check.
+
+### S2 [ ] Total scoring failure alerts Telegram and exits non-zero
+- Acceptance: when every scoring call fails, or nothing is scored although candidates existed, a clear error message goes to `TELEGRAM_CHAT_ID`; `collect` and `once` then exit non-zero (the rest of the run still completes); tested with a mocked bot.
+
+### S3 [ ] Single-instance lock for `run`
+- Acceptance: a PID lock file under `data/` (gitignored); a second `run` refuses to start with a clear message and non-zero exit; a stale lock (dead PID) is recovered; released on shutdown; tested.
+
+### S4 [ ] Feedback persistence and chat whitelist verified
+- Acceptance: Like/Dislike/Save/Applied callbacks persist to SQLite and are still there after reopening the db file with a new connection and a new dispatcher; updates from chats other than `TELEGRAM_CHAT_ID` are silently ignored (test exists).
+
+### S5 [ ] Full suite, lint, and live probe recorded
+- Acceptance: `python -m pytest -q` and `ruff check . && ruff format --check .` are clean; `python -m src.main probe` was run and DECISIONS records which sources work and which do not; credential-gated sources are not fixed.
+

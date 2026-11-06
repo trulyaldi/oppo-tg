@@ -194,3 +194,75 @@ async def test_feedback_examples_injected(conn):
 
 def test_sqlite_row_factory(conn):
     assert conn.row_factory is sqlite3.Row
+
+
+# --- S1: run the Scorer through the REAL AsyncAnthropic client (no network) ----
+
+
+def _real_client(handler):
+    import httpx2 as httpx
+    from anthropic import AsyncAnthropic
+
+    return AsyncAnthropic(
+        api_key="test",
+        max_retries=0,
+        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+
+
+def _message_json(text):
+    return {
+        "id": "msg_test",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-haiku-4-5",
+        "content": [{"type": "text", "text": text}],
+        "stop_reason": "end_turn",
+        "stop_sequence": None,
+        "usage": {"input_tokens": 10, "output_tokens": 10},
+    }
+
+
+async def test_real_sdk_client_scores_through_mock_transport(conn):
+    import httpx2 as httpx
+
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.url.path, json.loads(request.content)))
+        return httpx.Response(200, json=_message_json(GOOD))
+
+    (pid,) = add(conn, 1)
+    client = _real_client(handler)
+    s = Scorer(client, "claude-haiku-4-5", conn, FixedClock(NOW), 10)
+    stats = await s.score_pending(10)
+    assert stats == {"scored": 1, "errors": 0, "skipped": 0}, s.last_error
+    assert status(conn, pid)["status"] == "scored"
+    path, body = seen[0]
+    assert path == "/v1/messages"
+    assert set(body) == {"model", "max_tokens", "system", "messages"}
+    assert body["model"] == "claude-haiku-4-5"
+
+
+async def test_real_sdk_client_rejects_unsupported_kwarg():
+    import httpx2 as httpx
+
+    client = _real_client(lambda r: httpx.Response(200, json=_message_json("x")))
+    with pytest.raises(TypeError, match="temperature"):
+        await client.messages.create(
+            model="m", max_tokens=1, messages=[{"role": "user", "content": "x"}], temperature=0
+        )
+
+
+async def test_real_sdk_client_http_error_is_a_scoring_error(conn):
+    import httpx2 as httpx
+
+    def handler(request):
+        return httpx.Response(
+            401, json={"type": "error", "error": {"type": "authentication_error", "message": "x"}}
+        )
+
+    (pid,) = add(conn, 1)
+    s = Scorer(_real_client(handler), "claude-haiku-4-5", conn, FixedClock(NOW), 10)
+    stats = await s.score_pending(10)
+    assert stats["errors"] == 1 and "AuthenticationError" in s.last_error
