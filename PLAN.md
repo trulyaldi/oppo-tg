@@ -763,7 +763,7 @@ Evidence from the review: 275 tests pass, `ruff check` and `ruff format --check`
   - `relevance_ok` is False for "Internal Communications Manager".
   - All tests green.
 
-### FIX-05 [ ] .gitignore misses SQLite WAL/SHM files, the run log and the Telethon session journal
+### FIX-05 [x] .gitignore misses SQLite WAL/SHM files, the run log and the Telethon session journal
 - Problem: `git check-ignore` reports NOT ignored for:
   - `data/oppo.db-wal` and `data/oppo.db-shm`, created by WAL mode (D-10). They hold postings, the HTTP cache and the chat id in deliveries.
   - `data/run.log`, from README's nohup line.
