@@ -236,4 +236,7 @@ These evals have never been run yet. Re-run them after any prompt, profile or ru
   complete the Telethon login and add channels (see above).
 - Too many or too few results: tune `[filters]` and `[thresholds]` in `config.toml`.
 - Scoring stops early: `MAX_SCORES_PER_RUN` caps Claude calls per run.
+- `test_source_count` failing after you edited `config.toml`: it reads the real file on purpose and
+  fails by design when fewer than 6 credential-free families are enabled. Re-enable a source.
+  Other tests use `tests/fixtures/config_repo_snapshot.toml`, so channel or board edits are safe.
 - Tests never use the network or `.env`; a failing test is not a credentials problem.

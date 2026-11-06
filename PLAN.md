@@ -773,7 +773,7 @@ Evidence from the review: 275 tests pass, `ruff check` and `ruff format --check`
 - Files: `.gitignore`, optionally `data/.gitkeep`, `tests/test_smoke.py` or a new small test.
 - Acceptance: a test (subprocess `git check-ignore -q`, skipped if git is unavailable) confirms that `data/oppo.db`, `data/oppo.db-wal`, `data/oppo.db-shm`, `data/run.log`, `data/telethon.session`, `data/telethon.session-journal`, `x.db-wal` and `.env` are all ignored. `git ls-files` shows no file under `data/` except an optional `.gitkeep`.
 
-### FIX-06 [ ] Tests break when the user edits config.toml as README step 4 instructs
+### FIX-06 [x] Tests break when the user edits config.toml as README step 4 instructs
 - Problem: README "First run" step 4 tells the user to add Kazakh channels to `[sources.telegram_channels].channels`. Doing exactly that (one channel added in a clean clone) fails `tests/test_source_telegram_channels.py::test_default_config_channels_empty`. Disabling one counted source also fails `tests/test_bot_commands.py::test_sources_exact_fixture` and the e2e tests. Those tests check user-editable values, not code, so "all tests green" (DoD) depends on the user never personalising the config. The README Troubleshooting entry claims a failing test "is not a credentials problem", but says nothing about config edits.
 - Build:
   - Point `test_sources_exact_fixture` (and other tests that only need some config) at a committed test copy, e.g. `tests/fixtures/config_repo_snapshot.toml`, or at an inline `AppConfig.from_dict`.

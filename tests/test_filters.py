@@ -12,7 +12,7 @@ from src.pipeline.dedupe import fingerprint
 from src.pipeline.filters import apply_filters, hard_filter, relevance_ok
 
 CASES = json.loads((Path(__file__).parent / "fixtures" / "filter_cases.json").read_text())
-CFG = AppConfig.load(Path(__file__).parent.parent / "config.toml")
+CFG = AppConfig.load(Path(__file__).parent / "fixtures" / "config_repo_snapshot.toml")
 TODAY = date(2026, 11, 6)
 NOW = datetime(2026, 11, 6, 6, 0, tzinfo=UTC)
 

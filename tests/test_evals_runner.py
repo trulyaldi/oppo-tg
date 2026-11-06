@@ -6,7 +6,7 @@ from src.config import AppConfig
 from src.evals import run as ev
 
 ROOT = Path(__file__).resolve().parents[1]
-CFG = AppConfig.load(ROOT / "config.toml")
+CFG = AppConfig.load(ROOT / "tests" / "fixtures" / "config_repo_snapshot.toml")
 
 
 class FakeClient:
@@ -91,7 +91,10 @@ def test_main_writes_report_and_exit_codes(tmp_path, capsys):
         + "\n"
     )
     out = tmp_path / "last.json"
-    env = {"ANTHROPIC_API_KEY": "k", "OPPO_CONFIG": str(ROOT / "config.toml")}
+    env = {
+        "ANTHROPIC_API_KEY": "k",
+        "OPPO_CONFIG": str(ROOT / "tests" / "fixtures" / "config_repo_snapshot.toml"),
+    }
     rc = ev.main([], env, lambda key: FakeClient(8.0), p, out)
     assert rc == 0
     data = json.loads(out.read_text())

@@ -20,6 +20,7 @@ BASE_ENV = {
 
 
 def _report(extra=None):
+    # Deliberately reads the real config.toml: DoD guard for >= 6 sources (FIX-06).
     cfg = AppConfig.load(ROOT / "config.toml")
     return count_report(Settings.from_env({**BASE_ENV, **(extra or {})}), cfg)
 

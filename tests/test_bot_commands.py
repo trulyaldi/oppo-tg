@@ -22,7 +22,7 @@ NOW = datetime(2026, 11, 6, 6, 0, tzinfo=UTC)
 CLOCK = FixedClock(NOW)
 ENV = {"TELEGRAM_BOT_TOKEN": "1:t", "TELEGRAM_CHAT_ID": "42", "ANTHROPIC_API_KEY": "k"}
 SETTINGS = Settings.from_env(ENV)
-CFG = AppConfig.load(Path(__file__).parent.parent / "config.toml")
+CFG = AppConfig.load(Path(__file__).parent / "fixtures" / "config_repo_snapshot.toml")
 FIXTURES = Path(__file__).parent / "fixtures"
 
 

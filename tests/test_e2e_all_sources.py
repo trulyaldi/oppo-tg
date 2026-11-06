@@ -78,6 +78,7 @@ class FakeBot:
 
 
 def test_count_report_has_six_counted_families():
+    # Deliberately reads the real config.toml: DoD guard for >= 6 sources.
     cfg = AppConfig.load(ROOT / "config.toml")
     report = count_report(Settings.from_env(ENV), cfg)
     assert len(report.counted) >= MIN_SOURCE_FAMILIES
@@ -88,7 +89,7 @@ async def test_all_sources_end_to_end():
     db.migrate(conn)
     clock = FixedClock(NOW)
     settings = Settings.from_env(ENV)
-    cfg = AppConfig.load(ROOT / "config.toml")
+    cfg = AppConfig.load(ROOT / "tests" / "fixtures" / "config_repo_snapshot.toml")
     report = count_report(settings, cfg)
     assert len(report.counted) >= MIN_SOURCE_FAMILIES
     counted = {n for names in report.counted.values() for n in names}

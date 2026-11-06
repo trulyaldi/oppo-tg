@@ -207,6 +207,10 @@ def test_channel_normalization_and_registry():
     assert REGISTRY["telegram_channels"]().credentials == ("TG_API_ID", "TG_API_HASH")
 
 
-def test_default_config_channels_empty():
+def test_repo_config_channels_are_valid_handles():
     root = Path(__file__).resolve().parent.parent
-    assert len(channels(AppConfig.load(root / "config.toml"))) == 0
+    cfg = AppConfig.load(root / "config.toml")
+    raw = cfg.source("telegram_channels").get("channels", [])
+    assert isinstance(raw, list)
+    assert all(isinstance(c, str) for c in raw)
+    assert channels(cfg) == [c for c in channels(cfg) if normalize_channel(c) == c]
