@@ -2313,7 +2313,7 @@ Probe posting used by FIX-36 and FIX-37, verbatim: "Acme Fake is hiring a resear
     - "Point to the C++ parser that cut replay time by 30%.".
   - The existing `tailor_reply_honest.json` tests still give removed=0, using that fixture's own CV and posting. Its "low-latency" gap is dropped by V4 under the probe posting, which is unrelated to this fix.
 
-### FIX-37 [ ] Spelled-out singular durations ("one year", "a year", "a decade") are not checked
+### FIX-37 [x] Spelled-out singular durations ("one year", "a year", "a decade") are not checked
 - Severity: BLOCKING (invented duration).
 - Problem:
   - FIX-31 left out "one" to protect "One thing ...". That makes "1 year" a checked number while "one year" is not.

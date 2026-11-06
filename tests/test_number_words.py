@@ -117,3 +117,46 @@ def test_honest_sentences_still_kept():
         "At Sample Labs I built a latency benchmark harness in Python for order book replay."
     )
     assert run_one("I made the Dean's list in 2024 and 2025.")
+
+
+# ---- FIX-37: singular written-out durations (D-163) ----
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "I have one year of Python experience.",
+        "I spent one year at Sample Labs.",
+        "I have a year of Python experience.",
+        "I have over a year of C++ experience.",
+        "I spent a year at Sample Labs.",
+        "I have a decade of coding experience.",
+        "У меня один год опыта на Python.",
+    ],
+)
+def test_singular_durations_dropped_from_drafts(sentence):
+    assert not run_one(sentence)
+
+
+def test_singular_durations_dropped_from_claims():
+    ev = "Sample Labs - Research Intern, Summer 2025"
+    assert not claim_ok("Highlight your year at Sample Labs", ev, CV, SKILLS)
+    assert claim_ok("Highlight your Summer 2025 internship at Sample Labs", ev, CV, SKILLS)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "One thing that stood out to me is your focus on clean data pipelines.",
+        "I'm a third-year Computer Science student.",
+        "I spent a summer at Sample Labs as a research intern.",
+        "I was a research intern at Sample Labs in Summer 2025.",
+    ],
+)
+def test_honest_singular_forms_kept(sentence):
+    assert run_one(sentence)
+
+
+def test_singular_duration_numbers():
+    assert number_words("a decade of coding") == {"10"}
+    assert number_words("a summer at x one thing") == set()

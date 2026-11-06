@@ -59,9 +59,33 @@ def has_term(term: str, text_norm: str) -> bool:
 _NUM_TOKEN = re.compile(r"[^\W\d_]+")
 
 
-def number_words(text_norm: str) -> set[str]:
-    """Written-out numbers and multipliers ("five", "thousands", "tenfold", "тысяч"), FIX-31."""
+_SINGULAR_DUR = re.compile(
+    r"(?<!\w)(?:one|an?|single|один|одного|одним)\s+(?:(years?|months?|weeks?|semesters?)|"
+    r"(decades?)|(год|года|лет|месяц|неделю|семестр))(?!\w)"
+)
+_POSS_YEAR = re.compile(
+    r"(?<!\w)(?:your|my|мой|твой|ваш)\s+(?:year|years)\s+(?:at|with|in|on|в|у)(?!\w)"
+)
+_YEAR_OF_EXP = re.compile(r"(?<!\w)год\s+опыта(?!\w)")
+
+
+def _singular_durations(text_norm: str) -> set[str]:
+    """ "one year", "a year", "over a year", "a decade", "your year at X" (FIX-37)."""
     out: set[str] = set()
+    for m in _SINGULAR_DUR.finditer(text_norm):
+        out.add("10" if m.group(2) else "1")
+    if _POSS_YEAR.search(text_norm) or _YEAR_OF_EXP.search(text_norm):
+        out.add("1")
+    return out
+
+
+def number_words(text_norm: str) -> set[str]:
+    """Written-out numbers and multipliers ("five", "thousands", "tenfold", "тысяч"), FIX-31.
+
+    Also singular durations ("a year" -> "1", "a decade" -> "10", FIX-37); "summer" and "term"
+    are not duration units.
+    """
+    out: set[str] = _singular_durations(text_norm)
     for w in _NUM_TOKEN.findall(text_norm):
         if w in NUMBER_WORDS:
             out.add(NUMBER_WORDS[w])
