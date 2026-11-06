@@ -1944,7 +1944,7 @@ Verified with evidence, no FIX needed:
   - The repro above leaves the DB exactly at v1 with the `score` column intact. After dropping the extra column, `migrate` succeeds.
   - Existing migration tests stay green.
 
-### FIX-21 [ ] `[outreach]` config errors surface only when a command runs, and values are untyped
+### FIX-21 [x] `[outreach]` config errors surface only when a command runs, and values are untyped
 - Severity: non-blocking.
 - Problem:
   - `AppConfig.from_dict({"outreach": {"daily_llm_cap": 5}})` loads fine. `OutreachConfig.from_cfg` raises `ValueError` only inside each handler, so every outreach command fails with no reply while digests keep working.

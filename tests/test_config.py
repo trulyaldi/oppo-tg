@@ -92,3 +92,29 @@ def test_legacy_digest_min_items_ignored():
 
     cfg = AppConfig.from_dict({"thresholds": {"digest_min_items": 5, "alert_score": 8.0}})
     assert cfg.thresholds.alert_score == 8.0
+
+
+def test_outreach_unknown_key_fails_at_load():
+    with pytest.raises(ValueError, match="daily_llm_cap"):
+        AppConfig.from_dict({"outreach": {"daily_llm_cap": 5}})
+
+
+@pytest.mark.parametrize(
+    "bad, key",
+    [
+        ({"daily_llm_call_cap": "40"}, "daily_llm_call_cap"),
+        ({"daily_llm_call_cap": -1}, "daily_llm_call_cap"),
+        ({"cv_max_pages": 0}, "cv_max_pages"),
+        ({"cv_max_pages": True}, "cv_max_pages"),
+        ({"cheap_model": 3}, "cheap_model"),
+    ],
+)
+def test_outreach_bad_values_name_the_key(bad, key):
+    with pytest.raises(ValueError, match=key):
+        AppConfig.from_dict({"outreach": bad})
+
+
+def test_outreach_valid_and_snapshot_load():
+    cfg = AppConfig.from_dict({"outreach": {"daily_llm_call_cap": 10}})
+    assert cfg.outreach == {"daily_llm_call_cap": 10}
+    AppConfig.load(Path(__file__).resolve().parent.parent / "config.toml")

@@ -124,6 +124,10 @@ class Thresholds:
     alert_deadline_min_score: float = 0.0
 
 
+# Caps where 0 is a legitimate "off" switch (the cap-reached replies are tested with 0).
+_ZERO_OK = {"daily_llm_call_cap", "max_page_fetches_per_prepare", "max_page_fetches_per_day"}
+
+
 @dataclass(frozen=True)
 class OutreachConfig:
     cheap_model: str = "claude-haiku-4-5"
@@ -139,12 +143,28 @@ class OutreachConfig:
     cv_max_chars: int = 30000
     pending_input_minutes: int = 15
 
+    def __post_init__(self) -> None:
+        for name, f in self.__dataclass_fields__.items():
+            value = getattr(self, name)
+            if f.type == "str":
+                if not isinstance(value, str) or not value.strip():
+                    raise ValueError(f"[outreach] {name} must be a non-empty string")
+            elif isinstance(value, bool) or not isinstance(value, int):
+                raise ValueError(f"[outreach] {name} must be an integer")
+            elif value < (0 if name in _ZERO_OK else 1):
+                kind = "non-negative" if name in _ZERO_OK else "positive"
+                raise ValueError(f"[outreach] {name} must be a {kind} integer")
+
     @classmethod
-    def from_cfg(cls, cfg: AppConfig) -> OutreachConfig:
-        unknown = set(cfg.outreach) - set(cls.__dataclass_fields__)
+    def from_mapping(cls, data: Mapping[str, Any]) -> OutreachConfig:
+        unknown = set(data) - set(cls.__dataclass_fields__)
         if unknown:
             raise ValueError(f"unknown outreach keys: {sorted(unknown)}")
-        return cls(**cfg.outreach)
+        return cls(**data)
+
+    @classmethod
+    def from_cfg(cls, cfg: AppConfig) -> OutreachConfig:
+        return cls.from_mapping(cfg.outreach)
 
 
 @dataclass(frozen=True)
@@ -165,12 +185,14 @@ class AppConfig:
         if unknown:
             raise ValueError(f"unknown thresholds: {sorted(unknown)}")
         sources = {k: dict(v) for k, v in dict(data.get("sources", {})).items()}
+        outreach = dict(data.get("outreach", {}))
+        OutreachConfig.from_mapping(outreach)  # fail fast at load (D-147)
         return cls(
             sources=sources,
             filters=dict(data.get("filters", {})),
             thresholds=Thresholds(**th),
             ranking=dict(data.get("ranking", {})),
-            outreach=dict(data.get("outreach", {})),
+            outreach=outreach,
         )
 
     @classmethod
