@@ -51,6 +51,8 @@ class SchedulerDeps:
     tiers: dict[str, tuple[int, int]] = field(default_factory=default_tiers)
     timezone: str = "Asia/Almaty"
     digest_time: str = "09:00"
+    discover: Job | None = None
+    discover_time: str = "05:30"
 
 
 def safe_job(name: str, fn: Job) -> Callable[[], Awaitable[None]]:
@@ -102,4 +104,12 @@ def build_scheduler(deps: SchedulerDeps) -> AsyncIOScheduler:
         id="prune",
         **common,
     )
+    if deps.discover is not None:
+        d_hour, d_minute = parse_hhmm(deps.discover_time)
+        sched.add_job(
+            safe_job("board_discovery", deps.discover),
+            CronTrigger(hour=d_hour, minute=d_minute, timezone=tz),
+            id="board_discovery",
+            **common,
+        )
     return sched

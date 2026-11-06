@@ -34,7 +34,7 @@ def test_v1_to_v2_preserves_data(tmp_path):
     conn = db.connect(path)
     db.migrate(conn)
     db.migrate(conn)  # idempotent
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 8
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 9
     rows = {r["posting_id"]: r for r in conn.execute("SELECT * FROM scores")}
     for pid, sc in (("a", 7.5), ("b", 3.0)):
         r = rows[pid]
@@ -49,7 +49,7 @@ def test_v1_to_v2_preserves_data(tmp_path):
 def test_fresh_db_is_v2():
     conn = db.connect(":memory:")
     db.migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 8
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 9
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(scores)")}
     assert {"base_score", "adjusted_score", "weights_version"} <= cols and "score" not in cols
 

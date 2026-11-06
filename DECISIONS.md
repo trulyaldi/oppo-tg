@@ -963,3 +963,12 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **Lookup.** Tokens compare case-insensitively within a source, so a config token `acme` beats a discovered `Acme`. `tombstone` of an unseen board adds a removed entry so it is never discovered later.
   - **Targets.** `discovered_targets` in `src/sources/base.py` appends active boards as `tier2`, origin `discovered`, only when `[discovery] enabled`. A source is still enabled only when its config list is non-empty (unchanged `enabled()`), so discovered boards need at least one config board of that ATS; accepted to keep FC-15 small.
   - **Config.** `[discovery]` is validated (`DiscoveryConfig`): positive integer caps, `run_time` as HH:MM, unknown keys rejected.
+
+- **D-213 FC-16 board validation choices.**
+  - **Schema v9.** Adds only `board_candidates`. `discovery_spend` is dropped: it existed only for web-search discovery, which is cut (D-202). Version numbering is unchanged (v9 here, v10 FC-23, ...).
+  - **Statuses.** `valid`, `invalid` (HTTP 400/401/403/404/410, bad JSON or wrong schema; negative-cached `negative_cache_days`) and `error` (network, 429, 5xx, robots: not an invalid verdict, retried the next UTC day). Both validation and new-board caps are counted per UTC day from `board_candidates.checked_at`, errors included.
+  - **Cursor.** `discovery:last_rowid` advances only past postings fully handled; when a cap stops a run, the remaining postings are rescanned the next day.
+  - **validate.** Each of greenhouse/lever/ashby gets `validate(ctx, token) -> (ok, company)` built on `base.validate_board` (one `PoliteClient.fetch`, robots and limiter on, canonical URL from the token). Lever and Ashby have no company name in the payload, so company is empty. Workable arrives in FC-18.
+  - **Eligibility.** A ref is validated only if its source is registered, has `validate`, and is `enabled` in config; others are skipped and not cached.
+  - **Lock.** Requests run outside `PIPELINE_LOCK`; the store write and candidate row are written inside it. A corrupt boards file means nothing is added and the candidate is not recorded.
+  - **Scheduler and CLI.** `SchedulerDeps.discover` (optional) runs daily at `[discovery] run_time`; `python -m src.main discover` runs once and needs no Telegram/Claude secrets.

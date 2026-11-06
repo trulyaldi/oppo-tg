@@ -15,7 +15,7 @@ from src.text import content_hash
 
 log = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 MAX_SCORE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
 _EXCLUSIVE = {"like": "dislike", "dislike": "like"}
@@ -178,6 +178,15 @@ CREATE INDEX idx_postings_first_seen ON postings(first_seen_at);
 CREATE INDEX idx_postings_source_target ON postings(source, target)
 """
 
+SCHEMA_9 = """
+CREATE TABLE board_candidates (
+  source TEXT NOT NULL, token TEXT NOT NULL, status TEXT NOT NULL,
+  checked_at TEXT NOT NULL, company TEXT NOT NULL DEFAULT '',
+  discovered_from TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (source, token)
+)
+"""
+
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
@@ -194,7 +203,17 @@ def connect(path: str | Path) -> sqlite3.Connection:
     return conn
 
 
-_MIGRATIONS = (SCHEMA_1, SCHEMA_2, SCHEMA_3, SCHEMA_4, SCHEMA_5, SCHEMA_6, SCHEMA_7, SCHEMA_8)
+_MIGRATIONS = (
+    SCHEMA_1,
+    SCHEMA_2,
+    SCHEMA_3,
+    SCHEMA_4,
+    SCHEMA_5,
+    SCHEMA_6,
+    SCHEMA_7,
+    SCHEMA_8,
+    SCHEMA_9,
+)
 
 
 def _backup_before_v2(conn: sqlite3.Connection) -> None:

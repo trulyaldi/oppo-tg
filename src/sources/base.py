@@ -186,6 +186,35 @@ async def fetch_board_json(ctx: SourceContext, target: Target, url: str, params:
         return None
 
 
+async def validate_board(
+    ctx: SourceContext,
+    url: str,
+    params: dict | None,
+    company_of: Callable[[object], str | None],
+) -> tuple[bool, str]:
+    """One polite request to a canonical board API URL (FC-16, D-190).
+
+    Valid means HTTP 200, JSON, and `company_of(payload)` is not None. A transient
+    failure (no status, 429, 5xx) raises `ValidationUnavailable` so it is not cached
+    as invalid.
+    """
+    res = await ctx.http.fetch(url, params=params)
+    if res.text is None:
+        if res.status in (400, 401, 403, 404, 410):
+            return False, ""
+        raise ValidationUnavailable(res.error or f"HTTP {res.status}")
+    try:
+        data = json.loads(res.text)
+    except ValueError:
+        return False, ""
+    company = company_of(data)
+    return (True, company) if company is not None else (False, "")
+
+
+class ValidationUnavailable(Exception):
+    """A board could not be checked right now (network, rate limit, robots); retry later."""
+
+
 MIN_SOURCE_FAMILIES = 6  # D-52
 
 

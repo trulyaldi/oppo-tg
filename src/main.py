@@ -40,6 +40,7 @@ def _parser() -> argparse.ArgumentParser:
     sub.add_parser("collect", help="collect, dedupe, filter, score and send instant alerts")
     sub.add_parser("digest", help="send the digest now")
     sub.add_parser("once", help="collect, score, alert and send the digest")
+    sub.add_parser("discover", help="find new ATS boards in collected postings and validate them")
     sub.add_parser("run", help="unattended mode: scheduler plus bot polling")
     probe = sub.add_parser("probe", help="run every enabled source once against the live network")
     probe.add_argument("--db", default="data/probe.db", help="separate probe DB path")
@@ -53,6 +54,17 @@ async def _run(command: str, settings: Settings) -> int:
     db.migrate(conn)
     exit_code = 0
     try:
+        if command == "discover":
+            from src.discovery.boards import run_board_discovery
+
+            http = build_client(
+                conn, clock, contact=settings.http_contact, politeness=cfg.politeness
+            )
+            try:
+                stats = await run_board_discovery(conn, http, cfg, clock, settings)
+            finally:
+                await http.aclose()
+            log.info("discovery: %s", stats)
         if command in ("collect", "once"):
             http = build_client(
                 conn, clock, contact=settings.http_contact, politeness=cfg.politeness
@@ -174,6 +186,11 @@ async def _serve(settings: Settings) -> None:
         async with pipeline_lock():
             log.info("digest sent: %d items", await send_digest(bot, conn, settings, cfg, clock))
 
+    async def discover() -> None:
+        from src.discovery.boards import run_board_discovery
+
+        log.info("discovery: %s", await run_board_discovery(conn, http, cfg, clock, settings))
+
     async def prune() -> None:
         log.info("pruned: %s", db.prune(conn, clock.now()))
 
@@ -186,6 +203,8 @@ async def _serve(settings: Settings) -> None:
             prune=prune,
             timezone=settings.timezone,
             digest_time=settings.digest_time,
+            discover=discover if cfg.discovery.enabled else None,
+            discover_time=cfg.discovery.run_time,
         )
     )
     dp = build_dispatcher(conn, settings, cfg, clock, client, http)
@@ -231,7 +250,9 @@ def main(argv: Sequence[str] | None = None, environ: Mapping[str, str] | None = 
         environ = os.environ
     is_probe = args.command == "probe"
     try:
-        settings = config_mod.Settings.from_env(environ, require_secrets=not is_probe)
+        settings = config_mod.Settings.from_env(
+            environ, require_secrets=args.command not in ("probe", "discover")
+        )
     except config_mod.MissingConfig as exc:
         print(f"Missing required environment variables: {', '.join(exc.missing)}", file=sys.stderr)
         return 2

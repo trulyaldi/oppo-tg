@@ -162,7 +162,7 @@ def test_migration_v5_to_v6_keeps_rows(tmp_path, monkeypatch):
     raw.close()
     c = db.connect(path)
     db.migrate(c)
-    assert c.execute("PRAGMA user_version").fetchone()[0] == 8
+    assert c.execute("PRAGMA user_version").fetchone()[0] == 9
     c.execute(
         "INSERT INTO postings (id, source, external_id, title, url, fingerprint, status,"
         " first_seen_at, last_seen_at) VALUES ('p9','t','9','T','https://x.example','f9','new',?,?)",

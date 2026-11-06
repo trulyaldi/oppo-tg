@@ -263,3 +263,14 @@ def test_main_digest_missing_db_dir(monkeypatch, tmp_path):
     )
     assert rc == 0
     assert db_path.is_file()
+
+
+def test_discovery_job_is_optional_and_daily():
+    assert make([]).get_job("board_discovery") is None
+
+    async def d():
+        pass
+
+    job = make([], discover=d, discover_time="05:30").get_job("board_discovery")
+    assert job is not None and job.max_instances == 1
+    assert "hour='5'" in str(job.trigger) and "minute='30'" in str(job.trigger)

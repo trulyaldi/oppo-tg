@@ -117,6 +117,6 @@ def test_migration_v4_on_v3_db_with_rows(tmp_path):
     c.execute("INSERT INTO state VALUES ('k','v')")
     c.commit()
     db.migrate(c)
-    assert c.execute("PRAGMA user_version").fetchone()[0] == 8
+    assert c.execute("PRAGMA user_version").fetchone()[0] == 9
     assert c.execute("SELECT value FROM state WHERE key='k'").fetchone()[0] == "v"
     assert isinstance(c, sqlite3.Connection) and _count(c) == 0

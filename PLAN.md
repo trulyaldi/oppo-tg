@@ -2722,7 +2722,7 @@ Each migration gets a test that starts from the previous version with sample row
   - A config token wins over the same discovered token.
   - The greenhouse targets include discovered boards as tier2.
 
-### FC-16 [ ] Board validation and the daily discovery job (schema v9)
+### FC-16 [x] Board validation and the daily discovery job (schema v9)
 - Build (D-190):
   - `SCHEMA_9` adds `board_candidates(source, token, status, checked_at, company, discovered_from, PRIMARY KEY(source, token))` and `discovery_spend(month PRIMARY KEY, usd, searches, calls)`.
   - `run_board_discovery(conn, http, cfg, clock)` scans postings with rowid greater than state `discovery:last_rowid` (url and description), extracts refs, and skips refs that are known, already in config or negatively cached.

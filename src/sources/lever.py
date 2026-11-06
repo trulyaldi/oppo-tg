@@ -16,12 +16,17 @@ from src.sources.base import (
     fetch_all_targets,
     fetch_board_json,
     register,
+    validate_board,
 )
 from src.text import INTERN_RE, html_to_text
 
 API = "https://api.lever.co/v0/postings/{company}"
 REMOTE_RE = re.compile(r"\bremote\b", re.IGNORECASE)
 CACHE_TTL_S = 3600.0
+
+
+def _lever_company(data: Any) -> str | None:
+    return "" if isinstance(data, list) else None
 
 
 def _ms_to_dt(value: Any) -> datetime | None:
@@ -105,6 +110,12 @@ class LeverSource:
         if data is None:
             raise SourceUnavailable(f"lever slug {slug}: no data")
         return parse_postings(data, slug, target.company)
+
+    async def validate(self, ctx: SourceContext, token: str) -> tuple[bool, str]:
+        """Is `token` a real board? A one-posting request (FC-16); Lever has no company name."""
+        return await validate_board(
+            ctx, API.format(company=token), {"mode": "json", "limit": "1"}, _lever_company
+        )
 
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
         return await fetch_all_targets(self, ctx)

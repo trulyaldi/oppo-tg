@@ -17,10 +17,12 @@ from src.sources.base import (
     fetch_all_targets,
     fetch_board_json,
     register,
+    validate_board,
 )
 from src.text import INTERN_RE, html_to_text
 
 API = "https://boards-api.greenhouse.io/v1/boards/{token}/jobs"
+META_API = "https://boards-api.greenhouse.io/v1/boards/{token}"
 REMOTE_RE = re.compile(r"\bremote\b", re.IGNORECASE)
 CACHE_TTL_S = 3600.0
 SUMMER_RE = re.compile(r"\bsummer\b", re.IGNORECASE)
@@ -85,6 +87,12 @@ def parse_jobs(data: Any, token: str, company: str) -> list[Posting]:
     return out
 
 
+def _greenhouse_company(data: Any) -> str | None:
+    if isinstance(data, dict) and isinstance(data.get("name"), str) and data["name"].strip():
+        return data["name"].strip()
+    return None
+
+
 def _boards(cfg: AppConfig) -> list[tuple[str, str]]:
     section = cfg.source("greenhouse")
     names = section.get("names") or {}
@@ -117,6 +125,10 @@ class GreenhouseSource:
         if data is None:
             raise SourceUnavailable(f"greenhouse token {token}: no data")
         return parse_jobs(data, token, target.company)
+
+    async def validate(self, ctx: SourceContext, token: str) -> tuple[bool, str]:
+        """Is `token` a real board? One request to the metadata endpoint (FC-16)."""
+        return await validate_board(ctx, META_API.format(token=token), None, _greenhouse_company)
 
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
         return await fetch_all_targets(self, ctx)

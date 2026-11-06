@@ -15,6 +15,7 @@ from src.sources.base import (
     fetch_all_targets,
     fetch_board_json,
     register,
+    validate_board,
 )
 from src.text import INTERN_RE, html_to_text
 
@@ -79,6 +80,10 @@ def _boards(cfg: AppConfig) -> list[tuple[str, str]]:
     return [(str(b), str(names.get(str(b), ""))) for b in section.get("boards") or []]
 
 
+def _ashby_company(data: Any) -> str | None:
+    return "" if isinstance(data, dict) and isinstance(data.get("jobs"), list) else None
+
+
 @register("ashby")
 class AshbySource:
     name = "ashby"
@@ -103,6 +108,12 @@ class AshbySource:
         if data is None:
             raise SourceUnavailable(f"ashby board {board}: no data")
         return parse_board(data, board, target.company)
+
+    async def validate(self, ctx: SourceContext, token: str) -> tuple[bool, str]:
+        """Is `token` a real board? One job-board request (FC-16); no company name."""
+        return await validate_board(
+            ctx, API.format(board=token), {"includeCompensation": "false"}, _ashby_company
+        )
 
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
         return await fetch_all_targets(self, ctx)
