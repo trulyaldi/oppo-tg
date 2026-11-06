@@ -69,7 +69,14 @@ def _validator_wait(
 async def _run_source_targets(
     src: Any, ctx: SourceContext, targets: list[Target]
 ) -> list[TargetResult]:
-    """Run a source's targets one after another; never raises."""
+    """Run a source's targets one after another; never raises.
+
+    A source may own the whole loop via `run_targets` (Telegram: one client, pauses,
+    flood-wait stop, FIX-40).
+    """
+    own = getattr(src, "run_targets", None)
+    if callable(own):
+        return await own(ctx, targets)
     return [await run_target(src, ctx, t) for t in targets]
 
 

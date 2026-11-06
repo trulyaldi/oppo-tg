@@ -3059,7 +3059,7 @@ Verified with evidence, no FIX needed:
   - `data/discovered_boards.toml`, `data/*.session` and `*.session` are ignored (`git check-ignore`). `.env` and `.env.example` are not in the diff.
   - The only email-like strings in the diff are fictional (`x.com`, `phish.example`, `c.kz`).
 
-### FIX-40 [ ] Telegram channel polling lost its pause and flood-wait stop, and opens one client per channel
+### FIX-40 [x] Telegram channel polling lost its pause and flood-wait stop, and opens one client per channel
 - Severity: BLOCKING. This is a rate-limit regression on the user's personal Telegram account. The review overturns the D-201 note "The inter-channel pause is not applied in `fetch_target`".
 - Problem:
   - `collect_tier` polls Telegram through `TelegramChannelsSource.fetch_target` (`src/sources/telegram_channels.py:268`). `_run_source_targets` calls it once per channel, back to back.

@@ -16,7 +16,15 @@ from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import RequestTally, SourceContext, SourceUnavailable, Target, register
+from src.sources.base import (
+    RequestTally,
+    SourceContext,
+    SourceUnavailable,
+    Target,
+    TargetResult,
+    register,
+    run_target,
+)
 
 BATCH = 100
 FLOOD_SLEEP_THRESHOLD_S = 60
@@ -180,6 +188,8 @@ class TelegramChannelsSource:
         self._sleep = sleep
         self._pause_s = pause_s
         self._require_session = require_session_file
+        self._run_client: Any = None  # set by run_targets: one client for the whole run
+        self._flood_seconds: Any = None
 
     def disabled_reason(self, settings: Settings, cfg: AppConfig, conn: Any = None) -> str | None:
         if not cfg.source_enabled(self.name):
@@ -265,19 +275,71 @@ class TelegramChannelsSource:
             if c.casefold() not in live  # live channels need no polling (D-193)
         ]
 
+    async def run_targets(self, ctx: SourceContext, targets: list[Target]) -> list[TargetResult]:
+        """Poll all due channels with one client, paused between channels (FIX-40).
+
+        A flood wait stops the run: the remaining channels fail without any request and
+        keep their cursors. Never raises.
+        """
+        results: list[TargetResult] = []
+        client, owned = None, True
+        try:
+            try:
+                client, owned = await self._open(ctx)
+                if not await client.is_user_authorized():
+                    raise SourceUnavailable("telegram session not authorized")
+            except Exception as exc:  # noqa: BLE001 - isolation boundary
+                ctx.log.exception("telegram_channels: cannot open client")
+                err = f"{type(exc).__name__}: {exc}"
+                return [TargetResult(self.name, t, False, [], err) for t in targets]
+            self._run_client, self._flood_seconds = client, None
+            for i, target in enumerate(targets):
+                if self._flood_seconds is not None:
+                    results.append(
+                        TargetResult(
+                            self.name,
+                            target,
+                            False,
+                            [],
+                            f"skipped: telegram flood wait {self._flood_seconds}s",
+                        )
+                    )
+                    continue
+                if i and self._pause_s:
+                    await self._sleep(self._pause_s)
+                results.append(await run_target(self, ctx, target))
+                if self._flood_seconds is not None:
+                    ctx.log.warning(
+                        "telegram_channels: flood wait %ss on %s, stopping run",
+                        self._flood_seconds,
+                        target.key,
+                    )
+            return results
+        finally:
+            self._run_client = None
+            await self._close(client, owned, ctx)
+
     async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
         """One channel per call; raises on any failure so the target is marked failed.
 
+        Inside `run_targets` the run's client is reused; standalone it opens its own.
         `last_id` is advanced by a post-store hook, not here (D-193).
         """
-        client, owned = None, True
+        from telethon.errors import FloodWaitError
+
+        client, owned = self._run_client, False
         try:
-            client, owned = await self._open(ctx)
-            if not await client.is_user_authorized():
-                raise SourceUnavailable("telegram session not authorized")
+            if client is None:
+                client, owned = await self._open(ctx)
+                if not await client.is_user_authorized():
+                    raise SourceUnavailable("telegram session not authorized")
             return await self._read_channel(client, target.key, ctx, ctx.http.db, commit=False)
+        except FloodWaitError as exc:
+            self._flood_seconds = getattr(exc, "seconds", "?")
+            raise
         finally:
-            await self._close(client, owned, ctx)
+            if owned:
+                await self._close(client, owned, ctx)
 
     async def _read_channel(
         self, client: Any, channel: str, ctx: SourceContext, db: Any, commit: bool = True

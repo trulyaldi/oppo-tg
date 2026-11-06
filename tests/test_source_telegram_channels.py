@@ -241,3 +241,62 @@ def test_default_client_factory_builds_client(monkeypatch, tmp_path):
     assert isinstance(default_client_factory(settings), Fake)
     assert made == [((str(sess), 123, "hh"), {"flood_sleep_threshold": FLOOD_SLEEP_THRESHOLD_S})]
     assert sess.parent.is_dir()
+
+
+class CountingClient(FakeClient):
+    def __init__(self, data, flood_on=None):
+        super().__init__(data)
+        self.flood_on = flood_on
+        self.connects = 0
+
+    async def connect(self):
+        self.connects += 1
+
+    async def iter_messages(self, channel, limit=None, min_id=0):
+        if channel == self.flood_on:
+            self.calls.append((channel, limit, min_id))
+            raise FloodWaitError(request=None, capture=120)
+        async for m in super().iter_messages(channel, limit=limit, min_id=min_id):
+            yield m
+
+
+CHS = ("chan_aaa", "chan_bbb", "chan_ccc")
+
+
+async def test_run_targets_one_client_and_pause_between_channels():
+    client = CountingClient({c: FIX["jobkz_example"] for c in CHS})
+    sleeps = []
+
+    async def sleep(s):
+        sleeps.append(s)
+
+    src = TelegramChannelsSource(
+        client_factory=lambda s: client, sleep=sleep, pause_s=1.5, require_session_file=False
+    )
+    ctx = _ctx(_cfg(CHS))
+    res = await src.run_targets(ctx, src.targets(ctx))
+    assert [r.ok for r in res] == [True, True, True]
+    assert client.connects == 1 and client.disconnected
+    assert sleeps == [1.5, 1.5]
+
+
+async def test_run_targets_flood_wait_stops_run_and_keeps_cursors():
+    client = CountingClient({c: FIX["jobkz_example"] for c in CHS}, flood_on="chan_bbb")
+    src = _src(client)
+    ctx = _ctx(_cfg(CHS))
+    res = await src.run_targets(ctx, src.targets(ctx))
+    assert [r.ok for r in res] == [True, False, False]
+    assert "flood wait" in res[2].error and res[2].on_stored is None
+    assert [c[0] for c in client.calls] == ["chan_aaa", "chan_bbb"]  # ccc never requested
+    assert client.disconnected
+    assert dbm.get_state(ctx.http.db, "telegram_channels:last_id:chan_ccc", "0") == "0"
+
+
+async def test_run_targets_unauthorized_fails_all_without_requests():
+    client = CountingClient({})
+    client.authorized = False
+    src = _src(client)
+    ctx = _ctx(_cfg(CHS))
+    res = await src.run_targets(ctx, src.targets(ctx))
+    assert [r.ok for r in res] == [False] * 3 and client.calls == []
+    assert client.disconnected
