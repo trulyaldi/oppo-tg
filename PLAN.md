@@ -2008,3 +2008,128 @@ Verified with evidence, no FIX needed:
 - Acceptance:
   - The rubric text contains the clarification.
   - The `prompt_version` test is updated. PLAN section 3 / README user action 6 still asks for the eval re-run.
+
+Second review pass, 2026-11-06. The reviewer re-checked FIX-15..FIX-25 (commits 7379f6a..27e728a). Each fix meets its written acceptance criteria. Below is the evidence, then the new problems as FIX-26..FIX-30. FIX-26 is blocking. The others are non-blocking.
+- 708 tests pass with no skips. `ruff check` and `ruff format --check` are clean.
+- FIX-15: every probe in `entity_probes.json` is removed, and the legitimate sentences pass. C2 `_Grounder.ok` matches whole words.
+- FIX-16: the real-SDK canary tests in `tests/test_logging_setup.py` run (no importorskip) and pass. See FIX-29 for one bypass.
+- FIX-20 was checked on a scratch backup-API copy of `data/oppo.db`:
+  - v1 -> 7 succeeds, and `<db>.pre-v2` is written at v1.
+  - `migrate` is idempotent, and `foreign_key_check` is empty.
+  - The extra-column repro test leaves the DB at v1 with `score` intact. Retrying after the column is dropped succeeds.
+  - No step uses `executescript`, so the explicit `BEGIN` is not undone by an implicit COMMIT.
+- FIX-23:
+  - The lock file opens `O_CREAT|O_RDWR` without `O_TRUNC`, and the PID is written only after the flock succeeds.
+  - The unlink race is closed by the inode re-check.
+  - `src/` has no fork or multiprocessing that could inherit the lock fd.
+- FIX-24:
+  - Trailing-dot hosts (`localhost.`, `127.0.0.1.`) are caught by `rstrip(".")`. Decimal, hex and IPv6 forms are caught too.
+  - The client uses `follow_redirects=False`, and every redirect hop is checked. DNS rebinding is out of scope and documented in D-149.
+- FIX-17, 18, 19, 21, 22 and 25 behave as specified. `[outreach]` unknown keys, string caps and negative caps raise `ValueError` naming the key at load.
+- `git log -p f21aa21..HEAD` has no keys, tokens or personal data. `git ls-files data` lists only `.gitkeep`.
+- Draft regeneration is bounded at 2 calls, both reserved through `LlmBudget`. `verdict.unsupported` (which can now hold contact names) goes only into the retry prompt, never into a log line.
+
+### FIX-26 [ ] Degree and title acronyms are stop-listed, so invented degrees and titles pass the verifier
+- Severity: BLOCKING (SPEC "Prepare and draft" hard rule: "Every factual claim about the user must trace to the CV text". FIX-15 was filed for "invented employers, schools, degrees").
+- Problem:
+  - `ENTITY_STOP` in `src/outreach/lexicon.py` contains `msc`, `bsc`, `ba`, `ma`, `mba`, `gpa`, `ceo`, `cto`, `cfo`, `hr`, `qa`, `ui` and `ux`. These tokens are never grounded, and none of them is an inflation stem (only `phd` is).
+  - Reproduced with `tests/fixtures/cv_fake.txt` (degree: BSc only; no title beyond "Research Intern"):
+    - `claim_ok` returns True for each of these, with evidence = the real Sample Labs line:
+      - "I was the CTO at Sample Labs."
+      - "You were CEO of Sample Labs"
+      - "Your MBA from Example University of Technology"
+      - "Your MSc from Example University of Technology"
+    - `verify_draft` keeps each of these body sentences with `removed=0`:
+      - "I hold an MSc in Computer Science."
+      - "I have an MBA."
+      - "I was the CTO of a startup."
+    - `verify_tailoring` keeps the gap `how_to_address` items "Mention your MBA coursework" and "Say you were CTO at Sample Labs".
+- Build:
+  - Remove the degree and title acronyms from `ENTITY_STOP`, so they are grounded whole-word like other entities. Keep only greeting, article, weekday and month words, plus truly generic tokens such as `cv`, `ai`, `ml` and `api`.
+  - Alternatively, add a dedicated degree/title list (`msc`, `bsc`, `ma`, `ba`, `mba`, `meng`, `beng`, `gpa`, `ceo`, `cto`, `cfo`, `coo`, `vp`, `head of`, `master's`, `bachelor's`, `магистр`, `бакалавр`) that must appear whole-word in the CV for tailoring claims and drafts, and in CV ∪ posting for gaps.
+  - Record the choice in DECISIONS (D-140 addendum).
+- Files: `src/outreach/lexicon.py`, `src/outreach/verify.py`, `tests/test_entity_grounding.py`, `DECISIONS.md`.
+- Acceptance:
+  - Every probe above is removed or dropped, and none of the stored or returned text contains "CTO", "CEO", "MBA" or "MSc".
+  - "I am a BSc Computer Science student at Example University of Technology." still passes against `cv_fake.txt`.
+  - `draft_reply_ok.json`, `tailor_reply_honest.json` and every FIX-15 legitimate sentence still pass with nothing removed.
+
+### FIX-27 [ ] Remaining entity-grounding fabrication phrasings (residual risk wider than D-140 states)
+- Severity: non-blocking. Each case is a single phrasing, the prompt forbids it, and D-140 records part of it as residual risk.
+- Problem (`cv_fake.txt`, the `entity_probes.json` posting and contact, `verify_draft` result `removed=0`):
+  - A lone sentence-initial invented employer is not seen:
+    - "Citadel hired me last summer."
+    - "Google was where I interned."
+    - Single-word employer names (Google, Citadel, Kaspi, Yandex) are common, so this is the cheapest bypass.
+  - A claim of experience at the posting or contact company passes when it is phrased without the past-verb + preposition pattern:
+    - "I am currently a Research Intern at Acme Fake."
+    - "I'm a former intern at Acme Fake."
+    - "Acme Fake was my previous employer."
+    - "As a former Acme Fake intern I know the stack."
+    - "My summer at Acme Fake taught me a lot."
+  - Gap `how_to_address` "Highlight your internship at Acme Fake" is kept. Gaps ground against CV ∪ posting, and `is_past_claim` is never applied to second-person "your internship at X".
+  - Cyrillic stem matching has no right boundary, so an invented name can be grounded by an unrelated CV word. For example, `Маркет` is grounded by `маркетинг`, and `Каспи` by `каспийский`.
+- Build (mechanism is the implementer's choice, recorded in DECISIONS):
+  - Treat a sentence-initial capitalized token as an entity when the sentence contains a first-person marker (I, me, my, я, мой) and the token is not in a short list of common sentence starters ("Previously", "Currently", "Recently", "During", "As", "Last", "This", ...).
+  - Extend the posting/contact-only experience rule:
+    - present and former role phrasing: "I am/I'm (currently) (a/the) ... at X", "former ... at X", "former X <noun>";
+    - copula phrasing: "X was my (previous) employer/school";
+    - "my <time noun> at X";
+    - second-person "your <experience noun> at/with X" in tailoring gaps.
+  - Bound the Cyrillic stem match. Either require the remainder to be at most 3 letters, or match against a word list of the corpus.
+- Files: `src/outreach/verify.py`, `tests/test_entity_grounding.py`, `DECISIONS.md` (D-140 addendum).
+- Acceptance:
+  - Each sentence above is dropped or removed, and the gap item is removed.
+  - Every FIX-15 legitimate sentence still passes, including "I would love to join the research team at Acme Fake." and "Could I learn more about internships at Acme Fake?". So does "Previously I was a research intern at Sample Labs.".
+  - "Я работал в Яндекс Маркете" against a CV that has only "маркетинг" and "Яндекс" is dropped.
+
+### FIX-28 [ ] Entity and contact-info rules drop honest text (more regenerations and removed counts)
+- Severity: non-blocking. The verifier fails closed, but this costs a second draft call and makes honest fit points disappear.
+- Problem (reproduced with `cv_fake.txt` and `entity_probes.json`):
+  - The draft sentence "I was impressed by the work at Acme Fake." is dropped as a past claim. `was` is a past verb, and the mid text "impressed by the work" is not in the `_INTENT` exemption. Common outreach phrasing ("I was inspired by ...", "I was struck by ... at X") hits the same rule.
+  - Tailoring fit points that name the posting company or role are always removed, because `claim_ok` grounds entities against the CV only. Both of these are dropped:
+    - "Your Sample Labs work fits the Research Tooling Intern role at Acme Fake"
+    - "Your Sample Labs internship matches Acme Fake's tooling focus"
+  - Library names with a listed TLD suffix are flagged as URLs. "I built a parser with Socket.IO." and "I have used ASP.NET before." are dropped as contact info, even when the CV names them.
+- Build:
+  - Add "impressed", "inspired", "struck", "fascinated", "drawn", "interested", "curious" and "following" (and similar) to the past-claim exemption.
+  - For tailoring `fit.points`, also allow entities found in the posting, unless the text is a second-person experience claim ("your internship/role/degree at X").
+  - In `has_contact_info`, do not flag a bare-domain match (no scheme, `www.` or path) whose token appears whole-word in the CV.
+  - Record the choices in DECISIONS.
+- Files: `src/outreach/verify.py`, `tests/test_entity_grounding.py`, `tests/test_verify.py`, `DECISIONS.md`.
+- Acceptance:
+  - The draft sentence above and both fit points above are kept.
+  - Socket.IO is kept when it is in the CV and dropped when it is not.
+  - The FIX-22 repro ("Contact me at evil@phish.example or https://phish.example/cv.") is still dropped.
+  - Every FIX-15, FIX-26 and FIX-27 fabrication probe is still removed.
+
+### FIX-29 [ ] `ANTHROPIC_LOG=debug` re-enables SDK request-body logging despite the FIX-16 pin
+- Severity: non-blocking. The user has to set an env var, but README promises the SDK loggers "stay at WARNING even at DEBUG".
+- Problem:
+  - `configure_logging()` pins the `anthropic` logger to WARNING in `main()`.
+  - `anthropic` is imported lazily afterwards (`src/main.py:57`, `:117`), and its import runs `anthropic._utils._logs.setup_logging()`. With `ANTHROPIC_LOG=debug`, that sets the `anthropic` and `httpx2` loggers to DEBUG.
+  - Reproduced: `ANTHROPIC_LOG=debug`, then `configure_logging("INFO")`, then `import anthropic` gives `logging.getLogger("anthropic").level == 10`. Records still reach the root handler, because propagation ignores parent logger levels.
+  - `main` loads `.env` into the environment, so the variable can also come from `.env`.
+- Build: make the pin hold whatever the import order. Any of these works:
+  - import `anthropic` inside `configure_logging` before pinning;
+  - attach a filter on the root handlers that drops records below WARNING from the quiet loggers;
+  - pop `ANTHROPIC_LOG` from `os.environ` before any SDK import.
+  - Note the behaviour in README next to `LOG_LEVEL`.
+- Files: `src/logging_setup.py`, `tests/test_logging_setup.py`, `README.md`, `DECISIONS.md` (D-141 addendum).
+- Acceptance: with `ANTHROPIC_LOG=debug` set (monkeypatched) and `LOG_LEVEL=DEBUG`, the existing real-`AsyncAnthropic` `call_json` canary test still finds neither canary in the captured logs.
+
+### FIX-30 [ ] Tailoring output does not filter URLs or emails (FIX-22 covers drafts only)
+- Severity: non-blocking (prompt-injection hardening).
+- Problem:
+  - `claim_ok` and the gap `how_to_address` check never call `has_contact_info`.
+  - Reproduced with `cv_fake.txt`:
+    - `claim_ok("Highlight your Sample Labs work, details at https://phish.example/cv", <Sample Labs line>, cv, [])` returns True.
+    - The gap `how_to_address` "Email your CV to hr@phish.example" is kept by `verify_tailoring`.
+  - Telegram auto-links URLs and emails in `/prepare` output. So an injected posting could make the bot's own reply carry a clickable phishing link or address.
+- Build:
+  - Reject a tailoring `text` (fit, emphasize, cut, reorder, draft claims) and a gap `how_to_address` when `has_contact_info` is true, and count each in `removed`.
+  - Leave the verbatim `posting_evidence` and `cv_evidence` quotes as they are.
+- Files: `src/outreach/verify.py`, `tests/test_verify.py`.
+- Acceptance:
+  - Both probes are removed and counted.
+  - `tailor_reply_honest.json` is unchanged (nothing removed).
