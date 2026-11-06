@@ -69,6 +69,8 @@ def test_is_total_failure():
     assert is_total_failure({"scored": 0, "errors": 3})
     assert not is_total_failure({"scored": 1, "errors": 3})  # partial failure
     assert not is_total_failure({"scored": 0, "errors": 0})  # nothing to score
+    assert is_total_failure({"scored": 0, "errors": 0, "skipped": 2})  # candidates, none scored
+    assert not is_total_failure({"scored": 1, "errors": 0, "skipped": 2})
 
 
 def test_message_is_clear_and_escaped():

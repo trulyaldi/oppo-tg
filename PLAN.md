@@ -911,7 +911,7 @@ Filed 2026-11-06 on branch `feature/outreach-and-weights`. One commit per task, 
 ### S1 [x] Scoring call verified against the installed SDK, with a real-client test
 - Acceptance: the scorer sends only parameters that `anthropic`'s `AsyncMessages.create()` accepts (checked with `pip show anthropic` and the SDK source); the model id is checked against the SDK `Model` literal; a test runs `Scorer` through a real `AsyncAnthropic` client on an `httpx2.MockTransport` (no network), so an unsupported kwarg raises `TypeError`; DECISIONS records the check.
 
-### S2 [ ] Total scoring failure alerts Telegram and exits non-zero
+### S2 [x] Total scoring failure alerts Telegram and exits non-zero
 - Acceptance: when every scoring call fails, or nothing is scored although candidates existed, a clear error message goes to `TELEGRAM_CHAT_ID`; `collect` and `once` then exit non-zero (the rest of the run still completes); tested with a mocked bot.
 
 ### S3 [ ] Single-instance lock for `run`

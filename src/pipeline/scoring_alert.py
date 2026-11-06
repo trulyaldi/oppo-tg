@@ -23,14 +23,17 @@ REALERT_AFTER = timedelta(hours=6)
 
 
 def is_total_failure(stats: dict[str, int]) -> bool:
-    return stats.get("errors", 0) > 0 and stats.get("scored", 0) == 0
+    """Candidates existed (failed or left unscored) but nothing got scored."""
+    candidates = stats.get("errors", 0) + stats.get("skipped", 0)
+    return candidates > 0 and stats.get("scored", 0) == 0
 
 
 def render_failure(stats: dict[str, int], last_error: str | None, model: str) -> str:
     error = html.escape(last_error or "unknown error, see the bot log")
+    n = stats.get("errors", 0) + stats.get("skipped", 0)
     return (
         "<b>ERROR: scoring failed</b>\n"
-        f"All {stats.get('errors', 0)} postings in this run failed to score, "
+        f"All {n} postings in this run failed to score, "
         "so no new items will reach your digest.\n"
         f"Model: <code>{html.escape(model)}</code>\n"
         f"Last error: <code>{error}</code>\n"

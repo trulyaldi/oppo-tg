@@ -19,6 +19,7 @@ from src.config import AppConfig, Settings
 from src.delivery.digest import send_digest
 from src.http import build_client
 from src.pipeline.run import collect_all, score_pending
+from src.pipeline.scoring_alert import is_total_failure
 
 log = logging.getLogger("oppo-tg")
 
@@ -35,11 +36,12 @@ def _parser() -> argparse.ArgumentParser:
     return p
 
 
-async def _run(command: str, settings: Settings) -> None:
+async def _run(command: str, settings: Settings) -> int:
     clock = SystemClock()
     cfg = AppConfig.load(settings.oppo_config)
     conn = db.connect(settings.db_path)
     db.migrate(conn)
+    exit_code = 0
     try:
         if command in ("collect", "once"):
             http = build_client(conn, clock, contact=settings.http_contact)
@@ -66,6 +68,9 @@ async def _run(command: str, settings: Settings) -> None:
                     chat_id=settings.telegram_chat_id,
                 )
                 log.info("scored: %s", scored)
+                if is_total_failure(scored):
+                    log.error("scoring failed for every posting; exiting non-zero (S2)")
+                    exit_code = 1
                 n_alerts = await send_alerts(bot, conn, settings, cfg, clock)
             finally:
                 await bot.session.close()
@@ -81,6 +86,7 @@ async def _run(command: str, settings: Settings) -> None:
             log.info("digest sent: %d items", n)
     finally:
         conn.close()
+    return exit_code
 
 
 async def run_until_stopped(
@@ -211,8 +217,7 @@ def main(argv: Sequence[str] | None = None, environ: Mapping[str, str] | None = 
     if args.command == "run":
         asyncio.run(_serve(settings))
         return 0
-    asyncio.run(_run(args.command, settings))
-    return 0
+    return asyncio.run(_run(args.command, settings))
 
 
 if __name__ == "__main__":
