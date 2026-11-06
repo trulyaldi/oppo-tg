@@ -425,3 +425,9 @@ Log every non-obvious choice: date, choice, reason. Newest last.
   5. Then P5-P7: drafts need contacts. P7 is a cross-cutting privacy sweep.
   6. Then F1 (README/DoD) and F2 (capped smoke run).
   - Migrations take the next free `user_version` in task order: v2 W2, v3 C1, v4 C3, v5 P2, v6 N1, v7 P5. If a re-plan reorders tasks, the next free number is used, and each migration test upgrades a DB at the previous version that already holds rows. The user's real `data/oppo.db` must survive every step.
+- **D-114 W1 install result and loader details.**
+  - `pip install pyyaml pypdf` succeeded in `.venv` (PyYAML 6.0.3, pypdf 6.21.4). Both are in `requirements.txt` with the D-90 bounds.
+  - Loader errors are `WeightsError(ValueError)` with the field named in the message; pydantic errors are re-wrapped so no YAML content leaks into logs.
+  - Duplicate-alias check uses strip+casefold over names and aliases across both watchlists. Full normalization (legal forms, NFKC) is W4's `normalize_company`; W1 only needs to catch obvious duplicates.
+  - In the file all five adjustment keys are required (missing or unknown key fails), while `Weights()` defaults serve `BUILTIN_WEIGHTS`.
+  - `AppConfig` gains `ranking` and `outreach` plain dicts; `[outreach]` is not in config.toml yet.

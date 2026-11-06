@@ -130,6 +130,8 @@ class AppConfig:
     sources: dict[str, dict[str, Any]] = field(default_factory=dict)
     filters: dict[str, Any] = field(default_factory=dict)
     thresholds: Thresholds = field(default_factory=Thresholds)
+    ranking: dict[str, Any] = field(default_factory=dict)
+    outreach: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> AppConfig:
@@ -144,6 +146,8 @@ class AppConfig:
             sources=sources,
             filters=dict(data.get("filters", {})),
             thresholds=Thresholds(**th),
+            ranking=dict(data.get("ranking", {})),
+            outreach=dict(data.get("outreach", {})),
         )
 
     @classmethod

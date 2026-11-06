@@ -154,3 +154,6 @@ digest_max_items = 10
 alert_score = 9.0
 alert_deadline_days = 7
 alert_deadline_min_score = 0.0
+
+[ranking]
+weights_file = "config/weights.yaml"

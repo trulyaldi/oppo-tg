@@ -1,0 +1,17 @@
+# Top-tier international employers. A starting point, not a complete list: extend it.
+# Matching is exact after normalization, so list name variants under aliases.
+employers:
+  - {name: IMC, aliases: [IMC Trading, IMC Financial Markets], domain: imc.com}
+  - {name: Optiver, aliases: [], domain: optiver.com}
+  - {name: Jane Street, aliases: [Jane Street Capital], domain: janestreet.com}
+  - {name: Citadel, aliases: [Citadel LLC, Citadel Securities], domain: citadel.com}
+  - {name: Hudson River Trading, aliases: [HRT], domain: hudsonrivertrading.com}
+  - {name: Jump Trading, aliases: [Jump], domain: jumptrading.com}
+  - {name: DRW, aliases: [], domain: drw.com}
+  - {name: Two Sigma, aliases: [Two Sigma Investments], domain: twosigma.com}
+  - {name: Anthropic, aliases: [], domain: anthropic.com}
+  - {name: OpenAI, aliases: [], domain: openai.com}
+  - {name: Google DeepMind, aliases: [DeepMind], domain: deepmind.google}
+  - {name: Meta AI, aliases: [FAIR, Meta Superintelligence Labs], domain: ai.meta.com}
+  - {name: Mistral AI, aliases: [Mistral], domain: mistral.ai}
+  - {name: xAI, aliases: [], domain: x.ai}

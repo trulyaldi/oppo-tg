@@ -1,0 +1,13 @@
+# Employer-region weighting. Edit freely; no code change needed. Reloaded on every digest/alert/top.
+adjustments:                 # additive, applied in code to the LLM base score, result clamped to [0, 10]
+  intl_top_tier: 1.0
+  intl_other: 0.0
+  kz_employer: 0.5
+  kz_startup: 1.0
+  intl_onsite_visa_barrier: -0.5   # modifier: stacks with intl_top_tier and intl_other only
+region_min_confidence: 0.7   # LLM region guesses below this are ignored (category unknown, adjustment 0)
+digest_quotas: {kz: 4, intl: 4, best_remaining: 2}   # digest size = sum (10)
+flags: {kz: "🇰🇿", intl: "🌍"}                       # shown before the title; "" disables
+watchlists:                   # paths relative to this file
+  intl_top_tier: watchlists/intl_top_tier.yaml
+  kz_employers: watchlists/kz_employers.yaml

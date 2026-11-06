@@ -1,0 +1,18 @@
+# Known Kazakhstan employers. A starting point, not a complete list: extend it.
+# startup: true marks employers that get the kz_startup adjustment.
+employers:
+  - {name: Kaspi.kz, aliases: [Kaspi, Kaspi Bank], domain: kaspi.kz, startup: false}
+  - {name: Halyk Bank, aliases: [], domain: halykbank.kz, startup: false}
+  - {name: Kolesa Group, aliases: [Kolesa], domain: kolesa.group, startup: false}
+  - {name: Chocofamily, aliases: [Chocofamily Holding, Chocolife], domain: null, startup: false}
+  - {name: BTS Digital, aliases: [], domain: btsdigital.kz, startup: false}
+  - {name: Freedom Holding, aliases: [Freedom Finance, Freedom Broker], domain: null, startup: false}
+  - {name: Air Astana, aliases: [], domain: airastana.com, startup: false}
+  - {name: Kazakhtelecom, aliases: [], domain: telecom.kz, startup: false}
+  - {name: KazMunayGas, aliases: [], domain: kmg.kz, startup: false}
+  - {name: Jusan Bank, aliases: [], domain: jusan.kz, startup: false}
+  - {name: ForteBank, aliases: [], domain: forte.kz, startup: false}
+  - {name: Beeline Kazakhstan, aliases: [Kar-Tel], domain: beeline.kz, startup: false}
+  - {name: Nazarbayev University, aliases: [], domain: nu.edu.kz, startup: false}
+  - {name: Astana IT University, aliases: [], domain: astanait.edu.kz, startup: false}
+  - {name: Arbuz.kz, aliases: [Arbuz], domain: arbuz.kz, startup: true}

@@ -1285,7 +1285,7 @@ Per-type guidance in `draft.md`:
 | Contact page 403/429/robots-disallowed/blocked host | Skipped; the contacts section notes "k page(s) unreachable". Never retried around the block. |
 | Verification removes everything in a section | The section shows "(nothing verifiable)". |
 
-### W1 [ ] Dependencies, weights file, watchlists and loader
+### W1 [x] Dependencies, weights file, watchlists and loader
 - Depends on: S1-S5 (done).
 - Build:
   - First add `pyyaml>=6,<7` and `pypdf>=5,<7` to `requirements.txt` and run `.venv/bin/python -m pip install -r requirements.txt`, BEFORE writing any `.py` file that imports them (D-28 hook). If the install fails, report a blocker.
