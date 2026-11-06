@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import httpx
+import pytest
 
 from src import db as dbm
 from src.clock import FixedClock
@@ -17,6 +18,13 @@ FX = Path(__file__).parent / "fixtures"
 BODY = (FX / "devpost_hackathons.json").read_text()
 ENV = {"TELEGRAM_BOT_TOKEN": "t", "TELEGRAM_CHAT_ID": "1", "ANTHROPIC_API_KEY": "k"}
 CFG = AppConfig.from_dict({"sources": {"devpost": {"enabled": True}}})
+
+
+@pytest.fixture(autouse=True)
+def _unblock_devpost(monkeypatch):
+    # The source is disabled (D-50) and PoliteClient now blocks devpost.com (D-104);
+    # these tests exercise the parser only, so lift the block locally.
+    monkeypatch.setattr("src.http.BLOCKED_HOSTS", ())
 
 
 def _ctx(api):

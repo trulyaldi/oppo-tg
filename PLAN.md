@@ -1630,7 +1630,7 @@ Per-type guidance in `draft.md`:
   - The 11th contact for one posting is rejected.
   - caplog has no contact names.
 
-### N2 [ ] Blocked hosts in PoliteClient; LinkedIn/YC human-assisted links
+### N2 [x] Blocked hosts in PoliteClient; LinkedIn/YC human-assisted links
 - Depends on: none beyond N1 (http only).
 - Build:
   - In `src/http.py`, `BLOCKED_HOSTS` (suffix match): `linkedin.com, lnkd.in, ycombinator.com, devpost.com, glassdoor.com, indeed.com, wellfound.com, angel.co, crunchbase.com, hunter.io, apollo.io, rocketreach.co, zoominfo.com, lusha.com, contactout.com, signalhire.com`.

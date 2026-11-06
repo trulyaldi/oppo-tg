@@ -25,6 +25,35 @@ MAX_REDIRECTS = 5
 REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 RETRY_STATUSES = frozenset({429}) | frozenset(range(500, 600))
 
+# D-104: never fetched, even if a future code path asks. Suffix match on the host.
+BLOCKED_HOSTS = (
+    "linkedin.com",
+    "lnkd.in",
+    "ycombinator.com",
+    "devpost.com",
+    "glassdoor.com",
+    "indeed.com",
+    "wellfound.com",
+    "angel.co",
+    "crunchbase.com",
+    "hunter.io",
+    "apollo.io",
+    "rocketreach.co",
+    "zoominfo.com",
+    "lusha.com",
+    "contactout.com",
+    "signalhire.com",
+)
+
+
+def is_blocked_host(url: str) -> bool:
+    try:
+        host = (urlsplit(url).hostname or "").lower().rstrip(".")
+    except ValueError:
+        return True
+    return any(host == b or host.endswith("." + b) for b in BLOCKED_HOSTS)
+
+
 SleepFn = Callable[[float], Awaitable[None]]
 
 
@@ -81,6 +110,9 @@ class PoliteClient:
         Every hop gets the per-host throttle and retries; with check_robots each hop's
         URL is also checked against its host's robots.txt. At most MAX_REDIRECTS hops.
         """
+        if is_blocked_host(url):
+            log.info("blocked host, not fetching %s", urlsplit(url).hostname)
+            return None
         resp = await self._fetch_once(url, params, headers, raw)
         hops = 0
         while resp is not None and _is_redirect(resp):
@@ -97,6 +129,9 @@ class PoliteClient:
                 log.warning("refusing redirect to %s", nxt)
                 return None
             nxt_url = str(nxt)
+            if is_blocked_host(nxt_url):
+                log.info("blocked host on redirect, not fetching %s", nxt.host)
+                return None
             if check_robots and not await self._robots_allowed(nxt_url):
                 log.info("robots.txt disallows redirect target %s", nxt_url)
                 return None
@@ -200,6 +235,9 @@ class PoliteClient:
         ttl_s: float | None = None,
         check_robots: bool = True,
     ) -> str | None:
+        if is_blocked_host(url):
+            log.info("blocked host, not fetching %s", urlsplit(url).hostname)
+            return None
         # Without a db (and clock) there is no robots/response cache (see D-34).
         if self.db is None or self.clock is None:
             resp = await self._fetch(url, params, headers)
