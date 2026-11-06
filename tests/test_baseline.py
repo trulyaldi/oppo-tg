@@ -97,7 +97,7 @@ def score_all(conn, score=9.5, deadline="2026-11-08"):
 
 
 def alerts(env):
-    return [i.posting_id for i in select_alerts(env.conn, env.cfg, CLOCK)]
+    return [i.posting_id for i, _ in select_alerts(env.conn, env.cfg, CLOCK)]
 
 
 async def test_first_fetch_is_baseline_and_not_alerted():

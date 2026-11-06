@@ -2631,7 +2631,7 @@ Each migration gets a test that starts from the previous version with sample row
   - **Dedupe across tiers.** The same company and title from a tier1 greenhouse board and a tier2 rss feed end as exactly one non-duplicate row, whichever tier runs first.
   - The same token listed twice is fetched once.
 
-### FC-11 [ ] Fresh alerts with a daily cap
+### FC-11 [x] Fresh alerts with a daily cap
 - Build (D-189):
   - `select_alerts` returns `(item, kind)`:
     - the existing rules first (`alert`);

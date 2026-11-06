@@ -16,6 +16,7 @@ MAX_CALLBACK_BYTES = 64
 MAX_URL_CHARS = 1000
 ACTIONS = (("like", "Like"), ("dislike", "Dislike"), ("save", "Save"), ("applied", "Applied"))
 ALERT_PREFIX = "<b>ALERT</b>\n"
+FRESH_PREFIX = "<b>NEW</b>\n"
 
 _MAX_TITLE = 200
 _MAX_COMPANY = 100
@@ -80,7 +81,7 @@ def _esc(text: str) -> str:
     return html.escape(text, quote=False)
 
 
-def _build(item: Item, reason: str, alert: bool) -> str:
+def _build(item: Item, reason: str, alert: bool, fresh: bool = False) -> str:
     prefix = f"{_esc(item.flag)} " if item.flag else ""
     if item.base_score is not None and item.adjustment_detail and item.base_score != item.score:
         score = f"{item.score:.1f}/10 (base {item.base_score:.1f}, {_esc(item.adjustment_detail)})"
@@ -98,20 +99,21 @@ def _build(item: Item, reason: str, alert: bool) -> str:
     url = safe_url(item.url)
     if url:
         lines.append(_esc(url))
-    return (ALERT_PREFIX if alert else "") + "\n".join(lines)
+    head = (FRESH_PREFIX if fresh else ALERT_PREFIX) if alert else ""
+    return head + "\n".join(lines)
 
 
-def render_item(item: Item, alert: bool = False) -> str:
+def render_item(item: Item, alert: bool = False, fresh: bool = False) -> str:
     """Render one item as Telegram HTML, at most MAX_ITEM_CHARS characters."""
     reason = " ".join(item.reason.split())
-    text = _build(item, reason, alert)
+    text = _build(item, reason, alert, fresh)
     if len(text) <= MAX_ITEM_CHARS:
         return text
     # Truncate the raw reason (never the escaped/tagged text) so no tag or entity is cut.
     overflow = len(text) - MAX_ITEM_CHARS
     limit = max(len(_esc(reason)) - overflow, 0)
     reason = _clip(reason, max(limit, 1))
-    while len(text := _build(item, reason, alert)) > MAX_ITEM_CHARS and len(reason) > 1:
+    while len(text := _build(item, reason, alert, fresh)) > MAX_ITEM_CHARS and len(reason) > 1:
         reason = _clip(reason, len(reason) - 10)
     return text
 
