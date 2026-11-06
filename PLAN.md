@@ -2897,7 +2897,7 @@ Each migration gets a test that starts from the previous version with sample row
   - "Sr. Data Scientist" is filtered `senior_only`.
   - The existing filter cases pass.
 
-### FC-28 [ ] Hard-blocker detection (schema v11)
+### FC-28 [x] Hard-blocker detection (schema v11)
 - Build (D-195):
   - `SCHEMA_11` adds `postings.hard_blocker TEXT`.
   - `[filters] hard_blocker_keywords`, `hard_blocker_action = "lower"` (`lower|filter`) and `hard_blocker_penalty = 2.0`.

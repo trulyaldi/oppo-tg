@@ -13,7 +13,7 @@ from src.clock import Clock
 from src.config import AppConfig, Settings
 from src.delivery.digest import is_paused, item_from_row, load_weights_checked
 from src.delivery.format import Item, feedback_keyboard, render_item
-from src.ranking.adjust import recompute_adjusted, region_hints
+from src.ranking.adjust import blocker_penalty, recompute_adjusted, region_hints
 from src.ranking.weights import Weights
 
 log = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def select_alerts(
     """Undelivered scored items to alert, as (item, kind): base score rules (D-97), then fresh."""
     if weights is None:
         weights = load_weights_checked(cfg)[0]
-    recompute_adjusted(conn, weights, region_hints(cfg))
+    recompute_adjusted(conn, weights, region_hints(cfg), blocker_penalty(cfg))
     th = cfg.thresholds
     now = clock.now()
     today = now.astimezone(ZoneInfo(tz)).date()
@@ -52,6 +52,8 @@ def select_alerts(
     fresh: list[tuple[float, Item]] = []
     for row in db.undelivered_scored(conn):
         if row["baseline"]:  # first-fetch backlog is never alerted (D-188)
+            continue
+        if row["hard_blocker"]:  # work-authorization blocker: never alerted (D-195)
             continue
         item = item_from_row(row, weights)
         base = item.base_score if item.base_score is not None else item.score

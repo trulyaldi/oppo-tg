@@ -21,7 +21,7 @@ from src.delivery.digest import item_from_row, load_weights_checked
 from src.delivery.format import feedback_keyboard, render_item
 from src.llm.budget import LlmBudget
 from src.outreach.render import CHUNK_LIMIT, chunk_lines
-from src.ranking.adjust import recompute_adjusted, region_hints
+from src.ranking.adjust import blocker_penalty, recompute_adjusted, region_hints
 from src.sources.base import MIN_SOURCE_FAMILIES, REGISTRY, count_report, source_family
 
 log = logging.getLogger(__name__)
@@ -115,7 +115,8 @@ async def cmd_top(
     message: Any, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig | None = None
 ) -> None:
     weights = load_weights_checked(cfg or AppConfig.from_dict({}))[0]
-    recompute_adjusted(conn, weights, region_hints(cfg or AppConfig.from_dict({})))
+    c = cfg or AppConfig.from_dict({})
+    recompute_adjusted(conn, weights, region_hints(c), blocker_penalty(c))
     since = (clock.now() - timedelta(days=TOP_DAYS)).isoformat()
     rows = conn.execute(
         "SELECT p.*, s.base_score AS base_score, s.adjusted_score AS adjusted_score,"

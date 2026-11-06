@@ -1020,3 +1020,8 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - Only the hint value "kz" is acted on; other values are ignored.
 
 - **D-221 FC-27 negative-title filter details.** `negative_title` applies only to job/internship kinds and runs after `senior_only`, before `stale`. The list adds a few obvious phrases beyond the acceptance set (recruiting, ux designer, account manager, customer success, paralegal, accountant) and bare "sales", which is safe because `protect_title_keywords` (quant, quantitative, machine learning, research scientist, data scientist) overrides it. Hard-blocker config is not part of this task. The ai/ml regression is a test only; whole-word matching for keywords of 3 chars or fewer already existed.
+
+- **D-222 FC-28 implementation notes.**
+  - Detection runs in `apply_filters` (whole-phrase, case-insensitive match on title+description). Lower mode writes `postings.hard_blocker`; filter mode returns reason `hard_blocker` from `hard_filter`, after the other filters.
+  - The penalty is applied in `recompute_adjusted` (new `blocker_penalty` arg, 0 in filter mode). The cache version now includes `+hb=<penalty>` and the stored `weights_version` is that full version, so changing the penalty or hints triggers a recompute.
+  - Hard-blocked items still appear in the digest (with the lowered score and a leading "Hard blocker: <phrase>" red-flag line); only alerts (instant and fresh) skip them.

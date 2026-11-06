@@ -15,7 +15,7 @@ from src.text import content_hash
 
 log = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 MAX_SCORE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
 _EXCLUSIVE = {"like": "dislike", "dislike": "like"}
@@ -195,6 +195,10 @@ CREATE TABLE tg_channels (
 )
 """
 
+SCHEMA_11 = """
+ALTER TABLE postings ADD COLUMN hard_blocker TEXT
+"""
+
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
@@ -222,6 +226,7 @@ _MIGRATIONS = (
     SCHEMA_8,
     SCHEMA_9,
     SCHEMA_10,
+    SCHEMA_11,
 )
 
 

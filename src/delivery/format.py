@@ -42,6 +42,7 @@ class Item:
     adjustment_detail: str = ""
     flag: str = ""
     source: str = ""
+    hard_blocker: str = ""
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> Item:
@@ -60,6 +61,8 @@ class Item:
             employer_category=row["employer_category"],
             adjustment_detail=row["adjustment_detail"],
             source=row["source"] if "source" in row.keys() else "",  # noqa: SIM118 - sqlite3.Row
+            hard_blocker=(row["hard_blocker"] if "hard_blocker" in row.keys() else None)  # noqa: SIM118
+            or "",
         )
 
 
@@ -99,6 +102,8 @@ def _build(item: Item, reason: str, alert: bool, fresh: bool = False) -> str:
         f"Deadline: {item.deadline.isoformat() if item.deadline else 'no deadline'}",
     ]
     flags = [_clip(f, _MAX_FLAG) for f in item.red_flags[:_MAX_FLAGS] if f.strip()]
+    if item.hard_blocker:
+        flags.insert(0, f"Hard blocker: {_clip(item.hard_blocker, _MAX_FLAG)}")
     if flags:
         lines.append("Red flags: " + _esc("; ".join(flags)))
     credit = SOURCE_ATTRIBUTION.get(item.source)

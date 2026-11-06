@@ -83,7 +83,7 @@ def test_v7_to_v8_backfill_and_idempotent(tmp_path):
 def test_fresh_db_is_current():
     conn = db.connect(":memory:")
     db.migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION == 10
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION == 11
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(postings)")}
     assert {"target", "source_published_at", "content_hash", "baseline"} <= cols
     assert conn.execute("SELECT COUNT(*) FROM target_state").fetchone()[0] == 0

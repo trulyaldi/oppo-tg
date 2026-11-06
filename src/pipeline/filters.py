@@ -44,6 +44,27 @@ def _any_kw(keywords: list[str], text: str) -> bool:
     return any(_kw_match(k, text, prefix=len(k) > 3) for k in keywords)
 
 
+def hard_blocker(p: Posting, cfg: AppConfig) -> str | None:
+    """First configured work-authorization phrase found in title or description (D-195)."""
+    haystack = f"{p.title}\n{p.description}"
+    for kw in cfg.filters.get("hard_blocker_keywords", []):
+        if _kw_match(str(kw), haystack, prefix=False):
+            return str(kw)
+    return None
+
+
+def hard_blocker_action(cfg: AppConfig) -> str:
+    action = str(cfg.filters.get("hard_blocker_action", "lower")).strip().lower()
+    return action if action in ("lower", "filter") else "lower"
+
+
+def hard_blocker_penalty(cfg: AppConfig) -> float:
+    try:
+        return float(cfg.filters.get("hard_blocker_penalty", 2.0))
+    except (TypeError, ValueError):
+        return 2.0
+
+
 def hard_filter(p: Posting, cfg: AppConfig, today: date) -> str | None:
     """Return a filter reason, or None if the posting passes."""
     f: dict[str, Any] = cfg.filters
@@ -67,6 +88,8 @@ def hard_filter(p: Posting, cfg: AppConfig, today: date) -> str | None:
         return "negative_title"
     if p.deadline is not None and p.deadline < today:
         return "stale"
+    if hard_blocker_action(cfg) == "filter" and hard_blocker(p, cfg):
+        return "hard_blocker"
     max_age = int(f.get("max_age_days", DEFAULT_MAX_AGE_DAYS))
     if p.posted_at is not None:
         posted = (
@@ -110,6 +133,11 @@ def apply_filters(conn: sqlite3.Connection, cfg: AppConfig, clock: Clock) -> dic
         reason = hard_filter(p, cfg, today)
         if reason is None and not relevance_ok(p, cfg):
             reason = "irrelevant"
+        if reason is None and hard_blocker_action(cfg) == "lower":
+            phrase = hard_blocker(p, cfg)
+            if phrase != row["hard_blocker"]:
+                conn.execute("UPDATE postings SET hard_blocker=? WHERE id=?", (phrase, row["id"]))
+                conn.commit()
         if reason is not None:
             db.set_status(conn, row["id"], "filtered", reason)
             counts[reason] = counts.get(reason, 0) + 1

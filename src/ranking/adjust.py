@@ -27,6 +27,17 @@ def region_hints(cfg: Any) -> dict[str, str]:
     return out
 
 
+def blocker_penalty(cfg: Any) -> float:
+    """Penalty for hard-blocked postings in lower mode, else 0 (D-195)."""
+    f = getattr(cfg, "filters", None) or {}
+    if str(f.get("hard_blocker_action", "lower")).strip().lower() == "filter":
+        return 0.0
+    try:
+        return float(f.get("hard_blocker_penalty", 2.0))
+    except (TypeError, ValueError):
+        return 2.0
+
+
 def _signed(x: float) -> str:
     return f"{x:+.1f}"
 
@@ -37,6 +48,8 @@ def adjust(
     visa_barrier: bool | None,
     remote: bool | None,
     weights: Weights,
+    hard_blocker: str | None = None,
+    blocker_penalty: float = 0.0,
 ) -> tuple[float, float, str]:
     """Return (adjusted, adjustment, detail). Clamped to [0, 10], rounded to 2 decimals."""
     adj = float(getattr(weights.adjustments, category, 0.0)) if category != "unknown" else 0.0
@@ -48,6 +61,9 @@ def adjust(
         if visa:
             adj += visa
             parts.append(f"{_signed(visa)} visa")
+    if hard_blocker and blocker_penalty:
+        adj -= abs(blocker_penalty)
+        parts.append(f"{_signed(-abs(blocker_penalty))} hard blocker ({hard_blocker})")
     adj = round(adj, 2)
     adjusted = round(min(10.0, max(0.0, base + adj)), 2)
     return adjusted, adj, ", ".join(parts) if adj else ""
@@ -58,16 +74,22 @@ def _opt_bool(v: int | None) -> bool | None:
 
 
 def recompute_adjusted(
-    conn: sqlite3.Connection, weights: Weights, hints: dict[str, str] | None = None
+    conn: sqlite3.Connection,
+    weights: Weights,
+    hints: dict[str, str] | None = None,
+    blocker_penalty: float = 0.0,
 ) -> int:
     """Re-classify and re-adjust rows whose weights_version differs. Returns rows updated."""
     hints = hints or {}
     version = weights.version
     if hints:  # a changed hint must trigger a recompute too
         version += "+" + ",".join(f"{k}={v}" for k, v in sorted(hints.items()))
+    if blocker_penalty:
+        version += f"+hb={blocker_penalty:g}"
     rows = conn.execute(
         "SELECT s.posting_id, s.base_score, s.employer_region, s.region_confidence,"
-        " s.employer_is_startup, s.visa_barrier, p.company, p.kind, p.remote, p.source"
+        " s.employer_is_startup, s.visa_barrier, p.company, p.kind, p.remote, p.source,"
+        " p.hard_blocker"
         " FROM scores s JOIN postings p ON p.id = s.posting_id"
         " WHERE s.weights_version IS NULL OR s.weights_version != ?",
         (version,),
@@ -84,11 +106,17 @@ def recompute_adjusted(
                 hints.get(r["source"]),
             ).category
             adjusted, adj, detail = adjust(
-                r["base_score"], cat, _opt_bool(r["visa_barrier"]), _opt_bool(r["remote"]), weights
+                r["base_score"],
+                cat,
+                _opt_bool(r["visa_barrier"]),
+                _opt_bool(r["remote"]),
+                weights,
+                r["hard_blocker"],
+                blocker_penalty,
             )
             conn.execute(
                 "UPDATE scores SET employer_category=?, adjustment=?, adjustment_detail=?,"
                 " adjusted_score=?, weights_version=? WHERE posting_id=?",
-                (cat, adj, detail, adjusted, weights.version, r["posting_id"]),
+                (cat, adj, detail, adjusted, version, r["posting_id"]),
             )
     return len(rows)
