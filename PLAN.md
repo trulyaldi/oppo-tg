@@ -920,6 +920,6 @@ Filed 2026-11-06 on branch `feature/outreach-and-weights`. One commit per task, 
 ### S4 [x] Feedback persistence and chat whitelist verified
 - Acceptance: Like/Dislike/Save/Applied callbacks persist to SQLite and are still there after reopening the db file with a new connection and a new dispatcher; updates from chats other than `TELEGRAM_CHAT_ID` are silently ignored (test exists).
 
-### S5 [ ] Full suite, lint, and live probe recorded
+### S5 [x] Full suite, lint, and live probe recorded
 - Acceptance: `python -m pytest -q` and `ruff check . && ruff format --check .` are clean; `python -m src.main probe` was run and DECISIONS records which sources work and which do not; credential-gated sources are not fixed.
 
