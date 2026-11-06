@@ -16,7 +16,7 @@ from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import SourceContext, register
+from src.sources.base import SourceContext, Target, register
 
 BATCH = 100
 FLOOD_SLEEP_THRESHOLD_S = 60
@@ -190,6 +190,25 @@ class TelegramChannelsSource:
                     await client.disconnect()
                 except Exception:  # noqa: BLE001
                     ctx.log.debug("telegram_channels: disconnect failed", exc_info=True)
+
+    def targets(self, ctx: SourceContext) -> list[Target]:
+        if not self.enabled(ctx.settings, ctx.cfg):
+            return []
+        return [Target("telegram_channels", c) for c in channels(ctx.cfg)]
+
+    async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
+        """One channel per call; raises on any failure so the target is marked failed."""
+        client = self._factory(ctx.settings)
+        try:
+            await client.connect()
+            if not await client.is_user_authorized():
+                raise RuntimeError("telegram session not authorized")
+            return await self._read_channel(client, target.key, ctx, ctx.http.db)
+        finally:
+            try:
+                await client.disconnect()
+            except Exception:  # noqa: BLE001
+                ctx.log.debug("telegram_channels: disconnect failed", exc_info=True)
 
     async def _read_channel(
         self, client: Any, channel: str, ctx: SourceContext, db: Any

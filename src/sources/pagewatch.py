@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import RequestTally, SourceContext, register
+from src.sources.base import SourceContext, SourceUnavailable, Target, fetch_all_targets, register
 from src.text import INTERN_RE, html_to_text
 
 CACHE_TTL_S = 3600.0
@@ -71,51 +71,52 @@ class PageWatchSource:
     def enabled(self, settings: Settings, cfg: AppConfig) -> bool:
         return cfg.source_enabled("pagewatch") and bool(_pages(cfg))
 
-    async def fetch(self, ctx: SourceContext) -> list[Posting]:
-        tally = RequestTally()
-        items: list[Posting] = []
+    def targets(self, ctx: SourceContext) -> list[Target]:
+        seen: set[str] = set()
+        out = []
         for page in _pages(ctx.cfg):
-            try:
-                html = await ctx.http.get_text(page["url"], ttl_s=CACHE_TTL_S)
-                if html is None:
-                    ctx.log.warning("pagewatch %s: no data", page["name"])
-                    tally.failure()
-                    continue
-                tally.success()
-                text = extract_text(html, page["css_selector"] or None)
-                if not text.strip():
-                    ctx.log.warning("pagewatch %s: no text", page["name"])
-                    continue
-                digest = content_hash(text)
-                conn = ctx.http.db
-                row = conn.execute(
-                    "SELECT content_hash FROM page_snapshots WHERE url = ?", (page["url"],)
-                ).fetchone()
-                if row is not None and row[0] == digest:
-                    continue
-                # D-46: snapshot is saved here, before the posting is persisted.
-                conn.execute(
-                    "INSERT INTO page_snapshots (url, content_hash, seen_at) VALUES (?, ?, ?) "
-                    "ON CONFLICT(url) DO UPDATE SET content_hash = excluded.content_hash, "
-                    "seen_at = excluded.seen_at",
-                    (page["url"], digest, ctx.clock.now().isoformat()),
-                )
-                conn.commit()
-                title = page["name"] if row is None else f"{page['name']}: page updated"
-                items.append(
-                    Posting(
-                        source="pagewatch",
-                        external_id=f"{page['url']}:{digest[:12]}",
-                        title=title,
-                        company=page["company"],
-                        url=page["url"],
-                        description=text[:MAX_DESC],
-                        posted_at=ctx.clock.now(),
-                        kind=_kind(page["kind"], page["name"]),
-                    )
-                )
-            except Exception:  # noqa: BLE001 - one bad page must not stop the others
-                ctx.log.exception("pagewatch %s failed", page["name"])
-                tally.failure()
-        tally.raise_if_all_failed()
-        return items
+            if page["url"] not in seen:
+                seen.add(page["url"])
+                out.append(Target("pagewatch", page["url"], company=page["company"]))
+        return out
+
+    async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
+        page = next(p for p in _pages(ctx.cfg) if p["url"] == target.key)
+        html = await ctx.http.get_text(page["url"], ttl_s=CACHE_TTL_S)
+        if html is None:
+            raise SourceUnavailable(f"pagewatch {page['name']}: no data")
+        text = extract_text(html, page["css_selector"] or None)
+        if not text.strip():
+            ctx.log.warning("pagewatch %s: no text", page["name"])
+            return []
+        digest = content_hash(text)
+        conn = ctx.http.db
+        row = conn.execute(
+            "SELECT content_hash FROM page_snapshots WHERE url = ?", (page["url"],)
+        ).fetchone()
+        if row is not None and row[0] == digest:
+            return []
+        # D-46: snapshot is saved here, before the posting is persisted.
+        conn.execute(
+            "INSERT INTO page_snapshots (url, content_hash, seen_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(url) DO UPDATE SET content_hash = excluded.content_hash, "
+            "seen_at = excluded.seen_at",
+            (page["url"], digest, ctx.clock.now().isoformat()),
+        )
+        conn.commit()
+        title = page["name"] if row is None else f"{page['name']}: page updated"
+        return [
+            Posting(
+                source="pagewatch",
+                external_id=f"{page['url']}:{digest[:12]}",
+                title=title,
+                company=page["company"],
+                url=page["url"],
+                description=text[:MAX_DESC],
+                posted_at=ctx.clock.now(),
+                kind=_kind(page["kind"], page["name"]),
+            )
+        ]
+
+    async def fetch(self, ctx: SourceContext) -> list[Posting]:
+        return await fetch_all_targets(self, ctx)

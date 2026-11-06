@@ -2505,7 +2505,7 @@ Each migration gets a test that starts from the previous version with sample row
   - The upsert outcomes are tested for all three cases.
   - `first_seen_at` is unchanged after CHANGED.
 
-### FC-04 [ ] Targets in the Source interface
+### FC-04 [x] Targets in the Source interface
 - Build (D-186):
   - In `src/sources/base.py`:
     - `Target(source, key, company="", origin="config", tier="")`;

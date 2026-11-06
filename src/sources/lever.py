@@ -8,7 +8,7 @@ from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import RequestTally, SourceContext, register
+from src.sources.base import SourceContext, SourceUnavailable, Target, fetch_all_targets, register
 from src.text import INTERN_RE, html_to_text
 
 API = "https://api.lever.co/v0/postings/{company}"
@@ -84,22 +84,17 @@ class LeverSource:
     def enabled(self, settings: Settings, cfg: AppConfig) -> bool:
         return cfg.source_enabled("lever") and bool(_companies(cfg))
 
+    def targets(self, ctx: SourceContext) -> list[Target]:
+        return [Target("lever", slug, company=company) for slug, company in _companies(ctx.cfg)]
+
+    async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
+        slug = target.key
+        data = await ctx.http.get_json(
+            API.format(company=slug), params={"mode": "json"}, ttl_s=CACHE_TTL_S
+        )
+        if data is None:
+            raise SourceUnavailable(f"lever slug {slug}: no data")
+        return parse_postings(data, slug, target.company)
+
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
-        tally = RequestTally()
-        items: list[Posting] = []
-        for slug, company in _companies(ctx.cfg):
-            try:
-                data = await ctx.http.get_json(
-                    API.format(company=slug), params={"mode": "json"}, ttl_s=CACHE_TTL_S
-                )
-                if data is None:
-                    ctx.log.warning("lever company %s: no data", slug)
-                    tally.failure()
-                    continue
-                tally.success()
-                items.extend(parse_postings(data, slug, company))
-            except Exception:  # noqa: BLE001 - one bad company must not stop the others
-                ctx.log.exception("lever company %s failed", slug)
-                tally.failure()
-        tally.raise_if_all_failed()
-        return items
+        return await fetch_all_targets(self, ctx)

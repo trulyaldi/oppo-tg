@@ -47,6 +47,27 @@ class SourceResult:
     error: str | None = None
 
 
+@dataclass(frozen=True)
+class Target:
+    """One fetchable unit of a source: a board, channel, feed or page (D-186)."""
+
+    source: str
+    key: str
+    company: str = ""
+    origin: str = "config"
+    tier: str = ""
+
+
+@dataclass(frozen=True)
+class TargetResult:
+    source: str
+    target: Target
+    ok: bool
+    items: list[Posting]
+    error: str | None = None
+    has_validators: bool | None = None
+
+
 class SourceUnavailable(Exception):
     """Every request of a run failed (blocked, down, robots-disallowed): FIX-02."""
 
@@ -94,6 +115,40 @@ async def run_source(src: Source, ctx: SourceContext) -> SourceResult:
         ctx.log.exception("source %s failed", src.name)
         return SourceResult(src.name, False, [], f"{type(exc).__name__}: {exc}")
     return SourceResult(src.name, True, list(items))
+
+
+def source_targets(src: Source, ctx: SourceContext) -> list[Target]:
+    """The source's own targets, or one empty-key target for single-endpoint sources."""
+    fn = getattr(src, "targets", None)
+    if callable(fn):
+        return list(fn(ctx))
+    return [Target(src.name, "")]
+
+
+async def fetch_all_targets(src: Source, ctx: SourceContext) -> list[Posting]:
+    """`fetch` for target sources: every target in turn, one bad target never stops the rest."""
+    tally = RequestTally()
+    items: list[Posting] = []
+    for target in source_targets(src, ctx):
+        try:
+            items.extend(await src.fetch_target(ctx, target))  # type: ignore[attr-defined]
+            tally.success()
+        except Exception:  # noqa: BLE001 - isolation boundary
+            ctx.log.exception("%s target %r failed", src.name, target.key)
+            tally.failure()
+    tally.raise_if_all_failed()
+    return items
+
+
+async def run_target(src: Source, ctx: SourceContext, target: Target) -> TargetResult:
+    """Fetch one target; never raises."""
+    try:
+        fn = getattr(src, "fetch_target", None)
+        items = await fn(ctx, target) if callable(fn) else await src.fetch(ctx)
+    except Exception as exc:  # noqa: BLE001 - isolation boundary
+        ctx.log.exception("source %s target %r failed", src.name, target.key)
+        return TargetResult(src.name, target, False, [], f"{type(exc).__name__}: {exc}")
+    return TargetResult(src.name, target, True, list(items))
 
 
 MIN_SOURCE_FAMILIES = 6  # D-52

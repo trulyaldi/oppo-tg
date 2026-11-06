@@ -11,7 +11,7 @@ import feedparser
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import RequestTally, SourceContext, register
+from src.sources.base import RequestTally, SourceContext, Target, fetch_all_targets, register
 from src.text import INTERN_RE, html_to_text
 
 DEADLINE_RE = re.compile(r"deadline(?: date)?:\s*([A-Z][a-z]+ \d{1,2}, \d{4})", re.IGNORECASE)
@@ -106,10 +106,21 @@ class RssSource:
     def enabled(self, settings: Settings, cfg: AppConfig) -> bool:
         return cfg.source_enabled("rss") and bool(_feeds(cfg))
 
-    async def fetch(self, ctx: SourceContext) -> list[Posting]:
+    def targets(self, ctx: SourceContext) -> list[Target]:
+        seen: set[str] = set()
+        out = []
+        for feed in _feeds(ctx.cfg):
+            if feed["name"] not in seen:
+                seen.add(feed["name"])
+                out.append(Target("rss", feed["name"]))
+        return out
+
+    async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
+        # Feeds sharing a name form one target (the key is the feed name); one bad
+        # feed of the group does not hide the others, only all failing fails the target.
         tally = RequestTally()
         items: list[Posting] = []
-        for feed in _feeds(ctx.cfg):
+        for feed in (f for f in _feeds(ctx.cfg) if f["name"] == target.key):
             try:
                 # Never let feedparser fetch: it would bypass robots/rate limit/cache.
                 text = await ctx.http.get_text(feed["url"], ttl_s=CACHE_TTL_S)
@@ -119,8 +130,11 @@ class RssSource:
                     continue
                 tally.success()
                 items.extend(parse_feed(text, feed["name"], feed["kind"]))
-            except Exception:  # noqa: BLE001 - one bad feed must not stop the others
+            except Exception:  # noqa: BLE001
                 ctx.log.exception("rss feed %s failed", feed["name"])
                 tally.failure()
         tally.raise_if_all_failed()
         return items
+
+    async def fetch(self, ctx: SourceContext) -> list[Posting]:
+        return await fetch_all_targets(self, ctx)

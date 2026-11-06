@@ -9,7 +9,7 @@ from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import RequestTally, SourceContext, register
+from src.sources.base import SourceContext, SourceUnavailable, Target, fetch_all_targets, register
 from src.text import INTERN_RE, html_to_text
 
 API = "https://boards-api.greenhouse.io/v1/boards/{token}/jobs"
@@ -96,22 +96,17 @@ class GreenhouseSource:
     def enabled(self, settings: Settings, cfg: AppConfig) -> bool:
         return cfg.source_enabled("greenhouse") and bool(_boards(cfg))
 
+    def targets(self, ctx: SourceContext) -> list[Target]:
+        return [Target("greenhouse", token, company=company) for token, company in _boards(ctx.cfg)]
+
+    async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
+        token = target.key
+        data = await ctx.http.get_json(
+            API.format(token=token), params={"content": "true"}, ttl_s=CACHE_TTL_S
+        )
+        if data is None:
+            raise SourceUnavailable(f"greenhouse token {token}: no data")
+        return parse_jobs(data, token, target.company)
+
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
-        tally = RequestTally()
-        items: list[Posting] = []
-        for token, company in _boards(ctx.cfg):
-            try:
-                data = await ctx.http.get_json(
-                    API.format(token=token), params={"content": "true"}, ttl_s=CACHE_TTL_S
-                )
-                if data is None:
-                    ctx.log.warning("greenhouse board %s: no data", token)
-                    tally.failure()
-                    continue
-                tally.success()
-                items.extend(parse_jobs(data, token, company))
-            except Exception:  # noqa: BLE001 - one bad board must not stop the others
-                ctx.log.exception("greenhouse board %s failed", token)
-                tally.failure()
-        tally.raise_if_all_failed()
-        return items
+        return await fetch_all_targets(self, ctx)

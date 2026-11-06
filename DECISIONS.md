@@ -898,3 +898,10 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **CHANGED scope.** A changed hash updates title, location, description, content_hash and `source_published_at`, but not company, fingerprint, kind, url or deadline (only the fields listed in the plan).
   - **Target/baseline.** `collect_all` still calls with defaults (`target=""`, `baseline=False`); FC-04/FC-05 pass the real values.
 
+
+- **D-201 FC-04 target plumbing choices.**
+  - **Shared loop.** Target sources keep `fetch(ctx)` as `fetch_all_targets` (every target in turn, `RequestTally`, same all-failed error), so probe and old tests are unchanged. `fetch_target` raises on failure; `run_target` converts that to `ok=False`.
+  - **rss.** The target key is the feed name, so feeds sharing a name form one target. One bad feed of the group does not hide the others (existing test shares names).
+  - **telegram_channels.** `fetch_target` opens and closes one Telethon client per channel and raises on an unauthorized session or a read error, so that target is marked failed. The inter-channel pause is not applied in `fetch_target`. The legacy `fetch` is unchanged.
+  - **source_runs.** `collect_all` runs a source's targets sequentially, sources concurrently. A source run is ok unless every target failed, and only a failed run stores an error (the first failed target's). Partial failures live in `target_state.last_error`.
+  - **Tier.** `Target.tier` stays "" until tier assignment lands. `record_target_attempt` keeps the stored tier when given "". `baselined_at` is untouched (FC-05).

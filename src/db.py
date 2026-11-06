@@ -308,6 +308,49 @@ def upsert_posting(
     return outcome
 
 
+def record_target_attempt(
+    conn: sqlite3.Connection,
+    source: str,
+    target: str,
+    now: datetime,
+    *,
+    ok: bool,
+    error: str | None = None,
+    tier: str = "",
+    has_validators: bool | None = None,
+) -> None:
+    """Update target_state after a fetch; baselined_at is never touched here."""
+    ts = _iso(now)
+    hv = None if has_validators is None else int(has_validators)
+    conn.execute(
+        "INSERT INTO target_state (source, target, tier, last_attempt_at, last_ok_at,"
+        " last_error, has_validators) VALUES (?,?,?,?,?,?,COALESCE(?,0))"
+        " ON CONFLICT(source, target) DO UPDATE SET last_attempt_at=excluded.last_attempt_at,"
+        " last_ok_at=CASE WHEN ? THEN excluded.last_attempt_at ELSE last_ok_at END,"
+        " last_error=excluded.last_error,"
+        " tier=CASE WHEN excluded.tier != '' THEN excluded.tier ELSE tier END,"
+        " has_validators=COALESCE(?, has_validators)",
+        (
+            source,
+            target,
+            tier,
+            ts,
+            ts if ok else None,
+            None if ok else (error or "error"),
+            hv,
+            int(ok),
+            hv,
+        ),
+    )
+    conn.commit()
+
+
+def get_target_state(conn: sqlite3.Connection, source: str, target: str) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM target_state WHERE source=? AND target=?", (source, target)
+    ).fetchone()
+
+
 def get_posting(conn: sqlite3.Connection, posting_id: str) -> sqlite3.Row | None:
     return conn.execute("SELECT * FROM postings WHERE id=?", (posting_id,)).fetchone()
 

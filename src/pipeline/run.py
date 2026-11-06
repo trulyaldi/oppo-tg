@@ -18,9 +18,21 @@ from src.pipeline.filters import apply_filters
 from src.pipeline.scoring_alert import report_scoring_outcome
 from src.scoring.scorer import Scorer
 from src.sources import base
-from src.sources.base import SourceContext, SourceResult, run_source
+from src.sources.base import SourceContext, Target, TargetResult, run_target, source_targets
 
 log = logging.getLogger(__name__)
+
+
+async def _run_source_targets(src: Any, ctx: SourceContext) -> list[TargetResult]:
+    """Run a source's targets one after another; never raises."""
+    try:
+        targets = source_targets(src, ctx)
+    except Exception as exc:  # noqa: BLE001 - isolation boundary
+        log.exception("source %s targets failed", src.name)
+        return [
+            TargetResult(src.name, Target(src.name, ""), False, [], f"{type(exc).__name__}: {exc}")
+        ]
+    return [await run_target(src, ctx, t) for t in targets]
 
 
 async def collect_all(
@@ -35,25 +47,44 @@ async def collect_all(
     sources = [f() for f in base.REGISTRY.values()]
     sources = [s for s in sources if s.enabled(settings, cfg)]
     run_ids = {s.name: db.start_source_run(conn, s.name, clock.now()) for s in sources}
-    results: list[SourceResult] = list(await asyncio.gather(*(run_source(s, ctx) for s in sources)))
+    by_source = await asyncio.gather(*(_run_source_targets(s, ctx) for s in sources))
     stats = {"sources": len(sources), "failed": 0, "items": 0, "new": 0}
-    for res in results:
+    for source, results in zip(sources, by_source, strict=True):
         n_new = 0
-        for p in res.items:
-            if db.upsert_posting(conn, p, fingerprint(p), clock.now()) is db.Upsert.INSERTED:
-                n_new += 1
+        n_items = 0
+        for tr in results:
+            if tr.ok:
+                n_items += len(tr.items)
+                for p in tr.items:
+                    outcome = db.upsert_posting(
+                        conn, p, fingerprint(p), clock.now(), target=tr.target.key
+                    )
+                    if outcome is db.Upsert.INSERTED:
+                        n_new += 1
+            db.record_target_attempt(
+                conn,
+                source.name,
+                tr.target.key,
+                clock.now(),
+                ok=tr.ok,
+                error=tr.error,
+                tier=tr.target.tier,
+                has_validators=tr.has_validators,
+            )
+        failed = [tr for tr in results if not tr.ok]
+        ok = not (results and len(failed) == len(results))
         db.finish_source_run(
             conn,
-            run_ids[res.name],
+            run_ids[source.name],
             clock.now(),
-            ok=res.ok,
-            n_items=len(res.items),
+            ok=ok,
+            n_items=n_items,
             n_new=n_new,
-            error=res.error,
+            error=None if ok else failed[0].error,
         )
-        stats["items"] += len(res.items)
+        stats["items"] += n_items
         stats["new"] += n_new
-        stats["failed"] += 0 if res.ok else 1
+        stats["failed"] += 0 if ok else 1
     stats["duplicates"] = mark_duplicates(conn)
     stats["filtered"] = sum(apply_filters(conn, cfg, clock).values())
     return stats
