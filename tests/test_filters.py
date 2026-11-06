@@ -205,3 +205,24 @@ def test_published_at_never_affects_stale_filter():
     assert hard_filter(p, CFG, TODAY) == hard_filter(q, CFG, TODAY) == "stale"
     r = Posting(url="https://e.com/1", posted_at=fresh, published_at=old, **base)
     assert hard_filter(r, CFG, TODAY) is None
+
+
+def _ai_ml_cfg():
+    cfg = AppConfig.load(Path(__file__).parent / "fixtures" / "config_repo_snapshot.toml")
+    cfg.filters["positive_title_keywords"] = ["ai", "ml"]
+    return cfg
+
+
+@pytest.mark.parametrize(
+    "title",
+    ["Retail Assistant", "Email Specialist", "Maintenance Technician", "HTML Coder", "Chairperson"],
+)
+def test_ai_ml_substring_rejected(title):
+    assert not relevance_ok(_p(title), _ai_ml_cfg())
+
+
+@pytest.mark.parametrize(
+    "title", ["AI Engineer", "ML/AI Intern", "Gen-AI Researcher", "ML-Ops Intern"]
+)
+def test_ai_ml_whole_word_accepted(title):
+    assert relevance_ok(_p(title), _ai_ml_cfg())

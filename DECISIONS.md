@@ -1018,3 +1018,5 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - `recompute_adjusted(conn, weights, hints=None)` takes a source -> hint map built by `region_hints(cfg)` from `[sources.*] region_hint`. Digest, alerts and /top pass it.
   - A changed hint must trigger a recompute, but `weights.version` is a file hash. When hints are set, the stored `weights_version` is `version+src=hint,...`; with no hints it is unchanged.
   - Only the hint value "kz" is acted on; other values are ignored.
+
+- **D-221 FC-27 negative-title filter details.** `negative_title` applies only to job/internship kinds and runs after `senior_only`, before `stale`. The list adds a few obvious phrases beyond the acceptance set (recruiting, ux designer, account manager, customer success, paralegal, accountant) and bare "sales", which is safe because `protect_title_keywords` (quant, quantitative, machine learning, research scientist, data scientist) overrides it. Hard-blocker config is not part of this task. The ai/ml regression is a test only; whole-word matching for keywords of 3 chars or fewer already existed.

@@ -169,11 +169,21 @@ positive_title_keywords = [
 spam_keywords = ["crypto airdrop", "get rich", "mlm", "pyramid"]
 unpaid_keywords = ["unpaid", "no compensation", "volunteer only"]
 senior_only_keywords = [
-  "senior", "staff", "principal", "director", "head of", "lead",
+  "senior", "staff", "principal", "director", "head of", "lead", "sr",
   # Russian seniority stems (prefix match): senior, leading, head, chief, director
   "старш", "ведущ", "руководител", "главн", "директор",
 ]
 max_age_days = 60
+# D-195: phrases that filter job/internship titles as negative_title unless a protect keyword
+# matches. Bare "finance" is excluded (it would kill quant-finance titles).
+negative_title_keywords = [
+  "solutions engineer", "support engineer", "sales engineer", "recruiter", "recruiting",
+  "legal counsel", "product designer", "ux designer", "finance operations", "sales",
+  "account manager", "customer success", "paralegal", "accountant",
+]
+protect_title_keywords = [
+  "quant", "quantitative", "machine learning", "research scientist", "data scientist",
+]
 
 [thresholds]
 digest_min_score = 5.0

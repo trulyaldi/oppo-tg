@@ -59,6 +59,12 @@ def hard_filter(p: Posting, cfg: AppConfig, today: date) -> str | None:
         and _any_kw(list(f.get("senior_only_keywords", [])), p.title)
     ):
         return "senior_only"
+    if (
+        p.kind in _JOB_KINDS
+        and _any_kw(list(f.get("negative_title_keywords", [])), p.title)
+        and not _any_kw(list(f.get("protect_title_keywords", [])), p.title)
+    ):
+        return "negative_title"
     if p.deadline is not None and p.deadline < today:
         return "stale"
     max_age = int(f.get("max_age_days", DEFAULT_MAX_AGE_DAYS))

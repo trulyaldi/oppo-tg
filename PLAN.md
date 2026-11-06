@@ -2881,7 +2881,7 @@ Each migration gets a test that starts from the previous version with sample row
 
 ### Part 5: noise and cost control
 
-### FC-27 [ ] Pre-filter: negative title keywords, "sr", "ai"/"ml" regression tests
+### FC-27 [x] Pre-filter: negative title keywords, "sr", "ai"/"ml" regression tests
 - Build (D-195, D-171):
   - `negative_title_keywords` (phrases) filters with reason `negative_title`, unless the title matches `protect_title_keywords`.
   - Add `"sr"` to `senior_only_keywords`.

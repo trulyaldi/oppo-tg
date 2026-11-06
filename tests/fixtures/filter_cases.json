@@ -1,12 +1,127 @@
 [
-  {"name": "senior quant", "title": "Senior Quant Researcher", "kind": "job", "expect": "senior_only"},
-  {"name": "senior intern passes", "title": "Senior Software Engineer Intern", "kind": "internship", "expect": null},
-  {"name": "unpaid internship", "title": "Unpaid marketing internship", "kind": "internship", "expect": "unpaid"},
-  {"name": "unpaid hackathon passes", "title": "Hack Night", "kind": "hackathon", "description": "Unpaid, volunteer only judges; prizes for teams", "expect": null},
-  {"name": "spam", "title": "Crypto signals, earn $500/day", "kind": "job", "expect": "spam"},
-  {"name": "deadline yesterday", "title": "ML Intern", "kind": "internship", "deadline": "2026-11-05", "expect": "stale"},
-  {"name": "deadline today ok", "title": "ML Intern", "kind": "internship", "deadline": "2026-11-06", "expect": null},
-  {"name": "posted 61 days ago", "title": "Data Engineer", "kind": "job", "posted_at": "2026-09-06T00:00:00+00:00", "expect": "stale"},
-  {"name": "posted 60 days ago ok", "title": "Data Engineer", "kind": "job", "posted_at": "2026-09-07T00:00:00+00:00", "expect": null},
-  {"name": "plain job", "title": "Quantitative Trader", "kind": "job", "expect": null}
+ {
+  "name": "senior quant",
+  "title": "Senior Quant Researcher",
+  "kind": "job",
+  "expect": "senior_only"
+ },
+ {
+  "name": "senior intern passes",
+  "title": "Senior Software Engineer Intern",
+  "kind": "internship",
+  "expect": null
+ },
+ {
+  "name": "unpaid internship",
+  "title": "Unpaid marketing internship",
+  "kind": "internship",
+  "expect": "unpaid"
+ },
+ {
+  "name": "unpaid hackathon passes",
+  "title": "Hack Night",
+  "kind": "hackathon",
+  "description": "Unpaid, volunteer only judges; prizes for teams",
+  "expect": null
+ },
+ {
+  "name": "spam",
+  "title": "Crypto signals, earn $500/day",
+  "kind": "job",
+  "expect": "spam"
+ },
+ {
+  "name": "deadline yesterday",
+  "title": "ML Intern",
+  "kind": "internship",
+  "deadline": "2026-11-05",
+  "expect": "stale"
+ },
+ {
+  "name": "deadline today ok",
+  "title": "ML Intern",
+  "kind": "internship",
+  "deadline": "2026-11-06",
+  "expect": null
+ },
+ {
+  "name": "posted 61 days ago",
+  "title": "Data Engineer",
+  "kind": "job",
+  "posted_at": "2026-09-06T00:00:00+00:00",
+  "expect": "stale"
+ },
+ {
+  "name": "posted 60 days ago ok",
+  "title": "Data Engineer",
+  "kind": "job",
+  "posted_at": "2026-09-07T00:00:00+00:00",
+  "expect": null
+ },
+ {
+  "name": "plain job",
+  "title": "Quantitative Trader",
+  "kind": "job",
+  "expect": null
+ },
+ {
+  "name": "negative Solutions Engineer",
+  "title": "Solutions Engineer",
+  "kind": "job",
+  "expect": "negative_title"
+ },
+ {
+  "name": "negative Technical Support Engineer",
+  "title": "Technical Support Engineer",
+  "kind": "job",
+  "expect": "negative_title"
+ },
+ {
+  "name": "negative Sales Engineer",
+  "title": "Sales Engineer",
+  "kind": "job",
+  "expect": "negative_title"
+ },
+ {
+  "name": "negative Recruiter",
+  "title": "Recruiter",
+  "kind": "job",
+  "expect": "negative_title"
+ },
+ {
+  "name": "negative Legal Counsel",
+  "title": "Legal Counsel",
+  "kind": "job",
+  "expect": "negative_title"
+ },
+ {
+  "name": "negative Product Designer",
+  "title": "Product Designer",
+  "kind": "job",
+  "expect": "negative_title"
+ },
+ {
+  "name": "negative Finance Operations Analyst",
+  "title": "Finance Operations Analyst",
+  "kind": "job",
+  "expect": "negative_title"
+ },
+ {
+  "name": "kept Quantitative Researcher, Sales & Trading",
+  "title": "Quantitative Researcher, Sales & Trading",
+  "kind": "job",
+  "expect": null
+ },
+ {
+  "name": "kept Finance Data Scientist",
+  "title": "Finance Data Scientist",
+  "kind": "job",
+  "expect": null
+ },
+ {
+  "name": "kept Sr. Data Engineer",
+  "title": "Sr. Data Engineer",
+  "kind": "job",
+  "expect": "senior_only"
+ }
 ]
