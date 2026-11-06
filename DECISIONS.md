@@ -526,3 +526,349 @@ Log every non-obvious choice: date, choice, reason. Newest last.
 - **D-165 FIX-39 README claims-check wording.** README "CV, prepare and drafts" now says the claims check is a deterministic heuristic that removes most invented employers, degrees, titles and numbers but cannot catch everything (names D-161), and tells the user to read every draft and tailoring tip before use. Pinned by `tests/test_readme.py`.
 
 - **D-166 F2 live smoke test (2026-11-06).** Ran `MAX_SCORES_PER_RUN=20 python -m src.main once` against the real APIs, after backing up data/oppo.db outside the repo. Result: 8 sources, 0 failed, 22 new, 20 scored, 0 scoring errors, 0 alerts, 1 digest of 10 items, exit 0. All 10 digest items were intl_top_tier (IMC, DRW), so the KZ quota fell through to best-remaining. Region flags and the 4/4/2 split on a mixed batch were NOT observed live (only covered by tests). /cv, /prepare and /draft were NOT exercised live because they need an interactive Telegram session and a CV: they are covered by offline tests only. Not done: eval re-run after the D-92 rubric change (user action).
+
+## 2026-11-07 — Audit: coverage and freshness (planner)
+
+Branch `feature/coverage-and-freshness`, HEAD 1bcbb78. The facts below come from reading the code. The counts come from one read-only aggregate query on the local `data/oppo.db` (no CV, contact or `.env` data was read).
+
+- **D-167 Audit A1: collect interval per source.**
+  - **One job for everything.** There is a single APScheduler job, `collect_and_score`, on an `IntervalTrigger(hours=max(1, collect_hours))` (src/scheduler.py:56-76). Its interval comes from `COLLECT_CRON_HOURS`, default 3 (src/config.py:37, :63, src/main.py:167).
+  - **No per-source schedule.** Every enabled source runs on every collect, all concurrently through `asyncio.gather` (src/pipeline/run.py:34-37). There are no per-source intervals, no tiers and no jitter.
+  - **Same interval for all.** Greenhouse, Lever, Ashby, HN, hh, RSS, MLH, Jobicy, pagewatch and telegram_channels are all polled every 3 h. Telegram channels are only polled (src/sources/telegram_channels.py:154-214). There is no live listening.
+  - **Response cache TTL.** Every source passes `ttl_s=3600`:
+    - greenhouse.py:17, lever.py:16, ashby.py:14, hn.py:30, hh.py:14, rss.py:18, pagewatch.py:15, mlh.py:15 and jobicy.py:14 (Jobicy's terms say at most once per hour, D-58).
+    - `PoliteClient.get_text` returns a cached body younger than the TTL without any request (src/http.py:281-290). Otherwise it revalidates with If-None-Match/If-Modified-Since (src/http.py:295-299).
+    - Consequence for Part 2: a tier polled more often than every 60 min would only ever see the cache. Tier1 must bypass the TTL and always revalidate.
+  - **Validator support is unknown.** Whether boards-api.greenhouse.io, api.lever.co and api.ashbyhq.com return ETag or Last-Modified has not been verified. D-88 only says "many ATS fetches answered 304".
+  - **Response sizes.** Greenhouse is fetched with `content=true` (greenhouse.py:103). Ashby responses run 1-14 MB (D-43). Both are expensive to poll every 15 min if the host sends no validators.
+  - **Worst-case latency today.** About 3 h from publication to collection, plus scoring, plus alert or digest.
+
+- **D-168 Audit A2: new-posting detection.**
+  - **first_seen_at already exists.** It has been `postings.first_seen_at TEXT NOT NULL` since SCHEMA_1 (src/db.py:28).
+  - **It is set once.** `upsert_posting` sets it on INSERT only and never changes it. A re-sighting bumps only `last_seen_at` (src/db.py:204-235).
+  - **Where it is used:** scoring order (newest first, src/db.py:252-258), duplicate precedence (src/pipeline/dedupe.py:29-31) and pruning (src/db.py:498-503).
+  - **Missing pieces:**
+    - **No freshness logic.** Alerts and the digest never read `first_seen_at`. Alerts fire on base score >= 9 or a deadline within 7 days, for any undelivered scored item (src/delivery/alerts.py:39-49).
+    - **No baseline.** The first fetch of a new source or board makes every existing posting look "new" and alert-eligible.
+    - **No latency measurement.** Nothing records the time from first sight to delivery.
+    - **No content-change detection.** On a re-sighting, title and description are never updated (src/db.py:233).
+  - **Latent bug.** `prune` deletes filtered and duplicate rows whose `first_seen_at` is older than 60 days, even when they are still listed (src/db.py:498-503). The next collect re-inserts them with a new `first_seen_at`, so stale postings would look fresh. Fix: prune on `last_seen_at`.
+
+- **D-169 Audit A3: ATS timestamp fields.**
+  - **Greenhouse.**
+    - Each job carries `updated_at` and `first_published` (keys in the real-response fixture `tests/fixtures/greenhouse_jobs.json`).
+    - The parser keeps only `updated_at`, as `posted_at` (src/sources/greenhouse.py:67), and drops `first_published`.
+  - **Lever.**
+    - Each posting carries `createdAt` in epoch milliseconds (fixture `lever_postings.json`). The public postings README (github.com/lever/postings-api) documents no timestamp fields.
+    - The parser keeps `createdAt` as `posted_at` (src/sources/lever.py:61).
+  - **Ashby.**
+    - Each job carries `publishedAt`, documented as "ISO DateTime when the job was last published" (developers.ashbyhq.com/docs/public-job-posting-api). There is no `updatedAt`.
+    - The parser keeps it as `posted_at` (src/sources/ashby.py:57).
+  - **Inconsistent meaning.** `posted_at` means "updated" for Greenhouse, "created" for Lever and "last published" for Ashby.
+  - **Where posted_at matters.** It drives the stale filter (`max_age_days`, src/pipeline/filters.py:64-70).
+  - **Decision.** Repointing `posted_at` would silently change what counts as stale. The API publish time goes into a new column instead (D-185).
+
+- **D-170 Audit A4: postings reaching the scorer per run.**
+  - **Per-run cap.** At most `MAX_SCORES_PER_RUN` = 150 API calls per run (src/config.py:38, :64; src/main.py:68, :142). Retries count against it (src/scoring/scorer.py:81, :98-111), and calls run 4 at a time (scorer.py:22).
+  - **Candidate selection.** Status `new` or `score_error` with fewer than 3 attempts, newest `first_seen_at` first, `LIMIT max_calls` (src/pipeline/run.py:77, src/db.py:252-258).
+  - **Before the scorer.** Duplicates are marked, then hard filters and the title prefilter run (run.py:56-57).
+  - **No daily cap on scoring.** At 8 runs a day the ceiling is 1200 calls a day.
+  - **Shared budget bug.** The only daily LLM cap is outreach's `LlmBudget`. Its `used()` sums every purpose for the day (src/llm/budget.py:22-26), so reusing it for scoring as written would eat the outreach cap.
+  - **Cap exhaustion looks like failure.** `is_total_failure` counts `skipped` (budget exhausted) as a failure (src/pipeline/scoring_alert.py:25-28). `once`/`collect` then exits 1 (src/main.py:74-76), so hitting a cap would fire "ERROR: scoring failed".
+  - **Local DB figures (2026-11-07, about 10 collect runs).**
+    - 4526 postings: 1049 scored, 2636 filtered, 793 duplicate, 48 new.
+    - Filtered breakdown: irrelevant 1180, senior_only 994, stale 456, unpaid 5, spam 1.
+    - Of the 1049 scored: mean base score 3.05; 709 <= 3; 875 below the digest floor of 5; 40 >= 7.5; 7 >= 9. So about 83% of scoring calls went to items that can never reach the digest.
+    - No Kazakhstan employer was ever classified. Categories: intl_top_tier 342, intl_other 387, unknown 320.
+    - hh and telegram_channels have never produced a posting (both credential-gated, D-47, D-69).
+
+- **D-171 Audit A5: what the pre-filter lets through.**
+  - **Scope.** The title relevance check applies to JOB and INTERNSHIP kinds only. Pagewatch and every other kind skip it (src/pipeline/filters.py:23, :74-78).
+  - **The reported "ai"/"ml" substring issue is not present.** Keywords of 3 chars or fewer already match whole words only (filters.py:34-44, D-37), and a regression test exists (`tests/test_filters.py:60`, "Retail Assistant").
+  - **The real leak is breadth:**
+    - (a) Longer keywords match as prefixes and there is no negative list. Any title containing engineer, analyst, data, research or developer passes. Of the 1049 scored titles, 89 contain sales, recruiting, legal, marketing, design, finance, support or "solutions" words, and only 2 of those scored >= 5. Examples: "Technical Support Engineer", "Solutions Engineer", "Trade Support Engineer", "AI Solutions Program Manager, Finance".
+    - (b) Whole-word "ai" passes any "AI ..." title. "ai" is in 131 of the titles scored below 3; "manager" is in 147.
+    - (c) "Sr"/"Sr." is not a senior keyword (config.toml:151-155). 72 low-scoring titles contain "sr".
+  - **Missing checks.**
+    - No hard-blocker detection (citizens only, security clearance).
+    - No cheap triage: every relevance-passing posting gets a full scoring call.
+
+- **D-172 Audit A6: politeness and other latent issues.**
+  - **Current politeness.**
+    - A fixed 2 s gap per host, enforced by a per-host lock (src/http.py:89, :116-121, :195-207).
+    - Retries at 1, 2 and 4 s; `Retry-After` is honoured, capped at 60 s (http.py:217-224).
+    - No jitter, no global concurrency cap, no per-host configuration.
+    - No backoff that survives across runs. The `denied` set lives in memory only (http.py:104, :209-210).
+  - **4xx statuses are invisible to callers.** `get_text`/`get_json` return None for every 4xx (http.py:211-214). The hh source cannot tell a 400 (bad User-Agent) from a 401/403 (bad token).
+  - **telegram_channels has two defects:**
+    - It advances `last_id` inside `fetch`, before the postings are stored (telegram_channels.py:212-213). A crash in between loses those messages.
+    - It swallows total failure, so a dead session is recorded as an ok run (telegram_channels.py:183-185).
+
+## 2026-11-07 — Doc verification for new sources and tools (planner)
+
+The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No code was written and no fixture was captured. The implementer still captures one real response per IN source and records a robots check of the exact path fetched (PLAN rules). The IN/OUT verdict below is final, so the terms do not need re-reading.
+
+- **D-173 Workable: IN.**
+  - **Endpoint.** Workable's help article "Using the Workable API to create a careers page" (help.workable.com/hc/en-us/articles/115012771647) lists the public endpoints `https://www.workable.com/api/accounts/{subdomain}?details=true` (plus `/locations`, `/departments`). They take no token; only the `/spi/v3` example uses a bearer token.
+  - **robots.txt.** `www.workable.com/robots.txt` disallows only `/user_password_resets`, `/admin`, `/auth/google` and `/j/`. `apply.workable.com/robots.txt` has an empty `Disallow:`. Both carry `Content-Signal: search=yes, ai-input=yes, ai-train=no`.
+  - **Terms.** The terms (www.workable.com/terms) are a Workable-Customer agreement with no clause on visitors, scraping or automated access.
+  - **Use.** A board source in tier1/tier2, discoverable from `apply.workable.com/{slug}` URLs. The endpoint may redirect to `apply.workable.com/api/v1/widget/accounts/{slug}`, which is allowed (same robots).
+
+- **D-174 SmartRecruiters: OUT.**
+  - **Docs.** developers.smartrecruiters.com lists `GET https://api.smartrecruiters.com/v1/companies/{companyIdentifier}/postings`, but its Posting API pages describe API-key/OAuth access and do not invite anonymous third-party use.
+  - **robots.txt.** `https://api.smartrecruiters.com/robots.txt` is `User-agent: LinkedInBot / Allow: /v1/companies/` then `User-agent: * / Disallow: /`. The API host explicitly excludes every other crawler.
+  - **Decision.** The D-31 exception does not apply, so we do not fetch it. Config gets `enabled = false` with this reason.
+
+- **D-175 Recruitee: OUT.**
+  - **Docs.** Official docs (docs.recruitee.com/reference/authentication-1.md) say Careers Site API calls need an `X-Careers-Sites-Token` header: "Calls without the authorization header will return the `401 Unauthorized` error". The stated deadline for introducing the token is 10 February 2027.
+  - **Tokens are per company.** Recruitee's help article (support.recruitee.com/en/articles/1066282) says the token is created by the company in its own settings.
+  - **Decision.** Unauthenticated `{company}.recruitee.com/api/offers/` works today, but it is against the documented contract and will stop working within 3 months. Config gets `enabled = false`.
+
+- **D-176 Personio: OUT (terms unreadable).**
+  - **Feed.** The developer hub documents a public XML feed at `{account}.jobs.personio.de/xml` (developer.personio.de/docs/retrieving-open-job-positions; fields include `createdAt`). Tenant robots (`personio.jobs.personio.de/robots.txt`) is `Allow: /`.
+  - **Terms could not be read.** Personio's legal pages (www.personio.com/legal-notice/, /terms-of-use/, www.personio.de/agb/) answered HTTP 429 to every fetch. A search found no visitor terms.
+  - **Decision.** The PLAN new-source rule says unreadable terms means no fetching code (as for Kaggle, D-68). Config gets `enabled = false` with this reason. Re-checking later is a user action.
+
+- **D-177 Remotive: OUT.**
+  - **API terms.** The official API repo (github.com/remotive-io/remote-jobs-api, which remotive.com/api-documentation redirects to) invites use with conditions:
+    - link back and mention Remotive;
+    - "max. 4 times a day";
+    - more than 2 requests per minute are blocked;
+    - "Jobs displayed are delayed by 24 hours";
+    - no resubmission to third-party job sites.
+  - **robots.txt.** `https://remotive.com/robots.txt` has `User-agent: *` / `Disallow: /api/*`.
+  - **Decision.** remotive.com is the main site host, not a dedicated API host, so the D-31 API-host exception does not fit. The 24 h delay and 4-per-day limit would also add nothing to freshness. Config gets `enabled = false`.
+
+- **D-178 Remote OK: IN, with attribution.**
+  - **API terms.** `https://remoteok.com/api` element 0 is the legal notice: "Please link back (with follow, and without nofollow!) to the URL on Remote OK and mention Remote OK as a source ... If you do not we'll have to suspend API access" and "don't use the Remote OK logo". The site legal page (remoteok.com/legal) asks API users to "link back with a web hyperlink or in-app hyperlink", and has no anti-scraping clause.
+  - **robots.txt.** The `User-agent: *` groups are `Allow: /` and `Crawl-delay: 1`, and `/api` is not disallowed. The file has `Content-Signal: search=yes,ai-train=no,use=reference` and no ai-input restriction. We never train, so sending the text to the scorer is fine.
+  - **Use.** Tier2, at most one request per run, a per-host minimum interval of 60 min.
+  - **Mapping.** The posting `url` is the Remote OK job `url`, never `apply_url`. Every rendered item says "via Remote OK", and the logo is never used. Skip element 0. Job fields: id, epoch, date, company, position, tags, description, location, salary_min, salary_max, url, apply_url.
+
+- **D-179 Arbeitnow: IN, with attribution.**
+  - **Endpoint.** `https://www.arbeitnow.com/api/job-board-api` takes no key (arbeitnow.com/blog/job-board-api) and has a `visa_sponsorship` parameter.
+  - **robots.txt.** `User-agent: *` / `Disallow:` / `Disallow: /*?__hstc`, so the API path is allowed.
+  - **Terms** (arbeitnow.com/terms):
+    - s.2: "for personal, non-commercial transitory viewing only".
+    - s.11: "You also agree to providing a link back to Arbeitnow.com on your platform" and "We may revoke the permission to use API at any time".
+  - **Use.** This bot is personal and non-commercial, and items link to the Arbeitnow URL with "via Arbeitnow". Tier2, a per-host minimum interval of 60 min, at most `max_pages` (default 2) pages per run.
+
+- **D-180 We Work Remotely RSS: OUT.**
+  - **robots.txt** allows the feeds.
+  - **Terms are unreadable.** `weworkremotely.com/terms-of-service` and `/api-terms-and-guidelines` both answered HTTP 403 to automated fetches.
+  - **What the search excerpt says.** WWR's API terms state that "scraping, copying, saving, or storing our data is strictly prohibited" and bar using the data to build job search services. Storing postings is what this bot does.
+  - **Decision.** Not implemented. Config gets `enabled = false`.
+
+- **D-181 Anthropic web search tool (platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool, read 2026-11-07).**
+  - **Tool versions.** Tool `name: "web_search"`. Versions are `web_search_20250305` (basic), `web_search_20260209` (dynamic filtering) and `web_search_20260318` (adds `response_inclusion`).
+    - On 20260209+ `allowed_callers` defaults to code execution.
+    - Models without programmatic tool calling, which includes Haiku 4.5 per the models page, need `allowed_callers: ["direct"]` or the API returns 400.
+    - We use `web_search_20250305`. It supports `claude-haiku-4-5-20251001`.
+  - **Parameters.**
+    - `max_uses` caps searches per turn; failed searches count.
+    - `allowed_domains` or `blocked_domains`, never both, otherwise 400.
+    - `user_location` (type approximate, city/region/country/timezone).
+  - **Pricing and usage.** $10 per 1,000 searches plus token costs. Search results count as input tokens. A failed search is not billed. Usage is reported in `usage.server_tool_use.web_search_requests`.
+  - **Failure modes.**
+    - An org admin can disable the tool, giving a 400 `invalid_request_error`.
+    - Errors inside a 200 response arrive as `web_search_tool_result_error` (`too_many_requests`, `max_uses_exceeded`, ...).
+    - Long turns may stop with `pause_turn`.
+  - **SDK shape** (anthropic 2.6.0 installed): `client.messages.create(model=..., max_tokens=..., messages=[...], tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": N, "allowed_domains": [...]}])`. Result URLs are in `web_search_tool_result.content[].url`.
+
+- **D-182 hh.ru token type and User-Agent (api.hh.ru OpenAPI spec, read 2026-11-07).**
+  - **User-Agent.** "В запросе необходимо передавать заголовок `User-Agent`, но если ваша реализация http клиента не позволяет, можно отправить `HH-User-Agent`. Если не отправлен ни один заголовок, то ответом будет `400 Bad Request`." (A User-Agent header is required, or HH-User-Agent if the client cannot set it; with neither, the API answers 400.)
+    - The two are interchangeable; if both are sent, only `HH-User-Agent` is processed.
+    - The value should name the application and a developer contact email. Example: `MyApp/1.0 (my-app-feedback@example.com)`.
+  - **No anonymous search.** `GET /vacancies` (operationId get-vacancies): "Если не передан токен авторизации, то после первого запроса будет предложено пройти капчу". In other words, without a token the API demands a captcha after the first request. D-47 observed 403, and a Habr report says anonymous `/vacancies` has returned 403 since April 2026.
+  - **Token type.** The security scheme is OAuth2 with both `authorizationCode` and `clientCredentials` flows (tokenUrl `https://api.hh.ru/token`). The application token (`grant_type=client_credentials`) "необходимо сгенерировать 1 раз" (is generated once). Requesting it again revokes the old one, and the response carries no `expires_in`. User tokens expire after 1209600 s (14 days) and need refresh.
+  - **Decision.** `HH_ACCESS_TOKEN` must be an application token from an app registered at dev.hh.ru. We implement no OAuth refresh, so user tokens are unsupported. App registration may need hh moderation (Habr report); that is a user action.
+  - **D-47 correction.** D-47's "terms" link `hh.ru/article/1175` is the search query-language page (the spec cites it for the `text` parameter). The real terms of service are at `dev.hh.ru/admin/developer_agreement`, which needs a login and was not read.
+
+- **D-183 Triage model id check (platform.claude.com/docs/en/about-claude/models/overview, read 2026-11-07).**
+  - **What changed.** The current Haiku is `claude-haiku-5-5`. `claude-haiku-4-5` (snapshot `claude-haiku-4-5-20251001`) is listed under "Legacy models (still available)", so it is valid but no longer current.
+  - **Prices** (platform.claude.com/docs/en/about-claude/pricing, read 2026-11-07):
+    - Haiku 4.5: $1 per MTok input, $5 output;
+    - Haiku 5.5: $0.10 input, $0.50 output, for prompts up to 100k tokens.
+  - **Decision.** Default `[triage] model = "claude-haiku-4-5"`, as the user specified. This also matches `SCORING_MODEL` and the outreach `cheap_model`, and is one config edit to change.
+  - **Why not switch now.** Haiku 5.5 is about 10x cheaper, but it uses adaptive thinking (default effort medium). The JSON helpers do not set or test thinking or effort parameters, so switching untested could add thinking tokens or 400s.
+  - **User action.** Run `src.evals.run --triage` with `claude-haiku-5-5`, then switch `[triage] model` and `SCORING_MODEL` if recall holds.
+
+## 2026-11-07 — Coverage and freshness plan decisions (planner)
+
+- **D-184 Task order: cost guards come first.**
+  - **Order followed.** PLAN section 10 follows the requested order: migration, baseline, limiter/tiers, alerts, discovery, new sources, KZ, noise/cost, review.
+  - **One deviation.** FC-02 (per-purpose LLM budgets, a daily scoring cap, "cap reached" kept separate from "scoring failed", and the cap warning) runs right after the migration, not in Part 5.
+  - **Why.** Tier1 at 15 min with 150 calls per run would otherwise have no daily bound for a dozen tasks. The fixes are small and independent of the rest.
+  - **Rest of Part 5.** Triage, negative keywords and hard blockers stay in Part 5.
+
+- **D-185 Freshness semantics and schema v8.**
+  - **Source of truth.** `first_seen_at`, which already exists (D-168), is the only freshness clock.
+  - **API timestamps.** API publish times are stored in a new `source_published_at` column, filled with:
+    - Greenhouse `first_published` (fallback `updated_at`);
+    - Lever `createdAt`;
+    - Ashby `publishedAt`;
+    - hh `published_at`;
+    - Workable, Remote OK and Arbeitnow publish dates;
+    - the Telegram message date.
+
+    It is shown only as context and used in /stats for "source lag" (`first_seen_at - source_published_at`). It never decides fresh, baseline or alert. `posted_at` keeps its current meaning, so the stale filter does not change.
+  - **Schema v8:**
+    - postings gains `target`, `source_published_at`, `content_hash` and `baseline`;
+    - a new `target_state` table (per source+target: tier, baselined_at, last_ok_at, last_error, has_validators, etc.);
+    - a new `host_state` table for persistent backoff;
+    - deliveries gains `latency_s`.
+  - **Backfill:**
+    - `target` comes from the `external_id` prefix for board and channel sources;
+    - every existing (source, target) is marked baselined;
+    - every existing posting gets `baseline=1`, so the upgrade causes no alert burst;
+    - `content_hash` stays '' (unknown). The first re-sighting fills it without counting as a change.
+  - **Prune fix.** `prune` uses `last_seen_at`.
+
+- **D-186 Targets and tiers.**
+  - **Targets.** A target is one fetchable unit: a board token, channel, feed or page, or `""` for single-endpoint sources. Sources may expose `targets(ctx)` and `fetch_target(ctx, target)`. The old `fetch(ctx)` still works and means "all targets", for probe and existing tests.
+  - **Tier assignment:**
+    - tier1: config.toml watchlist boards (greenhouse, lever, ashby, workable);
+    - tier2: discovered boards, hn, rss, jobicy, mlh, hh, telegram_channels polling, remoteok, arbeitnow;
+    - tier3: pagewatch pages.
+
+    `[sources.<name>] tier = "tierN"` overrides the default.
+  - **Defaults (config.toml `[scheduler]`):**
+    - tier1 15 min, jitter 60 s;
+    - tier2 90 min, jitter 300 s;
+    - tier3 60 min, jitter 300 s.
+  - **Revalidation.** Tier1 fetches bypass the TTL and always revalidate.
+  - **Hosts without validators.** A tier1 target whose last 200 response had neither ETag nor Last-Modified is fetched at most every `no_validator_min_minutes` (60).
+  - **Greenhouse light polling.** Tier1 Greenhouse boards poll the list without `content=true` and fetch detail only for job ids not seen before, capped per run. The list body is a fraction of the content body.
+  - **ToS floors.** A per-source `min_poll_minutes` floor protects terms when the user lowers a tier interval: jobicy 60 (D-58), remoteok 60, arbeitnow 60.
+  - **One pipeline lock.** One process-wide asyncio lock covers dedupe, filter, (triage,) score and alerts, so two tiers never score the same rows. It also covers the digest and the board-adding writes of discovery.
+  - **Collection runs outside the lock,** as do discovery validation requests and storing live Telegram messages. Tiers fetch disjoint targets, and the shared limiter keeps politeness, so a slow tier2 run never delays tier1.
+  - **COLLECT_CRON_HOURS** is kept in `ENV_VARS` but documented as ignored. Agents cannot edit `.env.example` (D-03), and no new env vars are added in this plan.
+
+- **D-187 Politeness limiter.**
+  - **Configuration.** `[politeness]` in config.toml sets:
+    - `default_min_interval_s` (2.0);
+    - per-host overrides in `[politeness.hosts]`, matched on the host suffix, so `jobs.personio.de`-style tenant hosts can share one budget;
+    - `jitter_fraction` (0.25 of the interval, added, never subtracted);
+    - `max_concurrent_requests` (4, global semaphore);
+    - `backoff_base_s` (300) and `backoff_max_s` (21600).
+  - **Persistent backoff.** It lives in `host_state`. 429, 5xx after retries, timeouts after retries and 403 set `backoff_until = now + min(base * 2^(failures-1), max)`. A `Retry-After` above 60 s also sets `backoff_until` instead of sleeping. A 2xx or 304 resets it. A host in backoff is skipped, and the skip counts as a target failure for that run.
+  - **Determinism.** Randomness and the clock are injected for tests.
+
+- **D-188 Baseline mode.**
+  - **What counts as new.** A (source, target) with no `baselined_at` is "new".
+  - **First successful fetch.** The postings it inserts get `baseline=1`, then `baselined_at` is set. A failed fetch (None, all requests failed, host in backoff) does not complete the baseline.
+  - **Treatment of baseline postings:**
+    - they go through filters, triage and scoring like any posting, but `pending_for_scoring` and triage order non-baseline first, so caps are spent on new items first;
+    - they may use at most `baseline_max_share` (default 0.5) of each daily cap, scoring and triage, through separate `score_baseline`/`triage_baseline` budget purposes. Ordering alone only helps within one run, and twenty discovered boards a day could otherwise fill the whole cap before an 18:00 posting arrives;
+    - they are never sent as instant or fresh alerts;
+    - they can appear in the digest, ranked after fresh items within a score band.
+  - **Live Telegram messages** are never baseline. Their channel was baselined by its first poll, and a channel added at runtime is baselined by its first poll before the listener subscribes.
+
+- **D-189 Fresh alerts, digest order, latency.**
+  - **Fresh flag.** An item is fresh when `baseline=0` and `first_seen_at >= now - fresh_window_hours` (48).
+  - **Fresh alert.** Fresh, and base score >= `fresh_alert_score` (7.5; base score, as SPEC line 42 requires for alerts), at most `fresh_alert_max_per_day` (5) fresh alerts per Asia/Almaty day, best base score first. Delivery kind is `fresh_alert`.
+  - **Existing rules stay.** Base >= 9 or a deadline within 7 days, uncapped, kind `alert`.
+  - **Overlap.** An item that meets an existing rule is sent under that rule and does not use the fresh cap.
+  - **Never alerted:** baseline items and hard-blocked items in `lower` mode (D-195).
+  - **Digest order.** Band = floor(adjusted score / `digest_score_band`), default 1.0. Order is band desc, fresh first, then the existing key. Quotas are unchanged.
+  - **Latency.** `record_delivery` stores `latency_s = sent_at - first_seen_at` and logs one INFO line with kind, source, tier and latency (no posting text).
+  - **/stats** (new) shows:
+    - median and p90 latency over 7 days, overall and per source;
+    - fresh alerts today against the cap;
+    - scoring and triage calls today against their caps;
+    - new postings in the last 24 h per tier;
+    - discovered board count;
+    - web-search spend this month.
+  - **/sources** gains a tier column.
+  - **SPEC.** SPEC's command list is user-owned (D-23), so /stats, /boards and /channels are documented in the README only.
+
+- **D-190 Board auto-discovery.**
+  - **Input.** Only already-collected data: posting `url` and URLs inside descriptions, at most 2048 chars each.
+  - **Recognized URLs:**
+    - Greenhouse: `boards.greenhouse.io/{t}`, `job-boards.greenhouse.io/{t}`, and `?for={t}` on `boards.greenhouse.io/embed/...`;
+    - Lever: `jobs.lever.co/{s}`;
+    - Ashby: `jobs.ashbyhq.com/{n}`;
+    - Workable: `apply.workable.com/{s}`.
+  - **Rejected URLs:** EU variants (`jobs.eu.lever.co`, `job-boards.eu.greenhouse.io`), which need different API hosts (recorded, not supported). Also rejected:
+    - userinfo in the netloc;
+    - explicit ports;
+    - hosts that only end with or contain an allowed host;
+    - non-http(s) schemes;
+    - percent-encoded or non-ASCII tokens;
+    - reserved first path segments (`embed`, `api`, `j`, ...).
+
+    Tokens must match a strict per-ATS regex and are lowercased where the ATS is case-insensitive.
+  - **Never fetch the extracted URL.** The canonical public API URL is rebuilt from the validated token.
+  - **Validation.**
+    - One polite request to that API URL (robots on, limiter on). Valid means 200 plus a schema-valid payload.
+    - Candidates live in `board_candidates` (schema v9), with a 30-day negative cache.
+    - Caps: `max_validations_per_day` 40, `max_new_boards_per_day` 20.
+  - **Storage.**
+    - Valid boards go to `data/discovered_boards.toml` (data/ is gitignored, so the file is per-install). Each entry holds source, token, company, discovered_from, discovered_at and removed.
+    - Writes are atomic (temp file plus rename) by a small in-house writer that escapes all strings. Its output is round-trip tested with `tomllib`; no new dependency.
+    - Company names are untrusted: escaped in TOML and HTML, clipped to 120 chars.
+  - **Removal.** `/boards remove` tombstones an entry (`removed = true`), so it is never rediscovered.
+  - **Tier and baseline.** Discovered boards are tier2 and get baseline on their first fetch.
+
+- **D-191 Aggregator attribution.**
+  - **Link and label.** Postings from remoteok, arbeitnow and jobicy (existing) link to the aggregator's own job page, never to `apply_url`. The rendered item (digest, alerts, /top) adds "via Remote OK", "via Arbeitnow" or "via Jobicy".
+  - **Where it lives.** A `SOURCE_ATTRIBUTION` map in `src/delivery/format.py`, covered by tests. No logos are used.
+
+- **D-192 Optional web-search discovery.**
+  - **Off by default.** `[discovery.web_search] enabled = false`.
+  - **Schedule.** Weekly cron (default Monday 06:00 Asia/Almaty), plus a manual `python -m src.main discover --web`.
+  - **Call shape.** Each configured query is one Messages call with tool `web_search_20250305`, a configured `max_uses` (default 3) and `allowed_domains` set to the four ATS board hosts. Candidates come only from `web_search_tool_result.content[].url`, never from model text, and go through the D-190 extractor, validator and caps.
+  - **Hard monthly cost cap.** `monthly_cost_cap_usd` (default 2.00) is enforced in code:
+    - before each call, reserve the worst case: `max_uses * price_per_search_usd`, plus `max_input_tokens_estimate * input price`, plus `max_tokens * output price`;
+    - if month spend plus the reservation exceeds the cap, the call is not made and the user gets one Telegram notice per month;
+    - after the call, the actual cost (from `usage`) is recorded in `discovery_spend` (schema v9).
+  - **Prices** are config values with defaults read from the pricing page on 2026-11-07: $0.01 per search (D-181), and $1 input / $5 output per MTok for Haiku 4.5 (D-183). The cap is only as good as these constants, so update them if the model changes.
+  - **Not done (scope).** Aggregator `apply_url` values often point at ATS boards, but they are not stored and are not used for discovery.
+  - **Errors.** `pause_turn` is not continued. A 400 "web search not enabled" disables the job for the month and notifies once.
+
+- **D-193 Telethon live listening.**
+  - **Channel list.** config.toml `channels` plus a runtime overlay in the `tg_channels` table (schema v10) that `/channels add|remove` edits. Runtime changes never write config.toml. A config channel can be hidden at runtime with a `removed` row.
+  - **Joined channels only.** NewMessage events arrive only for channels the account has joined. The listener subscribes to the configured channels the account already belongs to.
+  - **Joining is a user action.** It changes the user's own account, so `auto_join` defaults to false. Channels that are not joined stay on tier2 polling, which is also the fallback whenever the listener is disconnected.
+  - **One client per session file.** In `run` mode the polling source reuses the listener's client, because two clients on one session file would contend for its SQLite lock.
+  - **Ordering fix.** `last_id` is advanced only after the postings are stored (fixes D-172).
+  - **Missing credentials or session.** The listener is not started, this is logged once, and /channels and /sources say why.
+  - **Session files.** `*.session` and `*.session-journal` are already gitignored (`.gitignore:7`, `:16`, `tests/test_gitignore.py`).
+
+- **D-194 Kazakhstan region hint.**
+  - **Config.** `[sources.hh] region_hint = "kz"` and `[sources.telegram_channels] region_hint = "kz"` (defaults).
+  - **Use in classification.** `classify_employer` gains a `hint` argument, applied only when no watchlist entry matches and the LLM region guess is below `region_min_confidence` or "unknown". It then returns `kz_employer`, or `kz_startup` if the LLM or kind says startup, with source "hint".
+  - **What still wins.** A watchlist match or a confident LLM "intl" (for example, a foreign company posting on hh.kz). SPEC's headquarters rule is kept.
+  - **No prompt change**, so no eval re-run is needed. The existing "bad KZ cannot outrank good intl" test must stay green.
+
+- **D-195 Pre-filter and hard blockers.**
+  - **New config lists:**
+    - `negative_title_keywords` holds phrases that filter as `negative_title`. Bare "finance" is excluded because it would kill quant-finance titles; "finance operations" is used instead.
+    - `protect_title_keywords` (quant, quantitative, machine learning, research scientist, data scientist) overrides the negative list.
+  - **Seniority.** "sr" joins `senior_only_keywords` (whole word, so it matches "Sr.").
+  - **Hard blockers.**
+    - `hard_blocker_keywords` (citizens only, citizenship required, security clearance, ts/sci, active clearance, polygraph) is searched in title and description.
+    - `hard_blocker_action = "lower"` is the default, because SPEC line 21 says flag work-authorization requirements and do not filter on them. In lower mode the posting gets `hard_blocker` text and a red flag, is never instant- or fresh-alerted, and its adjusted score is reduced by `hard_blocker_penalty` (2.0) in the ranking step. The base score is untouched.
+    - `"filter"` is opt-in and filters before triage with reason `hard_blocker`.
+
+- **D-196 Triage and caps.**
+  - **When triage runs.** After the filters, for each `new` posting with no cached verdict for its (posting_id, content_hash). Pagewatch is exempt.
+  - **The call.** One `call_json` to `[triage] model` with:
+    - a short static system prompt (`src/scoring/triage.md`);
+    - title, company and location;
+    - the first `max_desc_chars` (500) of the description, wrapped with `wrap_untrusted`;
+    - output `{"relevant": bool, "reason": str <= 120 chars}`.
+  - **Verdicts.**
+    - Yes sets status `triaged`, which is the only status (plus `score_error`) that `pending_for_scoring` selects when triage is enabled.
+    - No sets status `filtered` with reason `triage_no`; the reason text is kept.
+    - Errors leave the posting `new` with `triage_attempts + 1`. After 3, the status is `triage_error`.
+  - **Cache.** Verdicts are cached in `triage_results` (schema v11). Scored postings are never rescored. A changed `content_hash` on a not-yet-scored posting triggers a new triage.
+  - **Daily caps.** `[scoring] daily_call_cap` (default 200) and `[triage] daily_call_cap` (default 600) run on `LlmBudget` scoped to their own purposes. Outreach keeps its own 40.
+  - **Cap warning.** Reaching a cap sends one Telegram warning per cap per day. It is not reported as a failure, and the CLI exit code stays 0.
+  - **Total failure.** A run where every attempted triage call, or every attempted scoring call, failed (API or invalid) sends the existing throttled error notice, extended with the stage name.
+
+- **D-197 Smoke test cap.**
+  - **Cap.** The final smoke test allows at most 20 LLM calls in total for triage plus full scoring. This counts triage, so a cheaper call cannot be used to run past the user's "max 20 scoring calls".
+  - **How it is enforced.** A scratch copy of config.toml (passed with `OPPO_CONFIG=...` on the command line) sets `[triage] daily_call_cap = 12` and `[scoring] daily_call_cap = 8`, and the command line sets `MAX_SCORES_PER_RUN=8`.
+  - **Discovery.** Web search stays disabled. Board validation is capped at 3.
+  - **Database.** As in D-166, back up `data/oppo.db` outside the repo, then run against it.
