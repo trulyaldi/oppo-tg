@@ -594,7 +594,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Files: `src/scoring/scorer.py`, `src/scoring/prompt.py`, `tests/test_feedback_injection.py`.
 - Acceptance: with 25 likes and 3 dislikes in DB, the system blocks sent to the fake client contain exactly the 20 newest liked titles and 3 disliked titles under labeled headings; a like later toggled off is excluded; static first block unchanged (same `cache_control`, same text) regardless of examples.
 
-### T22 [ ] Bot commands: /start /top /saved /applied /sources /pause /resume
+### T22 [x] Bot commands: /start /top /saved /applied /sources /pause /resume
 - Implement command handlers per 1.10 in `src/bot/handlers.py`.
 - Files: `src/bot/handlers.py`, `tests/test_bot_commands.py`.
 - Acceptance:

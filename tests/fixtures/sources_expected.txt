@@ -1,0 +1,11 @@
+<b>ashby</b> [ats] counted; last run: never run
+<b>devpost</b> [devpost] disabled: disabled in config.toml; last run: never run
+<b>greenhouse</b> [ats] counted; last run: never run
+<b>hh</b> [hh] credentials: HH_ACCESS_TOKEN; last run: never run
+<b>hn</b> [hn] counted; last run: ok, 201 items, 2026-11-06T06:00:00+00:00
+<b>jobicy</b> [jobicy] counted; last run: never run
+<b>lever</b> [ats] counted; last run: never run
+<b>mlh</b> [mlh] counted; last run: never run
+<b>pagewatch</b> [pagewatch] counted; last run: never run
+<b>rss</b> [rss] counted; last run: failed (Boom &lt;x&gt;), 2026-11-06T06:00:00+00:00
+Credential-free source families enabled: 6 (need 6)

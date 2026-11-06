@@ -7,8 +7,10 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from aiogram import BaseMiddleware, Dispatcher, F
-from aiogram.types import CallbackQuery, TelegramObject, Update
+from aiogram.filters import Command
+from aiogram.types import CallbackQuery, Message, TelegramObject, Update
 
+from src.bot import handlers
 from src.bot.handlers import handle_feedback
 from src.clock import Clock
 from src.config import AppConfig, Settings
@@ -59,5 +61,35 @@ def build_dispatcher(
     @dp.callback_query(F.data.startswith("fb:"))
     async def _feedback(cb: CallbackQuery, conn: sqlite3.Connection, clock: Clock) -> None:
         await handle_feedback(cb, conn, clock)
+
+    @dp.message(Command("start"))
+    async def _start(m: Message) -> None:
+        await handlers.cmd_start(m)
+
+    @dp.message(Command("top"))
+    async def _top(m: Message, conn: sqlite3.Connection, clock: Clock) -> None:
+        await handlers.cmd_top(m, conn, clock)
+
+    @dp.message(Command("saved"))
+    async def _saved(m: Message, conn: sqlite3.Connection) -> None:
+        await handlers.cmd_saved(m, conn)
+
+    @dp.message(Command("applied"))
+    async def _applied(m: Message, conn: sqlite3.Connection) -> None:
+        await handlers.cmd_applied(m, conn)
+
+    @dp.message(Command("sources"))
+    async def _sources(
+        m: Message, conn: sqlite3.Connection, settings: Settings, cfg: AppConfig
+    ) -> None:
+        await handlers.cmd_sources(m, conn, settings, cfg)
+
+    @dp.message(Command("pause"))
+    async def _pause(m: Message, conn: sqlite3.Connection) -> None:
+        await handlers.cmd_pause(m, conn)
+
+    @dp.message(Command("resume"))
+    async def _resume(m: Message, conn: sqlite3.Connection) -> None:
+        await handlers.cmd_resume(m, conn)
 
     return dp
