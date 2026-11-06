@@ -19,6 +19,25 @@ Read this first. Be honest about what has and has not been checked.
   run against live services (no credentials were available). The systemd unit below is an
   example that has not been tested.
 
+### Definition of done status
+
+Each SPEC.md "Definition of done" item, classified honestly:
+
+- All tests green: verified offline (`.venv/bin/python -m pytest -q`, `ruff check .`, `ruff format --check .`).
+- Bot starts and sends a real digest to the user's chat: user-only. Fill `.env`, then run
+  `.venv/bin/python -m src.main once` and check your chat. Never run against real Telegram yet.
+- At least 6 sources working: verified offline (6 credential-free families enabled, fixture tests).
+  One live `probe` run on 2026-11-06 reached them, but that was a first-run result (D-62, D-72);
+  user-only: re-run `.venv/bin/python -m src.main probe` (expect exit 0) as sources can change.
+- Feedback buttons persist: verified offline (callbacks write to SQLite in tests); user-only: press
+  the buttons in your real chat after `once`.
+- README with setup and run instructions: verified offline (`tests/test_readme.py` checks it against code).
+- `.env.example` complete: NOT MET until the user adds the block. Agents cannot edit `.env.example`
+  (D-03), so copy the block from "First run / user actions" step 1 into it by hand.
+- Scheduler runs unattended: verified offline only for the scheduler logic (fake clock tests);
+  user-only: start `run` (systemd example below) and confirm digests arrive for a few days.
+- DECISIONS.md explains every non-obvious choice: verified by review (entries D-01 onward); judgement call.
+
 ## Requirements
 
 - Python 3.11+ (developed on 3.12).
@@ -59,7 +78,7 @@ in `src/config.py`; this table is checked against it by a test.
 | `COLLECT_CRON_HOURS` | no | `3` | Collection interval in hours |
 | `MAX_SCORES_PER_RUN` | no | `150` | Maximum LLM scoring calls per run |
 | `LOG_LEVEL` | no | `INFO` | Python logging level |
-| `HTTP_CONTACT` | no | `https://github.com/oppo-tg` | Email or URL placed in the HTTP User-Agent (set your own) |
+| `HTTP_CONTACT` | no | `https://github.com/trulyaldi/oppo-tg` | Contact (email or URL) placed in the HTTP User-Agent. Default is the project repo; set it to your own contact |
 | `HH_ACCESS_TOKEN` | no | - | hh.kz API token, if required (unlocks the hh source) |
 | `TG_API_ID` | no | - | Telegram API id for Telethon channel reading |
 | `TG_API_HASH` | no | - | Telegram API hash for Telethon channel reading |
@@ -79,7 +98,7 @@ in `src/config.py`; this table is checked against it by a test.
 - `[sources.telegram_channels] channels`: public channel handles, for example `["some_channel"]`.
   Empty by default: you must fill it in, and it only works after the Telethon login below.
 - `[filters]`: title keywords, spam, unpaid and senior-only keywords, `max_age_days`.
-- `[thresholds]`: `digest_min_score`, `digest_max_items`, `digest_min_items`, `alert_score`,
+- `[thresholds]`: `digest_min_score`, `digest_max_items`, `alert_score`,
   `alert_deadline_days`, `alert_deadline_min_score`.
 
 ## Sources
@@ -171,7 +190,7 @@ Only you can do these.
 
 ```
 .venv/bin/python -m src.main run       # unattended: scheduler plus bot polling
-.venv/bin/python -m src.main collect   # collect, dedupe, filter, score
+.venv/bin/python -m src.main collect   # collect, dedupe, filter, score, send instant alerts
 .venv/bin/python -m src.main digest    # send the digest now
 .venv/bin/python -m src.main once      # collect, score, alert and send the digest
 .venv/bin/python -m src.main probe     # live source check (see Sources)

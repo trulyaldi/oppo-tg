@@ -38,7 +38,7 @@ ENV_VARS: list[EnvVar] = [
     EnvVar(
         "HTTP_CONTACT",
         False,
-        "https://github.com/oppo-tg",
+        "https://github.com/trulyaldi/oppo-tg",
         "Email or URL placed in the HTTP User-Agent",
     ),
     EnvVar("HH_ACCESS_TOKEN", False, None, "hh.kz API token, if required"),
@@ -61,7 +61,7 @@ class Settings:
     collect_cron_hours: int = 3
     max_scores_per_run: int = 150
     log_level: str = "INFO"
-    http_contact: str = "https://github.com/oppo-tg"
+    http_contact: str = "https://github.com/trulyaldi/oppo-tg"
     hh_access_token: str | None = None
     tg_api_id: str | None = None
     tg_api_hash: str | None = None
@@ -118,7 +118,6 @@ class Settings:
 class Thresholds:
     digest_min_score: float = 5.0
     digest_max_items: int = 10
-    digest_min_items: int = 5
     alert_score: float = 9.0
     alert_deadline_days: int = 7
     alert_deadline_min_score: float = 0.0
@@ -133,6 +132,7 @@ class AppConfig:
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> AppConfig:
         th = dict(data.get("thresholds", {}))
+        th.pop("digest_min_items", None)  # removed in FIX-09 (D-79); old configs still load
         known = Thresholds.__dataclass_fields__
         unknown = set(th) - set(known)
         if unknown:

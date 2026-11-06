@@ -797,7 +797,7 @@ Evidence from the review: 275 tests pass, `ruff check` and `ruff format --check`
 - Files: `src/config.py`, `README.md`, `PLAN.md` (section 3 text), `config.toml`, `tests/test_config.py` and `tests/test_readme.py` if they reference Kaggle, `DECISIONS.md` (D-68 addendum superseding the D-71 note).
 - Acceptance: `grep -rn KAGGLE src tests README.md` finds nothing except an explanatory README sentence. The README env table still equals `ENV_VARS` (existing test). `Settings.from_env` ignores a stray `KAGGLE_KEY`. All tests green.
 
-### FIX-09 [ ] Honest UA default, README accuracy and a DoD status checklist
+### FIX-09 [x] Honest UA default, README accuracy and a DoD status checklist
 - Problems:
   1. The `HTTP_CONTACT` default `https://github.com/oppo-tg` is not this project. The repo is `https://github.com/trulyaldi/oppo-tg` (git remote), so every request (including the D-62 live probe) advertised a contact the user does not control. This weakens the "honest User-Agent" requirement, and there is no DECISIONS entry for it (PLAN calls it a "placeholder").
   2. README "Running" describes `collect` as "collect, dedupe, filter, score", but `src/main.py` `collect` also sends instant alerts to Telegram.

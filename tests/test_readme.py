@@ -63,3 +63,19 @@ def test_env_example_block_in_user_actions():
 
 def test_honest_verification_section():
     assert "never run against the real Telegram API" in _section("Verification status")
+
+
+def test_dod_status_lists_all_spec_items():
+    spec = (ROOT / "SPEC.md").read_text()
+    items = re.findall(r"^- (.+)$", spec.split("## Definition of done")[1].split("\n## ")[0], re.M)
+    assert len(items) == 8
+    assert "### Definition of done status" in README
+    sec = README.split("### Definition of done status")[1].split("\n## ")[0]
+    for item in items:
+        assert item.rstrip(".") in sec, item
+    assert "NOT MET until the user adds the block" in sec
+
+
+def test_digest_min_items_gone():
+    assert "digest_min_items" not in README
+    assert "digest_min_items" not in (ROOT / "config.toml").read_text()

@@ -75,3 +75,19 @@ def test_import_does_not_read_environ(monkeypatch):
 
     monkeypatch.setattr("os.environ", Sentinel())
     importlib.reload(config)
+
+
+def test_default_http_contact_is_project_repo():
+    from src.config import Settings
+
+    s = Settings.from_env(
+        {"TELEGRAM_BOT_TOKEN": "t", "TELEGRAM_CHAT_ID": "1", "ANTHROPIC_API_KEY": "k"}
+    )
+    assert s.http_contact == "https://github.com/trulyaldi/oppo-tg"
+
+
+def test_legacy_digest_min_items_ignored():
+    from src.config import AppConfig
+
+    cfg = AppConfig.from_dict({"thresholds": {"digest_min_items": 5, "alert_score": 8.0}})
+    assert cfg.thresholds.alert_score == 8.0
