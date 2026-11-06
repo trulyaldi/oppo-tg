@@ -190,7 +190,8 @@ def entities(sentence: str, extra_skills: list[str] | None = None) -> list[str]:
 # Lowercase degree/title phrases that the capitalized-token rule cannot see (D-151).
 _CRED = re.compile(
     r"(?<!\w)(?:(master)(?:['’]?s\b|\s+(?:degree|of)\b)|(bachelor)(?:['’]?s\b|\s+(?:degree|of)\b)"
-    r"|(vice\s+president)|(магистр)\w*|(бакалавр)\w*)"
+    r"|(vice\s+president)|(магистр)\w*|(бакалавр)\w*|(doctorate)|(doctoral)"
+    r"|(chief\s+\w+\s+officer)|(доктор\w*\s+наук)|(кандидат\w*\s+наук))"
 )
 
 

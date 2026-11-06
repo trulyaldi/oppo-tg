@@ -112,3 +112,30 @@ def test_refuses_without_api_key(tmp_path, capsys):
     assert ev.main([], {}, boom, ev.LABELED, out) == 2
     assert "ANTHROPIC_API_KEY" in capsys.readouterr().err
     assert not out.exists()
+
+
+def test_main_pins_sdk_loggers_even_with_anthropic_log_debug(tmp_path, monkeypatch):
+    """FIX-35 (folded in): the manual eval run uses the same logger pin as the bot (D-154)."""
+    import logging
+
+    names = ("anthropic", "httpx", "httpcore")
+    old = {n: logging.getLogger(n).level for n in names}
+    monkeypatch.setenv("ANTHROPIC_LOG", "debug")
+    try:
+        for n in names:
+            logging.getLogger(n).setLevel(logging.DEBUG)
+        p = tmp_path / "set.jsonl"
+        p.write_text("")
+        env = {
+            "ANTHROPIC_API_KEY": "k",
+            "OPPO_CONFIG": str(ROOT / "tests" / "fixtures" / "config_repo_snapshot.toml"),
+        }
+        rc = ev.main([], env, lambda key: FakeClient(8.0), p, tmp_path / "last.json")
+        assert rc in (0, 1)
+        import os
+
+        assert "ANTHROPIC_LOG" not in os.environ
+        assert all(logging.getLogger(n).level == logging.WARNING for n in names)
+    finally:
+        for n, lvl in old.items():
+            logging.getLogger(n).setLevel(lvl)

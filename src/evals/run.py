@@ -20,6 +20,7 @@ from typing import Any
 from src import db
 from src.clock import FixedClock
 from src.config import AppConfig
+from src.logging_setup import configure_logging
 from src.models import Kind, Posting
 from src.pipeline.filters import hard_filter, relevance_ok
 from src.scoring.prompt import prompt_version
@@ -175,6 +176,8 @@ def main(
     ap.add_argument("--limit", type=int, default=None)
     args = ap.parse_args(argv)
     env = os.environ if environ is None else environ
+    # same SDK logger pin as the bot: ANTHROPIC_LOG=debug must not print request bodies (D-141)
+    configure_logging((env.get("LOG_LEVEL") or "INFO").upper())
     key = (env.get("ANTHROPIC_API_KEY") or "").strip()
     if not key:
         print(

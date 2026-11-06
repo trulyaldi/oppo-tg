@@ -2251,7 +2251,7 @@ Third review pass, 2026-11-06. The reviewer re-checked FIX-26..FIX-30 (commits 5
   - "Highlight Jane Street internship first" is still removed, and Jane and Street are reported.
   - Every FIX-15/26/27 fabrication probe is still removed.
 
-### FIX-35 [ ] "doctorate" and spelled-out C-level titles are not credential-checked
+### FIX-35 [x] "doctorate" and spelled-out C-level titles are not credential-checked
 - Severity: non-blocking, one-line addition next to FIX-26's `_CRED`.
 - Problem: against `cv_fake.txt`, "I hold a doctorate in Computer Science." and "I was the chief technology officer at Sample Labs." are kept.
 - Build: add `doctorate`, `doctoral` and `chief \w+ officer` (and Russian `доктор наук`, `кандидат наук`) to `_CRED`.

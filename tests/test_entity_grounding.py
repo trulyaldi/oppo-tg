@@ -496,3 +496,37 @@ def test_tailor_reply_honest_with_imperatives_removes_nothing():
     }
     v, removed = verify_tailoring(res, CV, POST, ["Python", "C++"])
     assert removed == 0 and len(v["emphasize"]) == 2 and len(v["reorder"]) == 2
+
+
+# ---- FIX-35: doctorate and spelled-out C-level titles (D-160) ----
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "I hold a doctorate in Computer Science.",
+        "I was the chief technology officer at Sample Labs.",
+        "I am a chief executive officer of a small company.",
+        "I have a doctoral degree in mathematics.",
+        "У меня степень доктора наук.",
+        "Я кандидат наук.",
+    ],
+)
+def test_doctorate_and_chief_officer_claims_dropped(sentence):
+    assert not _kept_sentence(sentence)
+
+
+def test_degree_sentence_with_bsc_still_kept():
+    assert _kept_sentence(
+        "I am a BSc Computer Science student at Example University of Technology."
+    )
+
+
+def test_credentials_in_cv_are_allowed():
+    from src.outreach.verify import credentials
+
+    assert credentials("chief technology officer, doctorate") == {
+        "chief technology officer",
+        "doctorate",
+    }
+    assert not (credentials("i hold a doctorate") - credentials("phd: doctorate in physics"))
