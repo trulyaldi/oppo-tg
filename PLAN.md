@@ -1658,7 +1658,7 @@ Per-type guidance in `draft.md`:
   - No output contains `@` or digits.
   - Empty and HTML-only inputs -> [].
 
-### N4 [ ] Contact parser: HN Who-is-hiring comment
+### N4 [x] Contact parser: HN Who-is-hiring comment
 - Depends on: N3.
 - Build: `src/contacts/parsers/hn.py`:
   - `parse_hn_comment(item_json) -> list[RawContact]`: the author handle becomes name `HN user {author}`; the role comes from self-descriptions in the text ("I'm the CTO", "founder here", "I'm hiring for my team", "я основатель"), else `poster`; note `HN Who is hiring poster`. Contact lines are parsed with N3.

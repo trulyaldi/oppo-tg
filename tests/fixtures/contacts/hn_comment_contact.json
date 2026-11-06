@@ -1,0 +1,8 @@
+{
+  "_comment": "FAKE FIXTURE: hand-written in the Algolia item shape, fictional people.",
+  "id": 99000001,
+  "author": "fake_founder_fixture",
+  "type": "comment",
+  "text": "Acme Fake | ML Engineer | Remote | Full-time<p>We build fictional data tools. I&#x27;m the co-founder; reach out to Sam Placeholder, our Head of Data. Mail jobs@acme-fake.example or call +1 555 010 0000.",
+  "children": []
+}
