@@ -16,6 +16,7 @@ from src.clock import Clock
 from src.config import AppConfig, Settings
 from src.delivery.digest import item_from_row, load_weights_checked
 from src.delivery.format import feedback_keyboard, render_item
+from src.outreach.render import CHUNK_LIMIT, chunk_lines
 from src.ranking.adjust import recompute_adjusted
 from src.sources.base import MIN_SOURCE_FAMILIES, REGISTRY, count_report, source_family
 
@@ -129,21 +130,32 @@ async def cmd_top(
         )
 
 
-def render_reaction_list(rows: list[sqlite3.Row]) -> str:
+def reaction_items(rows: list[sqlite3.Row]) -> list[str]:
+    """One string per item (title line plus optional URL line), each under the chunk limit."""
     lines = []
     for i, r in enumerate(rows, 1):
         line = f"{i}. <b>{_esc(_clip(r['title'], 200))}</b> — {_esc(_clip(r['company'], 100))}"
         line += f" /prepare_{r['id']}"
         url = r["url"]
         if url.startswith(("http://", "https://")):
-            line += f"\n{_esc(url)}"
+            url_line = f"\n{_esc(url)}"
+            if len(line) + len(url_line) <= CHUNK_LIMIT:  # a huge URL is dropped, not split
+                line += url_line
         lines.append(line)
-    return "\n".join(lines)
+    return lines
+
+
+def render_reaction_list(rows: list[sqlite3.Row]) -> str:
+    return "\n".join(reaction_items(rows))
 
 
 async def _cmd_list(message: Any, conn: sqlite3.Connection, action: str, empty: str) -> None:
     rows = db.list_by_reaction(conn, action, LIST_LIMIT)
-    await _say(message, render_reaction_list(rows) if rows else empty)
+    if not rows:
+        await _say(message, empty)
+        return
+    for chunk in chunk_lines(reaction_items(rows), CHUNK_LIMIT):  # D-145: stay under 4096
+        await _say(message, chunk)
 
 
 async def cmd_saved(message: Any, conn: sqlite3.Connection) -> None:

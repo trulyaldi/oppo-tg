@@ -191,3 +191,24 @@ async def test_saved_lines_carry_prepare_links(conn):
     await cmd_saved(m, conn)
     assert f"S1</b> — C /prepare_{pid}" in m.texts[0] or f" /prepare_{pid}" in m.texts[0]
     assert len(pid) == 16 and all(ch in "0123456789abcdef" for ch in pid)
+
+
+async def test_saved_long_items_split_into_chunks(conn):
+    ids = []
+    for i in range(20):
+        pid = add(conn, i, title="T" * 200, company="C" * 100)
+        conn.execute(
+            "UPDATE postings SET url=? WHERE id=?", (f"https://x.example/{i}/" + "u" * 280, pid)
+        )
+        db.set_reaction(conn, pid, "save", NOW + timedelta(minutes=i))
+        ids.append(pid)
+    conn.commit()
+    m = FakeMessage()
+    await cmd_saved(m, conn)
+    assert len(m.texts) >= 2
+    joined = "\n".join(m.texts)
+    for t in m.texts:
+        assert len(t) <= 4000
+        assert t.count("<b>") == t.count("</b>")
+    for pid in ids:
+        assert f"/prepare_{pid}" in joined

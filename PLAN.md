@@ -1920,7 +1920,7 @@ Verified with evidence, no FIX needed:
   - (a) `/contacts` on a posting at `https://acme-fake.test/jobs/1` (MockTransport) fetches robots.txt and `/team` once and lists the people. A second `/contacts` within 7 days makes 0 requests.
   - (b) No README sentence claims `/contacts` discovers anything.
 
-### FIX-19 [ ] `/saved` and `/applied` can exceed Telegram's 4096-char limit
+### FIX-19 [x] `/saved` and `/applied` can exceed Telegram's 4096-char limit
 - Severity: non-blocking (largely pre-existing; this branch made it worse).
 - Problem:
   - `render_reaction_list` puts up to 20 items in one message (title up to 200, company up to 100, an unclipped URL), and P4 added ` /prepare_<16hex>` (26 chars) per line.
