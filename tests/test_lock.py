@@ -66,11 +66,11 @@ def test_run_refuses_second_instance(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(main_mod, "_serve", fake_serve)
     env = {**ENV, "DB_PATH": str(db)}
-    (tmp_path / "oppo.lock").write_text(str(os.getpid()))  # a live "other instance"
-    assert main_mod.main(["run"], env) != 0
-    assert called == []
-    assert "already running" in capsys.readouterr().err
-    assert (tmp_path / "oppo.lock").exists()  # the refused start must not steal the lock
+    with InstanceLock(tmp_path / "oppo.lock"):  # a live "other instance"
+        assert main_mod.main(["run"], env) == 3
+        assert called == []
+        assert "already running" in capsys.readouterr().err
+        assert (tmp_path / "oppo.lock").exists()  # the refused start must not steal the lock
 
 
 def test_run_starts_and_releases_lock(tmp_path, monkeypatch):
@@ -82,3 +82,19 @@ def test_run_starts_and_releases_lock(tmp_path, monkeypatch):
     monkeypatch.setattr(main_mod, "_serve", fake_serve)
     assert main_mod.main(["run"], {**ENV, "DB_PATH": str(tmp_path / "oppo.db")}) == 0
     assert seen == [True] and not (tmp_path / "oppo.lock").exists()
+
+
+def test_live_unrelated_pid_without_flock_is_acquired(tmp_path):
+    path = tmp_path / "x.lock"
+    path.write_text(str(os.getppid()))  # alive, but holds no flock (PID reuse)
+    InstanceLock(path).acquire()
+    assert path.read_text() == str(os.getpid())
+
+
+def test_release_then_reacquire(tmp_path):
+    path = tmp_path / "x.lock"
+    lock = InstanceLock(path)
+    lock.acquire()
+    lock.release()
+    lock.acquire()
+    lock.release()

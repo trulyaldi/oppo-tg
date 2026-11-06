@@ -1,13 +1,15 @@
 """Single-instance PID lock for `run` (S3, D-86).
 
 Two bots polling one token make Telegram answer TelegramConflictError, so the
-second `run` must refuse to start. The lock is a file holding the owner's PID;
-a lock whose PID is no longer alive is stale and gets taken over.
+second `run` must refuse to start. The lock is an fcntl.flock on a file that
+also holds the owner's PID for the error message. The kernel drops the flock when
+the process dies, so a stale file (or a reused PID) never blocks startup.
 """
 
 from __future__ import annotations
 
 import contextlib
+import fcntl
 import os
 from pathlib import Path
 
@@ -22,20 +24,6 @@ class AlreadyRunning(RuntimeError):
         )
 
 
-def pid_alive(pid: int) -> bool:
-    if pid <= 0:
-        return False
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True  # exists, owned by someone else
-    except OSError:
-        return False
-    return True
-
-
 def _read_pid(path: Path) -> int | None:
     try:
         return int(path.read_text().strip())
@@ -44,33 +32,43 @@ def _read_pid(path: Path) -> int | None:
 
 
 class InstanceLock:
+    """Holds an exclusive flock on the lock file for the process lifetime (D-148)."""
+
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
-        self._held = False
+        self._fd: int | None = None
 
     def acquire(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        for _ in range(3):
+        for _ in range(5):
+            fd = os.open(self.path, os.O_CREAT | os.O_RDWR, 0o644)
             try:
-                fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
-            except FileExistsError:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
                 pid = _read_pid(self.path)
-                if pid is not None and pid_alive(pid):
-                    raise AlreadyRunning(pid, self.path) from None
-                with contextlib.suppress(FileNotFoundError):  # stale or garbage lock
-                    self.path.unlink()
+                os.close(fd)
+                raise AlreadyRunning(pid or 0, self.path) from None
+            try:  # the holder may have unlinked the file between our open and flock
+                same = os.fstat(fd).st_ino == os.stat(self.path).st_ino
+            except FileNotFoundError:
+                same = False
+            if not same:
+                os.close(fd)
                 continue
-            with os.fdopen(fd, "w") as f:
-                f.write(str(os.getpid()))
-            self._held = True
+            os.ftruncate(fd, 0)
+            os.write(fd, str(os.getpid()).encode())
+            self._fd = fd
             return
         raise RuntimeError(f"could not acquire lock {self.path}")
 
     def release(self) -> None:
-        if self._held and _read_pid(self.path) == os.getpid():
+        if self._fd is None:
+            return
+        if _read_pid(self.path) == os.getpid():
             with contextlib.suppress(FileNotFoundError):
                 self.path.unlink()
-        self._held = False
+        os.close(self._fd)  # closing drops the flock
+        self._fd = None
 
     def __enter__(self) -> InstanceLock:
         self.acquire()

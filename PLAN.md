@@ -1970,7 +1970,7 @@ Verified with evidence, no FIX needed:
   - The repro sentence is dropped and counted. A body that falls below 3 sentences as a result triggers the existing regenerate path.
   - `draft_reply_ok.json` is unchanged.
 
-### FIX-23 [ ] PID lock can block `run` forever after a reboot (PID reuse), and stale takeover races
+### FIX-23 [x] PID lock can block `run` forever after a reboot (PID reuse), and stale takeover races
 - Severity: non-blocking (the risk is recorded in D-86, but README's systemd example turns it into a loop).
 - Problem:
   - `InstanceLock` trusts `os.kill(pid, 0)`. After `wsl --shutdown` or a reboot, the old PID is often reused by an unrelated process, so `run` exits 3 with "already running".
