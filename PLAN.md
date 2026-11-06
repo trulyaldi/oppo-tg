@@ -19,6 +19,7 @@ Tasks run in order, one commit each. Mark `[x]` in the same commit.
 | Run bot | `.venv/bin/python -m src.main run` |
 | One-shot pipeline | `.venv/bin/python -m src.main collect` / `... digest` / `... once` |
 | Evals (real API, manual only) | `.venv/bin/python -m src.evals.run` |
+| Live source probe (real network, manual only, no secrets needed) | `.venv/bin/python -m src.main probe` |
 
 Every task's acceptance criteria implicitly include: tests green, `ruff check` clean, `ruff format --check` clean.
 
@@ -29,7 +30,9 @@ Rules for all tasks:
 - Fixtures: capture one real response once at implementation time (single polite request, honest UA), trim, strip anything personal, commit. Never fetch in tests.
 - Never scrape LinkedIn.
 - robots.txt rule (D-31): `PoliteClient` checks robots for every request by default, and HTML pages always obey it. For a documented public API host (boards-api.greenhouse.io, api.lever.co, api.ashbyhq.com, hn.algolia.com, api.hh.ru, kaggle.com/api), the implementer first fetches that host's robots.txt once. If it allows the API path, keep `check_robots=True`. If it disallows the path but the provider's API docs/terms explicitly invite programmatic use, the source may pass `check_robots=False` for that API host only. Record the robots finding and the terms link in DECISIONS.md before doing this. Never silently bypass robots.
-- Every source task (T06, T12-T19, T25-T27) also: registers in `REGISTRY`, covers the four add-source cases (fixture parse, empty, malformed, HTTP error), and appends an `(implemented: <module>)` / `(dropped: see D-xx)` note to the matching bullet in SPEC.md's Sources section (the only SPEC edit agents make, D-23).
+- Every source task (T06, T12-T19, T19a-T19c, T25-T26) also: registers in `REGISTRY` (import added to `src/sources/__init__.py`), covers the four add-source cases (fixture parse, empty, malformed, HTTP error), and appends an `(implemented: <module>)` / `(dropped: see D-xx)` note to the matching bullet in SPEC.md's Sources section (the only SPEC edit agents make, D-23). A source with no matching bullet gets one new appended bullet instead (D-55).
+- Every NEW source (T19a onward) must pass BOTH a robots.txt check of the exact paths it fetches AND a read of the site's terms of use / API terms, before any fetching code is written. Quote the deciding clause and link in DECISIONS.md. If robots disallows the path, the terms forbid automated access (robots, scraping, crawling, bots, data mining), the site blocks our honest UA (403), or the terms page cannot be read, do not implement fetching: set `[sources.<name>] enabled = false` (or omit it), write a DECISIONS entry "<Source> dropped: <reason>", mark the task done. Never evade a block.
+- Source count rule for the definition of done (D-52): see 1.5.1. It is enforced by `tests/test_source_count.py` (T19d) and checked live by `src.main probe` (T19e).
 
 ---
 
@@ -54,11 +57,15 @@ src/
     dedupe.py           # fingerprinting + cross-source duplicate marking
     filters.py          # hard filters (spam, unpaid, senior-only, stale) + relevance prefilter
     run.py              # collect_all(), score_pending(), orchestration
+    probe.py            # run_probe(): live source check for `src.main probe` (T19e, D-56)
   sources/
     __init__.py
     base.py             # Source protocol, SourceResult, registry
     greenhouse.py lever.py ashby.py hn.py hh.py rss.py pagewatch.py
-    devpost.py mlh.py kaggle.py telegram_channels.py yc.py
+    mlh.py jobicy.py euraxess.py kaggle.py telegram_channels.py
+    devpost.py          # inert, disabled by config (ToS, D-50)
+    himalayas.py        # only if T19c is triggered (fallback, D-53)
+                        # no yc.py: YC dropped (terms forbid scraping, D-54)
   scoring/
     __init__.py
     profile.md          # user profile (from SPEC), loaded at runtime
@@ -148,6 +155,29 @@ async def run_source(src, ctx) -> SourceResult  # wraps fetch: catches ALL excep
 ```
 
 Every source: parses into `Posting`, never raises out of `run_source`, returns `[]` on empty/malformed/HTTP error, sets `kind` sensibly.
+
+Two optional class attributes (added in T19d; read through helpers so untouched modules need no edits):
+- `family: str`, read via `source_family(src)`, defaulting to `src.name`. Greenhouse, Lever and Ashby set `family = "ats"`.
+- `credentials: tuple[str, ...]`, read via `source_credentials(src)`, defaulting to `()`. These are the env vars that unlock the source: hh `("HH_ACCESS_TOKEN",)`, kaggle `("KAGGLE_USERNAME", "KAGGLE_KEY")`, telegram_channels `("TG_API_ID", "TG_API_HASH")`.
+
+### 1.5.1 Source count rule for "At least 6 sources working" (D-52)
+
+- **Unit counted:** a source *family*. Each module is its own family, except that Greenhouse, Lever and Ashby form one family, `ats`. They read the same kind of listing (employer ATS boards) from one company watchlist and differ only in vendor. Every other family is a distinct discovery channel.
+- **What counts:** a family counts when at least one of its modules meets all of these:
+  - (a) it is registered in `REGISTRY`;
+  - (b) it is enabled in the committed `config.toml`;
+  - (c) `enabled(settings, cfg)` is true when `settings` holds ONLY the three required env vars;
+  - (d) `source_credentials(src) == ()`;
+  - (e) it has `tests/test_source_<name>.py` covering the four add-source cases;
+  - (f) it has a DECISIONS entry with its robots finding (and, from T19a on, its terms finding).
+- **Excluded from the count:** credential-gated sources (hh, kaggle, telegram_channels). They are reported as "unlocks with credentials" and never count, even when credentials are present, because agents cannot verify them live. Dropped or config-disabled sources (devpost, yc) are also excluded.
+- **Threshold:** `MIN_SOURCE_FAMILIES = 6` in `src/sources/base.py`.
+- **Verification:**
+  - Offline: `tests/test_source_count.py` (T19d).
+  - Live: `.venv/bin/python -m src.main probe` (T19e). It exits 0 only if at least 6 counted families returned at least 1 item. Its output is recorded in DECISIONS.md by T19e.
+- **Expected after T19a-T19b** (if both pass their probes):
+  - Counted families: `ats` (greenhouse+lever+ashby), `hn`, `rss`, `pagewatch`, `mlh`, `jobicy`, `euraxess` = 7 (9 modules).
+  - Unlocks with credentials: hh, kaggle, telegram_channels.
 
 ### 1.6 HTTP client (`src/http.py`, D-08)
 
@@ -258,7 +288,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - `daily_digest`: `CronTrigger(hour=9, minute=0, timezone=Asia/Almaty)` (from `DIGEST_TIME`).
   - `prune`: daily 03:00, delete `http_cache` older than 7 days and `postings` with status filtered/duplicate older than 60 days.
 - Every job body is wrapped in `safe_job()` which catches and logs all exceptions (scheduler never dies).
-- CLI: `run` (bot + scheduler, blocks), `collect` (collect+dedupe+filter+score once, prints counts), `digest` (send today's digest now; used to verify a real digest), `once` (collect then digest).
+- CLI: `run` (bot + scheduler, blocks), `collect` (collect+dedupe+filter+score once, prints counts), `digest` (send today's digest now; used to verify a real digest), `once` (collect then digest), `probe` (T19e, D-56: runs every enabled source once against the live network using a separate DB, `data/probe.db` by default, and prints a per-source table plus the counted-family total. It needs no secrets and never calls Telegram or Claude).
 - Startup fails fast with a clear message listing missing required env vars.
 
 ---
@@ -419,6 +449,135 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Acceptance (if implemented): fixture yields N>=3 events with dates; Digital -> remote True; season URL for 2026-11-06 and 2027-03-01 both correct; changed markup (no cards) -> `[]` with a warning log; registered.
 - Source-count checkpoint (always, implemented or dropped): count the sources that are registered and fixture-tested after T06 and T12-T19, and write the count to DECISIONS.md. If fewer than 6 remain with Greenhouse/Lever/Ashby counted as one (i.e. hh.kz and both Devpost and MLH were dropped), report a blocker so the planner re-plans with replacement credential-free sources before T20 (D-26).
 
+### T19a [ ] Source: Jobicy remote jobs API (credential-free, probe + terms gated)
+- Re-plan after the T19 blocker (D-51, D-53). Covers remote ML/data roles (SPEC goals 1 and 3: remote is a top-scoring geography).
+- **Probe first** (one request each, 2s apart, honest UA). The planner's findings from 2026-11-06 are listed below; re-confirm them:
+  - `https://jobicy.com/robots.txt`: 200, `/api/` not disallowed, `Content-Signal: ai-train=yes, search=yes, ai-input=yes`.
+  - The API docs/terms at `https://jobicy.com/jobs-rss-feed` (linked from `https://jobi.cy/apidocs`) say:
+    - the public API can be used "without a separate agreement";
+    - AI models may be used to analyze listings;
+    - automated passes no more than once per hour;
+    - credit Jobicy with a direct link;
+    - free-tier apply links must lead to the Jobicy job page.
+  - Use the endpoint the CURRENT docs name. The docs list `GET https://jobicy.com/api/jobs` with `count`, `geo`, `industry`, `tag`, `cursor`; the legacy `/api/v2/remote-jobs` also answered 200. Check robots for that exact path.
+  - Get valid industry slugs with one `?get=industries` call.
+- **Exit:** use the drop rule in section 0 if robots disallows the path, the terms forbid automated or AI use, or the API answers 403 to our UA. On a drop, set `[sources.jobicy] enabled = false`, write the DECISIONS entry and mark the task done.
+- Build `src/sources/jobicy.py`:
+  - For each `[sources.jobicy].industries` slug (seed with the verified data-science and software/engineering slugs) and each optional `tags` entry, make one GET, one page only (no cursor walking), with `count=100` and `ttl_s=3600` (at most one pass per hour).
+  - Mapping (confirm the field names against the captured response; the planner's probe saw `id, url, jobTitle, companyName, jobIndustry, jobType, jobGeo, jobLevel, jobExcerpt, jobDescription, pubDate`):
+    - `external_id` = id;
+    - title;
+    - company;
+    - `url` = the Jobicy job page URL, never the employer ATS link. This is the required visible credit, and the item layout stays byte-exact;
+    - location = jobGeo;
+    - `remote=True`;
+    - description = `html_to_text(jobDescription or jobExcerpt)`;
+    - `posted_at` = pubDate (UTC aware);
+    - kind INTERNSHIP if `\bintern(?:ship)?s?\b` matches the title or jobType, else JOB;
+    - raw_tags = industry, type, level.
+  - The same id returned by two queries is emitted once.
+- Files: `src/sources/jobicy.py`, `src/sources/__init__.py`, `config.toml`, `tests/fixtures/jobicy_jobs.json` (one real response trimmed to 5 jobs, descriptions cut, nothing personal), `tests/test_source_jobicy.py`, `SPEC.md` (new appended bullet, D-55), `DECISIONS.md`.
+- Acceptance:
+  - The fixture yields N>=3 postings, all with `jobicy.com` URLs, `remote is True`, and descriptions free of `<` tags.
+  - An intern title gives INTERNSHIP.
+  - An id shared across two configured industries is emitted once.
+  - `{"jobs": []}`, malformed JSON and HTTP 500 each give `[]`, and one failing query does not drop the other query's items.
+  - A second `fetch` within 1h makes no new request to the API path (cache, via `build_client` + MockTransport counter that counts only `/api/` requests, not `robots.txt`).
+  - `[sources.jobicy] enabled = false` makes `enabled()` False.
+  - Registered.
+
+### T19b [ ] Source: EURAXESS research job listings (credential-free, probe + terms gated)
+- Covers research positions and PhD-track roles in Europe and worldwide (SPEC goal 4). This is a distinct channel from the hand-picked page watcher and the NSF feed.
+- **Probe first** (one request each, 2s apart, honest UA). The planner's findings from 2026-11-06 are listed below; re-confirm them:
+  - `https://euraxess.ec.europa.eu/robots.txt`: 200. Disallows only admin/user/edit-type paths, `/core/`, `/profiles/`. `/jobs/search` with query strings is allowed.
+  - `GET /jobs/search` returned 200 with a server-rendered list: 10 cards per page, `/jobs/<id>` links, a "Posted on" date, organisation, country, research field, and facet links like `?f[0]=job_research_field:<id>` / `job_research_profile:<id>`.
+  - The footer legal notice is `https://commission.europa.eu/legal-notice_en`: content is reusable under CC BY 4.0, and it has no clause on automated access.
+- Confirm that this is the applicable notice, and look for any EURAXESS-specific terms page.
+- Look for an official RSS/Atom feed or export of job searches BEFORE writing an HTML parser. If one exists, `euraxess.py` fetches that feed instead (parsing with feedparser on text from PoliteClient) and still maps to EURAXESS-specific fields.
+- **Exit:** use the drop rule in section 0. On a drop, set `[sources.euraxess] enabled = false`, write the DECISIONS entry and mark the task done.
+- Build `src/sources/euraxess.py`:
+  - Searches come from `[[sources.euraxess.searches]]` (`name`, `params` table of facet query params). Seed them with the verified facet ids for Mathematics, Physics and Computer science, combined with the research profiles First Stage Researcher (R1) / Recognised Researcher (R2). Fetch pages `page=0..max_pages-1` (`max_pages` default 2, config) with `ttl_s=3600`. Never fetch job detail pages.
+  - Map each card:
+    - `external_id` = numeric job id;
+    - `url` = `https://euraxess.ec.europa.eu/jobs/<id>`;
+    - title;
+    - company = organisation;
+    - location = city/country text;
+    - `posted_at` from "Posted on: 6 November 2026";
+    - deadline only if the card shows one;
+    - description = card excerpt;
+    - kind RESEARCH;
+    - raw_tags = research fields + researcher profile;
+    - `remote=None`.
+  - The same id across searches or pages is emitted once.
+- Files: `src/sources/euraxess.py`, `src/sources/__init__.py`, `config.toml`, `tests/fixtures/euraxess_search.html` (real search page trimmed to >=4 cards, scripts/svg removed), `tests/test_source_euraxess.py`, `SPEC.md` (note appended to the "Fellowship and research-program pages" bullet), `DECISIONS.md`.
+- Acceptance:
+  - The fixture yields N>=4 postings with absolute `/jobs/<id>` URLs, `kind == RESEARCH` and a `posted_at` date parsed.
+  - A duplicate id across two searches is emitted once.
+  - `max_pages=2` gives exactly 2 requests to `/jobs/search` per search (the MockTransport counter counts only that path, not `robots.txt`), and no request goes to a `/jobs/<id>` detail URL.
+  - A page with no cards gives `[]` plus a warning log; HTTP 500 gives `[]`.
+  - Registered.
+
+### T19c [ ] Conditional fallback: Himalayas remote jobs API
+- **Trigger check first:** compute the D-52 family count after T19a/T19b (by hand or with a scratch script; `count_report` itself arrives in T19d).
+  - If at least 6 credential-free families are already implemented, write the DECISIONS line "T19c not needed: count = N", leave the code untouched and mark the task done.
+- Only if the count is below 6: probe `https://himalayas.app/robots.txt` (planner: `Allow: /`, only apply/pagination paths disallowed) and re-read `https://himalayas.app/terms`.
+  - Clause 113 allows "personal and commercial integrations" of the API.
+  - Clauses 30/93 ban bots and scraping outside it.
+  - Clause 30A limits Personal Agents to non-bulk collection.
+- **Drop if ANY of the following holds:**
+  - (1) the API terms do not cover keyless personal use;
+  - (2) the terms forbid processing jobs with an LLM, or treat our use as passing jobs to a third party;
+  - (3) we cannot both show a visible Himalayas link and keep apply actions on `applicationLink`. Plan: `url` = the Himalayas job page and no separate Apply action, so (3) normally passes.
+- If kept, build `src/sources/himalayas.py`:
+  - `GET https://himalayas.app/jobs/api/search?q=<query>` for each `[sources.himalayas].queries` entry, 1 page each, `ttl_s=86400` (the data refreshes daily).
+  - Map title, companyName, the Himalayas job URL, locationRestrictions, description (`html_to_text`), pubDate, kind JOB/INTERNSHIP.
+  - Tests cover the four cases plus dedupe across queries.
+- Files: `DECISIONS.md` only, or `src/sources/himalayas.py`, `src/sources/__init__.py`, `config.toml`, `tests/fixtures/himalayas_jobs.json`, `tests/test_source_himalayas.py`, `SPEC.md`, `DECISIONS.md`.
+- Acceptance: either the DECISIONS "not needed" or "dropped" line exists, or the four add-source cases pass and the source is registered.
+
+### T19d [ ] Source count rule: families, credentials, count test
+- Implement 1.5.1 in `src/sources/base.py`:
+  - `MIN_SOURCE_FAMILIES = 6`;
+  - `source_family(src) -> str`, which is `getattr(src, "family", src.name)`;
+  - `source_credentials(src) -> tuple[str, ...]`, which is `getattr(src, "credentials", ())`;
+  - `count_report(settings, cfg) -> CountReport`, with fields `counted: dict[family, list[name]]`, `credential_gated: dict[name, tuple[str, ...]]` and `disabled: dict[name, str]` (a reason string; use the source's `disabled_reason` if it has one, else "disabled in config.toml").
+- Set `family = "ats"` on greenhouse, lever and ashby, and `credentials = ("HH_ACCESS_TOKEN",)` on hh.
+- Also set `[sources.yc] enabled = false` in `config.toml` with the comment `# dropped: YC terms forbid scraping (D-54)`. There is no yc module.
+- Files: `src/sources/base.py`, `src/sources/greenhouse.py`, `src/sources/lever.py`, `src/sources/ashby.py`, `src/sources/hh.py`, `config.toml`, `tests/test_source_count.py`, `DECISIONS.md`.
+- Acceptance (`tests/test_source_count.py`):
+  - Load the REPO `config.toml` and build `Settings.from_env` with only `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `ANTHROPIC_API_KEY` set (dummy values).
+  - Every `src/sources/*.py` module except `base.py` and `__init__.py` has a registry entry with the same name, which proves `src/sources/__init__.py` imports them all.
+  - `counted["ats"] == ["ashby", "greenhouse", "lever"]` (sorted).
+  - devpost is in `disabled`; hh is in `credential_gated`; neither is counted.
+  - `len(counted) >= MIN_SOURCE_FAMILIES`.
+  - Every counted name has an existing `tests/test_source_<name>.py`.
+  - No counted source has non-empty credentials.
+  - Adding `HH_ACCESS_TOKEN` to the env leaves `counted` unchanged, because credential-gated sources never count.
+- Write a DECISIONS entry with the computed table: counted families with their modules, the module total, credential-gated sources with the env vars they need, and disabled sources with reasons.
+
+### T19e [ ] `probe` CLI: live check of working sources (no secrets)
+- Add `src/main.py probe [--db PATH]` (default `data/probe.db`), which works as follows:
+  - It reads optional env such as `HTTP_CONTACT` and `OPPO_CONFIG`, but does NOT require the three Telegram/Claude secrets. Use a non-raising settings constructor, e.g. `Settings.from_env(environ, require_secrets=False)`, or equivalent. The flag MUST default to the raising behaviour: `Settings.from_env({})` still raises `MissingConfig` and the T02 tests stay green. Only `probe` passes `require_secrets=False`. `data/probe.db` is already gitignored (`*.db`).
+  - It builds the client with `build_client` on the probe DB, so robots and caching stay active, and the pagewatch snapshots never touch the real DB.
+  - It runs every registered source whose `enabled()` is true once through `run_source`.
+  - It prints one line per registered source: `family  name  status  ok  n_items`, where status is `counted`, `credentials: <vars>`, or `disabled: <reason>`.
+  - It ends with `Counted families with items: N (need 6)`.
+  - Exit code 0 if N >= `MIN_SOURCE_FAMILIES`, else 1.
+  - It never constructs a Telegram Bot or Anthropic client and never writes `postings`.
+- Put the logic in `src/pipeline/probe.py` as `async run_probe(http, settings, cfg, clock, out) -> int` (injected, testable).
+- Files: `src/main.py`, `src/config.py` (if the settings constructor needs the flag), `src/pipeline/probe.py`, `tests/test_probe.py`, `DECISIONS.md`.
+- Acceptance (`tests/test_probe.py`, fake sources registered via monkeypatched REGISTRY, MockTransport, no network):
+  - Output has one line per source plus the summary line.
+  - A family counts only if `ok` and `n_items >= 1`.
+  - 6 working fake families give exit 0; 5 give exit 1.
+  - A credential-gated fake source that returns items is still not counted.
+  - `main(["probe", "--db", tmp], environ={})` does not raise `MissingConfig` (with `run_probe` monkeypatched to a stub).
+  - `main(["--help"])` lists `probe`.
+- **Live verification (implementer, once, real network, not a test):**
+  - Run `.venv/bin/python -m src.main probe` and paste its output into a DECISIONS entry.
+  - If it exits 1, report a blocker naming the families that failed. Do not mark the task done in that case.
+
 ### T20 [ ] Telegram bot: dispatcher, whitelist, feedback callbacks
 - Build `src/bot/app.py` (`build_dispatcher(conn, settings, cfg, clock) -> Dispatcher`, whitelist middleware) and `src/bot/handlers.py` callback handler for `fb:*` (1.10). Tests call handler functions directly with fake `CallbackQuery`/`Message` objects (no network, no real Bot).
 - Files: `src/bot/__init__.py`, `src/bot/app.py`, `src/bot/handlers.py`, `tests/test_bot_feedback.py`.
@@ -441,7 +600,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Acceptance:
   - `/top` with 15 scored items in last 14 days and 2 older -> 10 messages, highest first, older excluded; with none -> "Nothing scored yet."
   - `/saved` and `/applied` list only active reactions, newest first, max 20; empty -> "Nothing saved yet." / "Nothing marked applied yet."
-  - `/sources` output lists every registry name with enabled/disabled (+ reason) and last run status from `source_runs` (exact text asserted against a fixture).
+  - `/sources` output lists every registry name with its family, its status (counted / `credentials: <vars>` / `disabled: <reason>`, from `count_report`, D-52), and its last run status from `source_runs`. It ends with the line `Credential-free source families enabled: N (need 6)`. The exact text is asserted against a fixture.
   - `/pause` sets `paused=1` and replies "Paused. /pause again or /resume to resume."; second `/pause` and `/resume` unpause.
   - All outputs HTML-escaped (title with `<` asserted).
 
@@ -469,18 +628,20 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 ### T25 [ ] Source: Kaggle competitions (credential-gated)
 - `src/sources/kaggle.py`: if `KAGGLE_USERNAME`/`KAGGLE_KEY` present, GET `https://www.kaggle.com/api/v1/competitions/list?sortBy=latestDeadline&page=1` with HTTP Basic auth (official API). Map ref/title, url, deadline, reward, category, kind COMPETITION. Without creds: `enabled=False`, reason "needs KAGGLE_USERNAME/KAGGLE_KEY".
 - Files: `src/sources/kaggle.py`, `tests/fixtures/kaggle_competitions.json`, `tests/test_source_kaggle.py`.
-- Acceptance: fixture parses with deadlines; Basic auth header present (asserted in MockTransport, value from fake creds); disabled without creds with reason shown in `/sources`; empty/malformed/401/500 -> `[]`; registered.
+- Set `credentials = ("KAGGLE_USERNAME", "KAGGLE_KEY")` (D-52).
+- Acceptance: fixture parses with deadlines; Basic auth header present (asserted in MockTransport, value from fake creds); disabled without creds with reason shown in `/sources`; empty/malformed/401/500 -> `[]`; registered. `tests/test_source_count.py` still passes and lists kaggle under `credential_gated`, never under `counted` (even with creds set).
 
 ### T26 [ ] Source: Kazakh Telegram job channels via Telethon (credential-gated)
 - `src/sources/telegram_channels.py`: with `TG_API_ID`, `TG_API_HASH` and an existing session file, read the last 100 messages (or since last seen id stored in `state`) from each channel in `[sources.telegram_channels].channels` (public channels only, read-only, `flood_sleep_threshold` respected). Each message -> Posting (external_id `channel:msg_id`, title = first line <= 120 chars, url `https://t.me/{channel}/{msg_id}`, description text, posted_at date, company "" unless "Company:"/"Компания:" line). Skip messages without text and forwards of ads (keyword list). Add `src/tools/telethon_login.py` (interactive one-time login, never run in tests). Without creds/session: disabled with reason. Telethon client is injected; tests use a fake with `iter_messages`.
 - Files: `src/sources/telegram_channels.py`, `src/tools/__init__.py`, `src/tools/telethon_login.py`, `tests/fixtures/tg_messages.json`, `tests/test_source_telegram_channels.py`.
-- Acceptance: fake client messages fixture -> postings with t.me urls and Cyrillic intact; last-seen id persisted and second run returns only newer; `FloodWaitError` from fake -> `[]` and logged; no creds -> disabled with reason; registered. Channel list in config defaults to empty (user fills in, see section 3).
+- Set `credentials = ("TG_API_ID", "TG_API_HASH")` (D-52).
+- Acceptance: fake client messages fixture -> postings with t.me urls and Cyrillic intact; last-seen id persisted and second run returns only newer; `FloodWaitError` from fake -> `[]` and logged; no creds -> disabled with reason; registered. Channel list in config defaults to empty (user fills in, see section 3). `tests/test_source_count.py` still passes and lists telegram_channels under `credential_gated`.
 
-### T27 [ ] Source: YC jobs (probe-dependent)
-- Work at a Startup requires login and its terms disallow automated access (D-24), so it is never scraped. Probe `https://www.ycombinator.com/robots.txt` for `/jobs`. If allowed: `src/sources/yc.py` fetches `https://www.ycombinator.com/jobs/role/software-engineer` (and data-science role page if present), parses the embedded JSON/HTML listing (company, title, location, url, remote), kind STARTUP.
-- Exit: if disallowed or no stable embedded data, DECISIONS entry "YC dropped: <reason>; YC startups are covered via HN Who is hiring and Ashby/Lever boards", task done.
-- Files: `src/sources/yc.py`, `tests/fixtures/yc_jobs.html`, `tests/test_source_yc.py` (or DECISIONS.md only).
-- Acceptance (if implemented): fixture yields N>=3 postings with company and ycombinator.com urls; markup without listing -> `[]`; 500 -> `[]`; registered.
+### T27 [ ] YC jobs: record the drop (no code)
+- The planner read the YC Terms of Use (`https://www.ycombinator.com/legal`) on 2026-11-06. They say "you will not engage in or use any data mining, robots, scraping or similar data gathering or extraction methods" (D-54). robots.txt allows `/jobs`, but the terms forbid automated access, so YC is dropped. Work at a Startup was already excluded (D-24).
+- Do not create `src/sources/yc.py`. T19d already sets `[sources.yc] enabled = false`; verify that it is still set. Append `(dropped: see D-54; YC startups are covered via HN Who is hiring, hnrss HN Jobs feed and Ashby/Lever boards)` to SPEC.md's "YC Work at a Startup." bullet.
+- Files: `SPEC.md`, `config.toml` (only if the flag is missing).
+- Acceptance: `config.toml` loads with `[sources.yc] enabled = false`; `"yc" not in REGISTRY`; SPEC bullet carries the dropped note; all tests green.
 
 ### T28 [ ] Eval set and eval runner
 - Build `evals/labeled.jsonl` (>= 20 lines: posting dict + `expected_min`, `expected_max`, `note`; mix: IMC/Optiver quant intern (8-10), senior C++ trader role (filtered or <=3), Kazakh ML startup remote (6-9), unrelated marketing job (0-2), strong hackathon with deadline (7-9), unpaid "exposure" (filtered), PhD-track research internship (6-9), etc.) and `src/evals/run.py`: loads set, runs hard filters then real `Scorer` (only when invoked explicitly, needs `ANTHROPIC_API_KEY`), prints per-item pass/fail and summary (pass rate, mean abs error to range), writes `evals/last_run.json`.
@@ -488,12 +649,31 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Acceptance: every JSONL line validates (Posting fields + range 0<=min<=max<=10); runner with a fake client returning fixed scores computes the right pass/fail counts and summary; runner refuses to run without `ANTHROPIC_API_KEY` (clear message, non-zero exit); no test calls the real API.
 
 ### T29 [ ] README, env documentation, end-to-end smoke, DoD checklist
-- Write `README.md`: what it does, requirements (Python 3.11+), setup with the exact commands from section 0, env var table (generated from/matching `ENV_VARS`), `config.toml` guide (watchlists, feeds, channels, thresholds), Telethon one-time login, how to get chat id, running (`run`, `once`, `digest`), running unattended (systemd user unit example + `nohup` alternative), evals, sources table with status and ToS notes, troubleshooting.
-- Add `tests/test_readme.py` asserting the README env table lists exactly the names in `ENV_VARS` and that README contains each command from section 0.
-- Add `tests/test_e2e_all_sources.py`: all implemented sources via MockTransport/fakes with their fixtures -> full pipeline -> fake scorer -> digest + alerts to fake Bot; asserts >= 6 registered, enabled-in-test sources contributed postings, no source exception escapes, deliveries consistent.
+- Write `README.md` covering:
+  - what it does;
+  - requirements (Python 3.11+);
+  - setup with the exact commands from section 0;
+  - env var table (generated from/matching `ENV_VARS`);
+  - `config.toml` guide (watchlists, feeds, channels, thresholds);
+  - Telethon one-time login;
+  - how to get the chat id;
+  - running (`run`, `once`, `digest`, `probe`);
+  - running unattended (systemd user unit example + `nohup` alternative);
+  - evals;
+  - troubleshooting;
+  - a sources table with columns `source | family | status | notes`. Status is one of `counted (no credentials)`, `unlocks with <ENV VARS>` or `dropped (D-xx)`, with ToS notes. Below it, the count rule (1.5.1, D-52) in two sentences.
+- Add `tests/test_readme.py` asserting:
+  - the README env table lists exactly the names in `ENV_VARS`;
+  - README contains each command from section 0, including `probe`;
+  - every `REGISTRY` name appears in the README sources table.
+- Add `tests/test_e2e_all_sources.py`: all implemented sources run via MockTransport/fakes with their fixtures -> full pipeline -> fake scorer -> digest + alerts to a fake Bot. Asserts:
+  - `count_report` with only the three required env vars has >= 6 counted families (D-52);
+  - every counted source contributed postings;
+  - no source exception escapes;
+  - deliveries are consistent.
 - Files: `README.md`, `tests/test_readme.py`, `tests/test_e2e_all_sources.py`.
 - README has a "First run / user actions" section that reproduces PLAN section 3 (the `.env.example` lines, secrets, optional credentials, Telethon login, real digest check, eval run).
-- Acceptance: both tests pass; `tests/test_readme.py` also asserts README contains `TELEGRAM_BOT_TOKEN=` inside the `.env.example` block of the user-actions section; `.venv/bin/python -m src.main --help` lists `run`, `collect`, `digest`, `once`; at least 6 sources registered and fixture-tested.
+- Acceptance: both tests pass; `tests/test_readme.py` also asserts README contains `TELEGRAM_BOT_TOKEN=` inside the `.env.example` block of the user-actions section; `.venv/bin/python -m src.main --help` lists `run`, `collect`, `digest`, `once`, `probe`; `tests/test_source_count.py` passes (>= 6 counted credential-free families, D-52).
 
 ---
 
@@ -523,7 +703,10 @@ Only the user can do these. Agents cannot do them, and they do not block the tas
    ```
    (If T02 changed any name, use the `ENV_VARS` list / README table as the source of truth.)
 2. Put real `TELEGRAM_BOT_TOKEN` (from @BotFather), `TELEGRAM_CHAT_ID`, `ANTHROPIC_API_KEY` in `.env`.
-3. Optional credentials: `KAGGLE_USERNAME`/`KAGGLE_KEY`, `TG_API_ID`/`TG_API_HASH` + run `.venv/bin/python -m src.tools.telethon_login` once, `HH_ACCESS_TOKEN` if hh.kz requires it.
+3. Optional credentials. These unlock extra sources; they are not needed for the 6-source minimum (D-52):
+   - `HH_ACCESS_TOKEN`: RECOMMENDED. hh.kz is the only Kazakhstan job source, because anonymous access gets 403 (D-47). No credential-free Kazakhstan source passed its robots and terms checks (D-57). Get it by registering an application at https://dev.hh.ru.
+   - `KAGGLE_USERNAME`/`KAGGLE_KEY`.
+   - `TG_API_ID`/`TG_API_HASH`, then run `.venv/bin/python -m src.tools.telethon_login` once (Kazakh Telegram job channels).
 4. Fill SPEC.md [EDIT] items: extra target companies -> `config.toml` ATS boards; Kazakh Telegram channels -> `config.toml [sources.telegram_channels].channels`.
-5. Verify the real digest: `.venv/bin/python -m src.main once`, then start unattended mode (`run`, systemd unit from README).
+5. Check the live sources with `.venv/bin/python -m src.main probe`; it should exit 0 with >= 6 counted families. Then verify the real digest with `.venv/bin/python -m src.main once`, check that `/sources` shows the counted families with ok runs, and start unattended mode (`run`, systemd unit from README).
 6. Run evals once: `.venv/bin/python -m src.evals.run`, and record the pass rate in DECISIONS.md.

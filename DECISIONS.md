@@ -99,3 +99,73 @@ Log every non-obvious choice: date, choice, reason. Newest last.
 - **D-49 T19 MLH events source, robots/terms finding and fixture (D-31).** On 2026-11-06 with the honest UA, one request each (2s apart): `https://mlh.io/robots.txt` HTTP 200, `User-agent: *` disallows only `/account/ /tools/ /_/ /v4/ /auth/ /admin/ /graphql` and a few invite paths, then `Allow: /`; `/seasons/...` is allowed, so `check_robots=True` stays (no bypass). The terms page (`https://mlh.io/terms`) was fetched and read this time: it prohibits using the Site "commercially", reverse engineering, interfering with or damaging the Site, and unauthorized access; it has no clause against automated access, scraping or crawling. This is a personal, non-commercial bot making one cached (1h) request per run, so MLH is kept. `GET https://mlh.io/seasons/2027/events` returned HTTP 200 (378 KB server-rendered HTML, 48 event cards, schema.org Event microdata). Fixture `tests/fixtures/mlh_events.html` is 5 REAL cards from that response (Digital; In-Person+Hardware; In-Person+Diversity; an ended one; one more In-Person) with svg/img/image meta and class attributes stripped, wrapped in a minimal page. Parsing: cards are `a[itemtype=schema.org/Event]`; name = `h4`; start/end from `startDate`/`endDate` metas (UTC date); location = addressLocality, Region, Country metas; badge `span[title]` values (Digital, In-Person, Hardware, Diversity, High school) become raw_tags; remote True for "Digital", False for "In-Person", else None. Deadline = event start date (PLAN); events whose end date is before today (Asia/Almaty) are skipped because the season page also lists past events (so a past-dated item never reaches the digest). external_id and url are the event URL with the `utm_*` query stripped (many events link off-site, e.g. luma.com). Company is "Major League Hacking". Season URL: month >= 7 -> year+1, from the injected clock in the configured timezone; tested for 2026-11-06 and 2027-03-01 (both `/seasons/2027/events`). No cards -> `[]` plus a warning log.
 - **D-50 Devpost dropped (terms forbid automated access); supersedes D-48's keep decision.** Read the Devpost Terms of Service (`https://info.devpost.com/legal/devpost/terms-of-service`, reached via `info.devpost.com/terms`; `devpost.com/site/terms-of-service` is a 404) on 2026-11-06. Section 4 lists as prohibited: "Uses manual or automated software, devices, scripts robots, or other means or processes to access, 'scrape,' 'crawl' or 'spider' the Site, User Content ..., or any related data or information". The `/api/hackathons` JSON endpoint is undocumented, not offered as a public API, and is part of "the Site", so programmatic access is not permitted even though robots.txt allows it. Action: `[sources.devpost] enabled = false` in config.toml, SPEC.md Sources marked dropped. The module `src/sources/devpost.py` and its tests stay in the repo (inert, disabled by config) in case Devpost grants permission; do not re-enable without it. Hackathon coverage now comes from MLH (and Kaggle for competitions, T25).
 - **D-51 T19 source-count checkpoint.** Sources registered and fixture-tested after T06 and T12-T19 that work with NO credentials and are enabled: (1) ATS boards (Greenhouse, Lever, Ashby counted as one per PLAN), (2) Hacker News Who is hiring, (3) RSS/Atom feeds, (4) page watcher, (5) MLH events = 5. Not counted: hh.kz (needs `HH_ACCESS_TOKEN`, D-47; anonymous gets 403), Devpost (dropped, D-50), Kaggle (T25, needs credentials), Telegram channels (T26, needs Telethon credentials). Only T27 (YC jobs) could add a credential-free source: probed `https://www.ycombinator.com/robots.txt` (HTTP 200, `Allow: /`, only `/verify/*`, `/library?*`, `/companies?*` disallowed) and `/jobs/role/software-engineer` (HTTP 200, Inertia `data-page` JSON embedded), so it looks feasible, but its terms are unread and D-24 notes Work at a Startup terms disallow automated access. So the count is 5, reaching 6 only if T27 passes its terms check: BLOCKER REPORTED, the planner should add a replacement credential-free source (or accept the hh.kz token / T27 path) before T20 per D-26.
+
+## 2026-11-06 — Re-plan after the T19 source-count blocker (planner)
+
+- **D-52 Count rule for SPEC's "At least 6 sources working". Supersedes D-26's lenient per-module count and D-51's tally.**
+  - **Interpretation.** SPEC does not define "source". This rule is an interpretation, recorded here; it does not change SPEC.
+  - **Unit counted: a source family.** Each module in `src/sources/` is its own family, except that Greenhouse, Lever and Ashby form one family, `ats`. They are separate modules with separate vendor APIs and separate failure modes. But they read the same kind of listing (employer ATS job boards) from one company watchlist and differ only in vendor, so counting them three times would inflate coverage. Every other family is a distinct discovery channel. RSS feeds, the page watcher, HN, MLH, Jobicy and EURAXESS each find opportunities a different way.
+  - **The honest counter-argument.** SPEC names Greenhouse, Lever and Ashby individually, the same way it names Devpost, MLH and Kaggle. So a per-module count is also defensible. With the T19a/T19b additions it gives 9 credential-free modules. We do NOT rely on it; the family count is the enforced, stricter rule.
+  - **Not used: grouping by SPEC bullet.** That grouping would also merge RSS with the page watcher and fold EURAXESS into the same "Fellowship and research-program pages" bullet. It is not a sound basis, because one bullet covers several independent channels.
+  - **Which sources count.** A family counts if at least one of its modules meets all of these:
+    - registered;
+    - enabled in the committed `config.toml`;
+    - `enabled()` is true with ONLY the three required env vars set;
+    - declares no `credentials`;
+    - has a four-case fixture test `tests/test_source_<name>.py`;
+    - has a DECISIONS entry with its robots finding (and, for new sources, its terms finding).
+  - **Credential-gated sources never count.** These are hh (`HH_ACCESS_TOKEN`), kaggle (`KAGGLE_USERNAME`/`KAGGLE_KEY`) and telegram_channels (`TG_API_ID`/`TG_API_HASH`). They are listed as "unlocks with credentials" and do not count even when the user sets credentials, because agents cannot verify them live and the DoD must hold on a fresh install.
+  - **Dropped or config-disabled sources never count.** These are devpost (D-50) and yc (D-54).
+  - **Threshold:** `MIN_SOURCE_FAMILIES = 6`.
+  - **Verification.**
+    - Offline: `tests/test_source_count.py` (T19d), which builds `count_report` from the repo config with only the three required env vars.
+    - Live: `src.main probe` (T19e, D-56). A family counts live only if a run returned at least 1 item.
+  - **Count today:** 5 (ats, hn, rss, pagewatch, mlh).
+  - **Expected after T19a/T19b:** 7 (ats, hn, rss, pagewatch, mlh, jobicy, euraxess), so one family can fail without missing the DoD. T19c (Himalayas) is a conditional fallback in case both new sources drop.
+- **D-53 New credential-free sources: probes and choices.** The planner made one request per robots.txt or page on 2026-11-06, with the honest UA and 2s between requests. Results:
+  - **Jobicy remote jobs API: chosen (T19a).**
+    - robots.txt: 200, `/api/` not disallowed, `Content-Signal: ... ai-input=yes`.
+    - The API docs page (`https://jobicy.com/jobs-rss-feed`) says the public API is usable "without a separate agreement" and that AI models may be used to analyze listings.
+    - Conditions: automated passes no more than once per hour; credit Jobicy with a direct link; free-tier apply links must go to the Jobicy page.
+    - A test call to `/api/v2/remote-jobs?count=5&industry=data-science` returned 200 JSON (its `friendlyNotice` repeats the credit and link rule).
+    - How we comply: 1h cache TTL, and `url` is the Jobicy job page, which is our visible credit.
+  - **EURAXESS research jobs: chosen (T19b).**
+    - robots.txt allows `/jobs/search` with facet query strings.
+    - The search page is server-rendered: 10 cards per page with `/jobs/<id>` links.
+    - Its footer legal notice (`https://commission.europa.eu/legal-notice_en`) licenses content under CC BY 4.0 and has no clause on automated access. The implementer must confirm there is no EURAXESS-specific terms page and should prefer an official feed if one exists.
+    - It covers SPEC goal 4 (research and PhD-track positions).
+  - **Himalayas API: conditional fallback only (T19c).**
+    - robots.txt allows the site.
+    - Terms clause 113 allows "personal and commercial integrations" of the API.
+    - But clauses 30 and 93 ban bots and scraping outside the API, clause 30A restricts Personal Agents to non-bulk use, the terms never mention LLM processing, and they bar passing jobs to third parties.
+    - That is borderline, so it runs only if the count is below 6, with explicit drop conditions.
+  - **Rejected candidates:**
+    - Remotive: robots.txt has `Disallow: /api/*`.
+    - DrivenData: its Terms of Use (`/termsofuse/`) forbid "any robot, spider or other automatic device ... to access the Website for any purpose".
+    - Astana Hub (`astanahub.com`): answers 403 to our honest UA. We do not evade it, and its robots.txt also disallows `/api/`.
+    - enbek.kz: robots.txt disallows the vacancies (`/*/вакансии/*`) and search paths.
+    - Codeforces: `api/contest.list` returned 200, but `/apiHelp` returned 403 to our UA, so the API terms could not be read. Under the new-source rule an unread terms page means no.
+    - AIcrowd: not pursued; low priority, and robots.txt blocks AI crawlers.
+    - Arbeitnow: robots.txt allows everything, but it is mostly German on-site jobs, which is low relevance.
+- **D-54 YC dropped (terms forbid scraping). Supersedes D-24's probe plan.**
+  - The YC Terms of Use (`https://www.ycombinator.com/legal`, "Site Content, Software and Trademarks") say: "you will not engage in or use any data mining, robots, scraping or similar data gathering or extraction methods".
+  - robots.txt allows `/jobs` (D-51), but the terms forbid it, so the public jobs pages are not fetched.
+  - T27 is rewritten as a no-code task: config flag off and a SPEC dropped note. YC startups stay covered through HN Who is hiring, the hnrss "HN Jobs" feed and the Ashby/Lever boards.
+- **D-55 SPEC edits for sources without a matching bullet. Extends D-23.**
+  - The add-source skill (step 6) requires updating SPEC's Sources section. For a new source that fits no existing bullet, the agent may append ONE new bullet at the end of the Sources list, in the form `- <Category>: <Source>. (implemented: <name> in src/sources/<name>.py; added by agent, D-55)`.
+  - Jobicy gets such a bullet ("Remote job board API: Jobicy."). EURAXESS gets its note appended to the existing "Fellowship and research-program pages" bullet. Himalayas, if ever implemented, gets its note appended to the Jobicy bullet.
+  - No existing SPEC text, requirement or [EDIT] item is changed.
+- **D-56 `probe` CLI for live verification of "working".**
+  - Fixture tests prove that parsing works, not that a source works live. `python -m src.main probe` runs every enabled source once against the real network. It needs no secrets, never calls Telegram or Claude, and uses a separate DB (`data/probe.db`), so pagewatch snapshots and the cache never affect the real DB. It prints per-source status and the counted-family total, and exits 1 below 6.
+  - It is a manual command: never run in tests (tests use fakes and MockTransport).
+  - The implementer runs it once in T19e and records the output here. The user re-runs it after setup (PLAN section 3).
+  - It is added to the section 0 command table, the `--help` assertion in T19e/T29 and the README command test.
+- **D-57 Kazakhstan coverage gap.**
+  - No credential-free Kazakhstan source survived the checks:
+    - hh.kz needs a token (D-47);
+    - Astana Hub returns 403 to our honest UA;
+    - enbek.kz's robots.txt disallows its vacancy paths;
+    - Telegram channels need Telethon credentials.
+  - PLAN section 3 therefore marks `HH_ACCESS_TOKEN` as RECOMMENDED, not optional-if-required.
+  - The user can also add Kazakh company career pages to `[[sources.pagewatch.pages]]` after a robots check.
+  - Kazakhstan relevance in scoring is unaffected: the profile and rubric still weight Astana/Almaty highly for postings from any source.
