@@ -183,8 +183,9 @@ def save_score(
     with conn:
         conn.execute(
             "INSERT OR REPLACE INTO scores (posting_id, base_score, adjusted_score, reason,"
-            " deadline, red_flags, tags, model, prompt_version, scored_at, weights_version)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,NULL)",
+            " deadline, red_flags, tags, model, prompt_version, scored_at, weights_version,"
+            " employer_region, region_confidence, employer_is_startup, visa_barrier)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,NULL,?,?,?,?)",
             (
                 posting_id,
                 result.score,
@@ -196,6 +197,10 @@ def save_score(
                 model,
                 prompt_version,
                 _iso(now),
+                result.employer_region,
+                result.region_confidence,
+                None if result.employer_is_startup is None else int(result.employer_is_startup),
+                None if result.visa_barrier is None else int(result.visa_barrier),
             ),
         )
         conn.execute(

@@ -12,5 +12,7 @@
     {"name": "trailing_prose", "text": "{\"score\": 5, \"reason\": \"x\", \"deadline\": null, \"red_flags\": [], \"tags\": []}\nHope this helps!"},
     {"name": "not_json", "text": "I think it is a good fit."},
     {"name": "array", "text": "[1, 2]"}
-  ]
+  ],
+  "new_format": {"text": "{\"score\": 8, \"reason\": \"ok\", \"deadline\": null, \"red_flags\": [], \"tags\": [], \"employer_region\": \"kz\", \"region_confidence\": 0.9, \"employer_is_startup\": true, \"visa_barrier\": false}", "employer_region": "kz", "region_confidence": 0.9, "employer_is_startup": true, "visa_barrier": false},
+  "bad_new": [{"name": "region_europe", "text": "{\"score\": 8, \"reason\": \"ok\", \"employer_region\": \"europe\"}"}, {"name": "confidence_high", "text": "{\"score\": 8, \"reason\": \"ok\", \"region_confidence\": 1.5}"}]
 }

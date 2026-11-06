@@ -6,6 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import StrEnum
+from typing import Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
@@ -58,3 +59,7 @@ class ScoreResult(BaseModel):
     deadline: date | None = None
     red_flags: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
+    employer_region: Literal["kz", "intl", "unknown"] = "unknown"
+    region_confidence: float = Field(0.0, ge=0, le=1)
+    employer_is_startup: bool | None = None
+    visa_barrier: bool | None = None

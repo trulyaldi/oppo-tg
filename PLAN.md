@@ -1327,7 +1327,7 @@ Per-type guidance in `draft.md`:
   - `grep -rn "s\.score" src` finds nothing.
   - All existing digest/alert/top/feedback tests stay green.
 
-### W3 [ ] Scoring contract: employer region, startup and visa fields (region-blind score)
+### W3 [x] Scoring contract: employer region, startup and visa fields (region-blind score)
 - Depends on: W2 (columns to store the new fields).
 - Build:
   - `ScoreResult` gains the optional fields from 8.1.3 (`employer_region` Literal with default `"unknown"`, `region_confidence` 0..1 with default 0.0, `employer_is_startup: bool | None`, `visa_barrier: bool | None`).

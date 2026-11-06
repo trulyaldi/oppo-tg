@@ -18,7 +18,7 @@ from src.scoring.prompt import build_system_blocks, build_user_message, prompt_v
 
 log = logging.getLogger(__name__)
 
-MAX_TOKENS = 300
+MAX_TOKENS = 400
 CONCURRENCY = 4
 TZ = ZoneInfo("Asia/Almaty")
 CORRECTION = (

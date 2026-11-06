@@ -71,7 +71,7 @@ async def test_valid_saved(conn):
     assert row["base_score"] == 8.5 and row["model"] == "test-model" and row["prompt_version"]
     assert status(conn, pid)["status"] == "scored"
     kw = client.calls[0]
-    assert kw["max_tokens"] == 300 and kw["model"] == "test-model"
+    assert kw["max_tokens"] == 400 and kw["model"] == "test-model"
     assert "temperature" not in kw  # removed from the current SDK/models (D-83)
     assert kw["system"][0]["cache_control"] == {"type": "ephemeral"}
 
@@ -266,3 +266,37 @@ async def test_real_sdk_client_http_error_is_a_scoring_error(conn):
     s = Scorer(_real_client(handler), "claude-haiku-4-5", conn, FixedClock(NOW), 10)
     stats = await s.score_pending(10)
     assert stats["errors"] == 1 and "AuthenticationError" in s.last_error
+
+
+async def test_new_fields_round_trip_to_db(conn):
+    (pid,) = add(conn, 1)
+    reply = json.dumps(
+        {
+            "score": 7,
+            "reason": "ok",
+            "employer_region": "kz",
+            "region_confidence": 0.85,
+            "employer_is_startup": True,
+            "visa_barrier": False,
+        }
+    )
+    await scorer(conn, FakeClient([reply])).score_pending(10)
+    row = conn.execute("SELECT * FROM scores WHERE posting_id=?", (pid,)).fetchone()
+    assert row["employer_region"] == "kz" and row["region_confidence"] == 0.85
+    assert row["employer_is_startup"] == 1 and row["visa_barrier"] == 0
+
+
+async def test_old_reply_stores_defaults(conn):
+    (pid,) = add(conn, 1)
+    await scorer(conn, FakeClient([GOOD])).score_pending(10)
+    row = conn.execute("SELECT * FROM scores WHERE posting_id=?", (pid,)).fetchone()
+    assert row["employer_region"] == "unknown" and row["region_confidence"] == 0
+    assert row["employer_is_startup"] is None and row["visa_barrier"] is None
+
+
+async def test_invalid_region_triggers_retry(conn):
+    (pid,) = add(conn, 1)
+    bad = json.dumps({"score": 7, "reason": "x", "employer_region": "europe"})
+    client = FakeClient([bad, GOOD])
+    await scorer(conn, client).score_pending(10)
+    assert len(client.calls) == 2 and status(conn, pid)["status"] == "scored"
