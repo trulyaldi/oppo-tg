@@ -22,7 +22,7 @@ def season_year(today: date) -> int:
 
 
 def season_url(today: date) -> str:
-    return f"https://mlh.io/seasons/{season_year(today)}/events"
+    return f"https://www.mlh.com/seasons/{season_year(today)}/events"
 
 
 def _meta(card: Tag, prop: str) -> str:

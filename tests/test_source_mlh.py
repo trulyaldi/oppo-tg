@@ -44,7 +44,7 @@ async def test_fixture_parses():
     ctx, requests = _ctx(lambda r: httpx.Response(200, text=BODY))
     res = await run_source(MLHSource(), ctx)
     assert res.ok and len(res.items) == 4  # the Oct 9-11 event already ended
-    assert str(requests[0].url) == "https://mlh.io/seasons/2027/events"
+    assert str(requests[0].url) == "https://www.mlh.com/seasons/2027/events"
     first = res.items[0]
     assert first.title == "Solana Hackathon"
     assert first.kind is Kind.HACKATHON
@@ -65,10 +65,10 @@ def test_ended_events_kept_without_today():
 
 
 def test_season_url_from_clock():
-    assert season_url(date(2026, 11, 6)) == "https://mlh.io/seasons/2027/events"
-    assert season_url(date(2027, 3, 1)) == "https://mlh.io/seasons/2027/events"
-    assert season_url(date(2027, 7, 1)) == "https://mlh.io/seasons/2028/events"
-    assert season_url(date(2026, 6, 30)) == "https://mlh.io/seasons/2026/events"
+    assert season_url(date(2026, 11, 6)) == "https://www.mlh.com/seasons/2027/events"
+    assert season_url(date(2027, 3, 1)) == "https://www.mlh.com/seasons/2027/events"
+    assert season_url(date(2027, 7, 1)) == "https://www.mlh.com/seasons/2028/events"
+    assert season_url(date(2026, 6, 30)) == "https://www.mlh.com/seasons/2026/events"
 
 
 async def test_season_url_requested_in_spring():
@@ -76,7 +76,7 @@ async def test_season_url_requested_in_spring():
         lambda r: httpx.Response(200, text=BODY), now=datetime(2027, 3, 1, 12, tzinfo=UTC)
     )
     await run_source(MLHSource(), ctx)
-    assert str(requests[0].url) == "https://mlh.io/seasons/2027/events"
+    assert str(requests[0].url) == "https://www.mlh.com/seasons/2027/events"
 
 
 async def test_no_cards_warns_and_returns_empty(caplog):

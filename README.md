@@ -52,7 +52,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Copy `.env.example` to `.env` and fill it in (never commit `.env`). Check the install:
+Copy `.env.example` to `.env` and fill it in (never commit `.env`). Note that `.env.example` is only complete after step 1 of "First run / user actions" below. Check the install:
 
 ```
 .venv/bin/python -m pytest -q
@@ -111,7 +111,7 @@ in `src/config.py`; this table is checked against it by a test.
 | hn | hn | counted (no credentials) | Hacker News "Who is hiring" via the Algolia API |
 | rss | rss | counted (no credentials) | RSS/Atom feeds listed in config.toml |
 | pagewatch | pagewatch | counted (no credentials) | Change detection on fellowship/internship pages, robots.txt obeyed |
-| mlh | mlh | counted (no credentials) | MLH season events page (mlh.io) |
+| mlh | mlh | counted (no credentials) | MLH season events page (www.mlh.com) |
 | jobicy | jobicy | counted (no credentials) | Jobicy public API, polled at most hourly, credit and link back to Jobicy (D-58) |
 | hh | hh | unlocks with HH_ACCESS_TOKEN | hh.kz, the only Kazakhstan job source: anonymous access gets 403 (D-47, D-57). Register an app at https://dev.hh.ru. Never run live yet |
 | telegram_channels | telegram_channels | unlocks with TG_API_ID, TG_API_HASH | Public Kazakh job channels via Telethon with your own account; needs the one-time login and channels in config.toml (D-69). Never run live yet |

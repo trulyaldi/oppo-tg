@@ -866,7 +866,7 @@ Filed by the second reviewer pass. It re-checked FIX-01..FIX-10 against their ac
   - `grep -rn "github.com/oppo-tg" src` finds nothing, and `PoliteClient(...).user_agent` contains `https://github.com/trulyaldi/oppo-tg` by default.
   - The existing FIX-10 tests stay green. All tests green, ruff clean.
 
-### FIX-13 [ ] Point MLH at its canonical host www.mlh.com and record that host's robots/terms check
+### FIX-13 [x] Point MLH at its canonical host www.mlh.com and record that host's robots/terms check
 - Problem: `src/sources/mlh.py` fetches `https://mlh.io/seasons/<year>/events`, which now answers `302 Location: https://www.mlh.com/seasons/2027/events` (re-checked 2026-11-06). D-80 says www.mlh.com's robots/terms "were not re-verified", but section 0 requires a recorded robots check of the exact fetched path and a terms read for the host actually fetched. The cross-host hop also drops `If-None-Match`/`If-Modified-Since` (FIX-10 design), so MLH can never answer 304. Every stale fetch re-downloads the ~378 KB page and pays two robots/throttle cycles.
 - Reviewer's check (2026-11-06, UA `oppo-tg/0.1 (personal job-alert bot; +https://github.com/trulyaldi/oppo-tg)`, one request each, 2s apart). Record this in DECISIONS verbatim; do not re-fetch:
   - `https://www.mlh.com/robots.txt` returned HTTP 200 with `User-agent: *`. Disallows: `/account/ /tools/ /_/ /v4/ /auth/ /admin/ /sidekiq/ /marksmith/ /graphql /events/*/partners/*/promo_codes/ /projects/invites/ /submissions/invites/ /submissions/*/invites/`, then `Allow: /`. `urllib.robotparser.can_fetch("oppo-tg", "/seasons/2027/events")` is True.
