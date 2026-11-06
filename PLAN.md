@@ -3173,7 +3173,7 @@ Verified with evidence, no FIX needed:
 - Files: `README.md`, `src/bot/handlers.py` (if the query changes), `tests/test_readme.py`, `tests/test_stats.py`, `tests/fixtures/stats_expected.txt`.
 - Acceptance: the README states Workable config accounts are tier1 and that discovered Workable boards are polled without a config account; the `/stats` triage error figure matches its label in a test.
 
-### FIX-48 [ ] `evals/last_triage_run.json` is not gitignored
+### FIX-48 [x] `evals/last_triage_run.json` is not gitignored
 - Severity: non-blocking.
 - Problem: `git check-ignore evals/last_triage_run.json` matches nothing, although `evals/last_run.json` is ignored. The file holds model reasons and run metadata, and a `git add -A` after the triage eval (a listed user action) would commit it.
 - Build: add it to `.gitignore`. Extend `tests/test_gitignore.py`.

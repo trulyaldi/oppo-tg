@@ -18,6 +18,8 @@ IGNORED = [
     "other.session",
     "other.session-journal",
     "x.db-wal",
+    "evals/last_run.json",
+    "evals/last_triage_run.json",
     ".env",
 ]
 

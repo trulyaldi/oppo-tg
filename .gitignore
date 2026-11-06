@@ -8,6 +8,7 @@ __pycache__/
 .claude/settings.local.json
 .claude/.stop-block-count
 evals/last_run.json
+evals/last_triage_run.json
 data/*
 !data/.gitkeep
 *.db-wal
