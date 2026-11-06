@@ -182,3 +182,12 @@ async def test_top_flag_disabled_in_yaml(conn, tmp_path):
     await cmd_top(m, conn, CLOCK, cfg)
     assert m.texts[0].startswith("<b>Job 2</b>")
     assert "7.0/10 (base 6.0" in m.texts[0]
+
+
+async def test_saved_lines_carry_prepare_links(conn):
+    pid = add(conn, 1, title="S1")
+    db.set_reaction(conn, pid, "save", NOW)
+    m = FakeMessage()
+    await cmd_saved(m, conn)
+    assert f"S1</b> — C /prepare_{pid}" in m.texts[0] or f" /prepare_{pid}" in m.texts[0]
+    assert len(pid) == 16 and all(ch in "0123456789abcdef" for ch in pid)

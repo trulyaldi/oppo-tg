@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 from aiogram import BaseMiddleware, Bot, Dispatcher, F
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message, TelegramObject, Update
 
 from src.bot import handlers, outreach_handlers
@@ -65,6 +66,37 @@ def build_dispatcher(
     @dp.callback_query(F.data.startswith("fb:"))
     async def _feedback(cb: CallbackQuery, conn: sqlite3.Connection, clock: Clock) -> None:
         await handle_feedback(cb, conn, clock)
+
+    @dp.callback_query(F.data.startswith("pr:"))
+    async def _prepare_cb(
+        cb: CallbackQuery, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, client: Any
+    ) -> None:
+        await outreach_handlers.on_prepare_callback(cb, conn, clock, cfg, client)
+
+    @dp.message(Command(re.compile(r"prepare_([0-9a-f]{16})")))
+    async def _prepare_link(
+        m: Message,
+        command: CommandObject,
+        conn: sqlite3.Connection,
+        clock: Clock,
+        cfg: AppConfig,
+        client: Any,
+    ) -> None:
+        match = command.regexp_match
+        await outreach_handlers.cmd_prepare(
+            m, conn, clock, cfg, client, match.group(1) if match else None
+        )
+
+    @dp.message(Command("prepare"))
+    async def _prepare(
+        m: Message,
+        command: CommandObject,
+        conn: sqlite3.Connection,
+        clock: Clock,
+        cfg: AppConfig,
+        client: Any,
+    ) -> None:
+        await outreach_handlers.cmd_prepare(m, conn, clock, cfg, client, command.args)
 
     @dp.message(Command("start"))
     async def _start(m: Message) -> None:

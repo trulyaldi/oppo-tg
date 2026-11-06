@@ -76,6 +76,7 @@ START_TEXT = (
     "/sources - source status\n"
     "/pause - pause the digest\n"
     "/resume - resume the digest\n"
+    "/prepare <id> - tailoring advice for a posting\n"
     "/cv - upload or paste your CV\n"
     "/forgetcv - delete the stored CV\n"
     "/cancel - cancel a pending input"
@@ -129,6 +130,7 @@ def render_reaction_list(rows: list[sqlite3.Row]) -> str:
     lines = []
     for i, r in enumerate(rows, 1):
         line = f"{i}. <b>{_esc(_clip(r['title'], 200))}</b> — {_esc(_clip(r['company'], 100))}"
+        line += f" /prepare_{r['id']}"
         url = r["url"]
         if url.startswith(("http://", "https://")):
             line += f"\n{_esc(url)}"

@@ -97,7 +97,9 @@ def test_header():
 
 def test_keyboard():
     kb = feedback_keyboard("0123456789abcdef", {"like": True})
-    assert len(kb.inline_keyboard) == 1
+    assert len(kb.inline_keyboard) == 2  # P4: Prepare row once like/save is active
+    assert kb.inline_keyboard[1][0].callback_data == "pr:0123456789abcdef"
+    assert len(feedback_keyboard("0123456789abcdef", {"applied": True}).inline_keyboard) == 1
     row = kb.inline_keyboard[0]
     assert [b.text for b in row] == ["✓ Like", "Dislike", "Save", "Applied"]
     assert [b.callback_data for b in row] == [

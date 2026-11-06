@@ -202,3 +202,25 @@ async def test_all_reactions_survive_restart_through_dispatcher(tmp_path, monkey
     await dp2.feed_update(bot, cb_update(5, pid, "save"))  # toggles off after restart
     assert db.active_reactions(c2, pid)["save"] is False
     await bot.session.close()
+
+
+def rows(cb):
+    return [[b.callback_data for b in r] for r in cb.message.markups[-1].inline_keyboard]
+
+
+async def test_prepare_row_appears_for_like_and_save_and_disappears(conn):
+    pid = add(conn)
+    cb = FakeCb(f"fb:like:{pid}")
+    await handle_feedback(cb, conn, CLOCK)
+    assert len(cb.message.markups[-1].inline_keyboard) == 2
+    assert rows(cb)[1] == [f"pr:{pid}"]
+    assert labels(cb) == ["✓ Like", "Dislike", "Save", "Applied"]  # first row unchanged
+    await handle_feedback(FakeCb(f"fb:save:{pid}"), conn, CLOCK)
+    await handle_feedback(cb, conn, CLOCK)  # un-like, save still active
+    assert rows(cb)[1] == [f"pr:{pid}"]
+    cb2 = FakeCb(f"fb:save:{pid}")
+    await handle_feedback(cb2, conn, CLOCK)  # un-save, like inactive
+    assert len(cb2.message.markups[-1].inline_keyboard) == 1
+    cb3 = FakeCb(f"fb:applied:{pid}")
+    await handle_feedback(cb3, conn, CLOCK)
+    assert len(cb3.message.markups[-1].inline_keyboard) == 1

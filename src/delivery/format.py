@@ -131,4 +131,10 @@ def feedback_keyboard(
             raise ValueError(f"callback data too long: {data!r}")
         text = f"✓ {label}" if active.get(action) else label
         row.append(InlineKeyboardButton(text=text, callback_data=data))
-    return InlineKeyboardMarkup(inline_keyboard=[row])
+    rows = [row]
+    if active.get("like") or active.get("save"):
+        data = f"pr:{posting_id}"
+        if len(data.encode()) > MAX_CALLBACK_BYTES:
+            raise ValueError(f"callback data too long: {data!r}")
+        rows.append([InlineKeyboardButton(text="Prepare", callback_data=data)])
+    return InlineKeyboardMarkup(inline_keyboard=rows)

@@ -1586,7 +1586,7 @@ Per-type guidance in `draft.md`:
   - Every callback data <= 64 bytes.
   - URLs that fail `safe_url` are omitted.
 
-### P4 [ ] /prepare command, Prepare button, /saved links
+### P4 [x] /prepare command, Prepare button, /saved links
 - Depends on: P3.
 - Build:
   - `src/bot/refs.py` `resolve_ref(conn, text)`.

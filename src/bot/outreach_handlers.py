@@ -6,8 +6,9 @@ import io
 import sqlite3
 from typing import Any
 
-from src.bot.handlers import _say
+from src.bot.handlers import _esc, _say
 from src.bot.pending import clear_pending, peek_pending, set_pending, take_pending
+from src.bot.refs import resolve_ref
 from src.clock import Clock
 from src.config import AppConfig, OutreachConfig
 from src.cv.extract import CvInputError, cv_sha, normalize_cv_text, pdf_to_text
@@ -15,6 +16,8 @@ from src.cv.parse import parse_cv_sections
 from src.cv.store import current_cv, forget_cv, save_cv
 from src.llm.budget import LlmBudget
 from src.outreach import prepare as _prepare  # noqa: F401  (registers cache hooks)
+from src.outreach.prepare import PrepareError, prepare
+from src.outreach.render import render_prepare
 
 MIN_CV_CHARS = 200
 TOO_SHORT = "That looks too short for a CV; send the full text or a PDF."
@@ -170,3 +173,80 @@ async def on_document(
     finally:
         buf.close()
     await ingest_cv_text(message, conn, clock, cfg, client, text, source_kind="pdf")
+
+
+# --- /prepare (P4, 8.1.15) -------------------------------------------------
+
+NO_CV_REPLY = "Upload your CV first with /cv."
+
+
+def prepare_error_text(kind: str, cap: int) -> str:
+    if kind == "no_cv":
+        return NO_CV_REPLY
+    if kind == "budget":
+        return (
+            f"Daily outreach LLM limit reached ({cap} calls). "
+            "Try tomorrow or raise [outreach].daily_llm_call_cap."
+        )
+    if kind == "no_posting":
+        return "Posting not found."
+    return f"Could not prepare right now ({kind}); try again later."
+
+
+async def run_prepare(
+    message: Any,
+    conn: sqlite3.Connection,
+    clock: Clock,
+    cfg: AppConfig,
+    client: Any,
+    posting_id: str,
+) -> None:
+    """Reply into the chat of `message` (already whitelisted) with tailoring advice."""
+    oc = OutreachConfig.from_cfg(cfg)
+    posting = conn.execute("SELECT * FROM postings WHERE id=?", (posting_id,)).fetchone()
+    if posting is None:
+        await _say(message, "Posting not found.")
+        return
+    if current_cv(conn) is None:
+        await _say(message, NO_CV_REPLY)
+        return
+    if client is None:
+        await _say(message, "Could not prepare right now (no LLM client); try again later.")
+        return
+    await _say(message, f"Preparing {_esc(posting['title'][:200])}...")
+    budget = LlmBudget(conn, clock, oc.daily_llm_call_cap)
+    res = await prepare(conn, client, posting_id, cfg, clock, budget)
+    if isinstance(res, PrepareError):
+        await _say(message, prepare_error_text(res.kind, oc.daily_llm_call_cap))
+        return
+    # Contacts and links arrive with N6; the contacts table does not exist yet.
+    for chunk in render_prepare(posting, res.result, [], [], res.removed):
+        await _say(message, chunk)
+
+
+async def cmd_prepare(
+    message: Any,
+    conn: sqlite3.Connection,
+    clock: Clock,
+    cfg: AppConfig,
+    client: Any,
+    ref_text: str | None,
+) -> None:
+    ref = resolve_ref(conn, ref_text)
+    if ref.posting_id is None:
+        await _say(message, _esc(ref.error))
+        return
+    await run_prepare(message, conn, clock, cfg, client, ref.posting_id)
+
+
+async def on_prepare_callback(
+    cb: Any, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, client: Any
+) -> None:
+    """`pr:<posting_id>`: answer the callback first, then do the LLM work."""
+    await cb.answer("Preparing...")
+    data = cb.data or ""
+    posting_id = data[3:] if data.startswith("pr:") else ""
+    message = getattr(cb, "message", None)
+    if message is None or not posting_id:
+        return
+    await run_prepare(message, conn, clock, cfg, client, posting_id)
