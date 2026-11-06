@@ -1362,7 +1362,7 @@ Per-type guidance in `draft.md`:
   - `normalize_company("Kolesa Group LLP") == normalize_company("kolesa group")`.
   - A pagewatch page with `company = "IMC"` yields postings with company "IMC", which classify as intl_top_tier. Without the key, the company is the page name, as before.
 
-### W5 [ ] Adjustment, clamping and recompute from current YAML
+### W5 [x] Adjustment, clamping and recompute from current YAML
 - Depends on: W2, W3, W4.
 - Build: `adjust` and `recompute_adjusted` (8.1.4) in `src/ranking/adjust.py`. Nothing is wired into scoring: recompute runs at selection time (digest in W6, alerts and `/top` in W7), which covers newly scored rows too, so `score_pending` and `src/main.py` stay unchanged.
 - Files: `src/ranking/adjust.py`, `tests/test_adjust.py`.
