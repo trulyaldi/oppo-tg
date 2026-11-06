@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -12,23 +13,44 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from src.clock import Clock
+from src.config import SchedulerConfig
 
 log = logging.getLogger(__name__)
 
 Job = Callable[[], Awaitable[object]]
 
 
+TierRunner = Callable[[str], Awaitable[object]]
+TIER_STAGGER_MINUTES = 2  # first runs of tier1/2/3 start 0, 2 and 4 minutes after start
+
+
+def default_tiers() -> dict[str, tuple[int, int]]:
+    """tier -> (minutes, jitter seconds), from the SchedulerConfig defaults."""
+    c = SchedulerConfig()
+    return {
+        "tier1": (c.tier1_minutes, c.tier1_jitter_s),
+        "tier2": (c.tier2_minutes, c.tier2_jitter_s),
+        "tier3": (c.tier3_minutes, c.tier3_jitter_s),
+    }
+
+
+def tiers_from_config(c: SchedulerConfig) -> dict[str, tuple[int, int]]:
+    return {
+        "tier1": (c.tier1_minutes, c.tier1_jitter_s),
+        "tier2": (c.tier2_minutes, c.tier2_jitter_s),
+        "tier3": (c.tier3_minutes, c.tier3_jitter_s),
+    }
+
+
 @dataclass
 class SchedulerDeps:
     clock: Clock
-    collect: Job
-    score: Job
-    alerts: Job
+    run_tier: TierRunner
     digest: Job
     prune: Job
+    tiers: dict[str, tuple[int, int]] = field(default_factory=default_tiers)
     timezone: str = "Asia/Almaty"
     digest_time: str = "09:00"
-    collect_hours: int = 3
 
 
 def safe_job(name: str, fn: Job) -> Callable[[], Awaitable[None]]:
@@ -53,27 +75,21 @@ def build_scheduler(deps: SchedulerDeps) -> AsyncIOScheduler:
     tz = ZoneInfo(deps.timezone)
     sched = AsyncIOScheduler(timezone=tz)
 
-    async def collect_and_score() -> None:
-        # Each step is isolated so a failure still lets later steps run.
-        for step_name, step in (
-            ("collect", deps.collect),
-            ("score", deps.score),
-            ("alerts", deps.alerts),
-        ):
-            try:
-                await step()
-            except Exception:
-                log.exception("collect_and_score step %s failed", step_name)
-
     hour, minute = parse_hhmm(deps.digest_time)
     common = {"coalesce": True, "max_instances": 1, "misfire_grace_time": 3600}
-    sched.add_job(
-        safe_job("collect_and_score", collect_and_score),
-        IntervalTrigger(hours=max(1, deps.collect_hours), timezone=tz),
-        id="collect_and_score",
-        next_run_time=deps.clock.now(),
-        **common,
-    )
+    start = deps.clock.now()
+    for i, (tier, (minutes, jitter)) in enumerate(deps.tiers.items()):
+
+        async def run(tier: str = tier) -> None:
+            await deps.run_tier(tier)
+
+        sched.add_job(
+            safe_job(f"tier_{tier}", run),
+            IntervalTrigger(minutes=max(1, minutes), jitter=jitter, timezone=tz),
+            id=f"collect_{tier}",
+            next_run_time=start + timedelta(minutes=TIER_STAGGER_MINUTES * i),
+            **common,
+        )
     sched.add_job(
         safe_job("daily_digest", deps.digest),
         CronTrigger(hour=hour, minute=minute, timezone=tz),

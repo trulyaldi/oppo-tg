@@ -22,11 +22,12 @@ def make(calls, **over):
 
         return f
 
+    async def run_tier(tier):
+        calls.append(tier)
+
     kw = dict(
         clock=FixedClock(datetime(2026, 11, 6, 8, 0, tzinfo=TZ)),
-        collect=rec("collect"),
-        score=rec("score"),
-        alerts=rec("alerts"),
+        run_tier=run_tier,
         digest=rec("digest"),
         prune=rec("prune"),
     )
@@ -36,10 +37,21 @@ def make(calls, **over):
 
 def test_jobs_and_policy():
     jobs = {j.id: j for j in make([]).get_jobs()}
-    assert set(jobs) == {"collect_and_score", "daily_digest", "prune"}
+    assert set(jobs) == {"collect_tier1", "collect_tier2", "collect_tier3", "daily_digest", "prune"}
     for j in jobs.values():
         assert j.coalesce is True
         assert j.max_instances == 1
+
+
+def test_tier_jobs_use_configured_minutes_jitter_and_stagger():
+    tiers = {"tier1": (15, 60), "tier2": (90, 300), "tier3": (45, 120)}
+    sched = make([], tiers=tiers)
+    start = datetime(2026, 11, 6, 8, 0, tzinfo=TZ)
+    for i, (tier, (minutes, jitter)) in enumerate(tiers.items()):
+        job = sched.get_job(f"collect_{tier}")
+        assert job.trigger.interval == timedelta(minutes=minutes)
+        assert job.trigger.jitter == jitter
+        assert job.next_run_time == start + timedelta(minutes=2 * i)
 
 
 @pytest.mark.parametrize(
@@ -56,19 +68,15 @@ def test_digest_next_fire(now, expected):
     assert nxt.utcoffset() == timedelta(hours=5)
 
 
-async def test_collect_job_order_and_isolation():
+async def test_tier_job_calls_run_tier_and_isolates_errors():
     calls = []
-    await make(calls).get_job("collect_and_score").func()
-    assert calls == ["collect", "score", "alerts"]
+    await make(calls).get_job("collect_tier2").func()
+    assert calls == ["tier2"]
 
-    calls2 = []
-
-    async def boom():
-        calls2.append("collect")
+    async def boom(tier):
         raise RuntimeError("x")
 
-    await make(calls2, collect=boom).get_job("collect_and_score").func()
-    assert calls2 == ["collect", "score", "alerts"]
+    await make([], run_tier=boom).get_job("collect_tier1").func()  # must not raise
 
 
 async def test_safe_job_swallows(caplog):

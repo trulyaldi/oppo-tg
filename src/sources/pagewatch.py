@@ -66,6 +66,7 @@ def _pages(cfg: AppConfig) -> list[dict[str, str]]:
 @register("pagewatch")
 class PageWatchSource:
     name = "pagewatch"
+    default_tier = "tier3"  # D-186
     description = "Fellowship/research/early-career pages (posts when a page changes)"
 
     def enabled(self, settings: Settings, cfg: AppConfig) -> bool:

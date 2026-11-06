@@ -21,7 +21,14 @@ from src.delivery.digest import send_digest
 from src.http import build_client
 from src.lock import AlreadyRunning, InstanceLock
 from src.logging_setup import configure_logging
-from src.pipeline.run import collect_all, score_pending
+from src.pipeline.run import (
+    collect_all,
+    collect_tier,
+    pipeline_lock,
+    process_collected,
+    run_tier_cycle,
+    score_pending,
+)
 from src.pipeline.scoring_alert import is_total_failure
 
 log = logging.getLogger("oppo-tg")
@@ -121,7 +128,7 @@ async def _serve(settings: Settings) -> None:
 
     from src.bot.app import build_dispatcher
     from src.delivery.alerts import send_alerts
-    from src.scheduler import SchedulerDeps, build_scheduler
+    from src.scheduler import SchedulerDeps, build_scheduler, tiers_from_config
 
     clock = SystemClock()
     cfg = AppConfig.load(settings.oppo_config)
@@ -131,8 +138,14 @@ async def _serve(settings: Settings) -> None:
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
     bot = Bot(settings.telegram_bot_token)
 
-    async def collect() -> None:
-        log.info("collected: %s", await collect_all(conn, http, settings, cfg, clock))
+    scoring_cfg = ScoringConfig.from_cfg(cfg)
+
+    async def collect_t(tier: str) -> None:
+        stats = await collect_tier(conn, http, settings, cfg, clock, tier, process=False)
+        log.info("collected %s: %s", tier, stats)
+
+    async def process() -> None:
+        log.info("processed: %s", process_collected(conn, cfg, clock))
 
     async def score() -> None:
         log.info(
@@ -145,15 +158,21 @@ async def _serve(settings: Settings) -> None:
                 settings.max_scores_per_run,
                 bot=bot,
                 chat_id=settings.telegram_chat_id,
-                scoring_cfg=ScoringConfig.from_cfg(cfg),
+                scoring_cfg=scoring_cfg,
             ),
+        )
+
+    async def run_tier(tier: str) -> None:
+        await run_tier_cycle(
+            tier, collect=lambda: collect_t(tier), process=process, score=score, alerts=alerts
         )
 
     async def alerts() -> None:
         log.info("alerts sent: %d", await send_alerts(bot, conn, settings, cfg, clock))
 
     async def digest() -> None:
-        log.info("digest sent: %d items", await send_digest(bot, conn, settings, cfg, clock))
+        async with pipeline_lock():
+            log.info("digest sent: %d items", await send_digest(bot, conn, settings, cfg, clock))
 
     async def prune() -> None:
         log.info("pruned: %s", db.prune(conn, clock.now()))
@@ -161,14 +180,12 @@ async def _serve(settings: Settings) -> None:
     scheduler = build_scheduler(
         SchedulerDeps(
             clock=clock,
-            collect=collect,
-            score=score,
-            alerts=alerts,
+            run_tier=run_tier,
+            tiers=tiers_from_config(cfg.scheduler),
             digest=digest,
             prune=prune,
             timezone=settings.timezone,
             digest_time=settings.digest_time,
-            collect_hours=settings.collect_cron_hours,
         )
     )
     dp = build_dispatcher(conn, settings, cfg, clock, client, http)

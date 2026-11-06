@@ -85,6 +85,7 @@ def _companies(cfg: AppConfig) -> list[tuple[str, str]]:
 @register("lever")
 class LeverSource:
     name = "lever"
+    default_tier = "tier1"  # config watchlist boards (D-186)
     family = "ats"
     description = "Lever job postings for a company watchlist"
 

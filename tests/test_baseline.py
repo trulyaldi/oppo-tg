@@ -56,6 +56,8 @@ class Env:
 
     async def collect(self):
         self.conn.execute("DELETE FROM http_cache")  # each collect re-fetches
+        # fixtures carry no validators: lift the no-validator floor (D-186)
+        self.conn.execute("UPDATE target_state SET last_ok_at=NULL")
         return await collect_all(self.conn, self.http, SETTINGS, self.cfg, CLOCK)
 
     def baselines(self, board):

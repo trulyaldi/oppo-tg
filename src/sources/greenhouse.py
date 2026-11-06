@@ -97,6 +97,7 @@ def _boards(cfg: AppConfig) -> list[tuple[str, str]]:
 @register("greenhouse")
 class GreenhouseSource:
     name = "greenhouse"
+    default_tier = "tier1"  # config watchlist boards (D-186)
     family = "ats"
     description = "Greenhouse job boards for a company watchlist"
 

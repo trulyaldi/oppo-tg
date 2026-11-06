@@ -2607,7 +2607,7 @@ Each migration gets a test that starts from the previous version with sample row
 ### FC-09 [-] CUT at the user's request (D-202): Greenhouse light polling (bandwidth optimisation only; FC-08 conditional requests cover tier1)
 - Skip this task. Do not implement.
 
-### FC-10 [ ] Tiered collector and scheduler
+### FC-10 [x] Tiered collector and scheduler
 - Build (D-186):
   - `collect_tier(conn, http, settings, cfg, clock, tier)` runs only the targets whose tier matches:
     - config boards default to tier1, other sources use their default, and `[sources.x] tier` overrides;
