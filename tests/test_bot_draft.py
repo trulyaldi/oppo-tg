@@ -91,8 +91,8 @@ async def test_draft_command_shows_escaped_pre(env):
     head, rest = out.split("\n", 1)
     assert head == "Draft for Jane &lt;Roe&gt; &amp; Co (recruiter). Not sent: copy it yourself."
     n = conn.execute("SELECT removed_claims FROM outreach_drafts").fetchone()["removed_claims"]
-    assert n == 1  # the ok fixture carries one unsupported sentence
-    note = f"\nRemoved {n} unsupported statements."
+    assert n == 0  # the ok fixture is honest (FIX-34 fixed a false removal), so no note
+    note = ""
     assert rest.startswith("<pre>") and rest.endswith("</pre>" + note) and len(out) <= 4000
     body = conn.execute("SELECT body FROM outreach_drafts").fetchone()["body"]
     assert rest == "<pre>" + body.replace("&", "&amp;").replace("<", "&lt;") + "</pre>" + note

@@ -430,3 +430,69 @@ def test_draft_reply_ok_fixture_unchanged_and_passing():
     posting = "Looking for Python and SQL for research tooling."
     v = verify_draft(d, cv, posting, "Jane Roe, Hiring Lead", ["Python", "SQL"])
     assert v.ok and v.body == d["body"]  # every body sentence survives (claims: FIX-34)
+
+
+# ---- FIX-34: imperative tailoring items are not "invented names" (D-159) ----
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Highlight Sample Labs internship first",
+        "Mention Python and C++ early",
+        "Move Experience above Education",
+        "Put Projects right after Experience",
+        "Move Projects above Education",
+    ],
+)
+def test_imperative_tailoring_items_kept(text):
+    from src.outreach.verify import claim_ok
+
+    assert claim_ok(text, SL_LINE, CV, ["Python", "C++"])
+
+
+def test_imperative_before_invented_name_still_removed():
+    from src.outreach.verify import claim_ok
+
+    t = "Highlight Jane Street internship first"
+    assert not claim_ok(t, SL_LINE, CV, ["Python"])
+    assert entities(t) == ["Jane", "Street"]
+
+
+def test_cv_claim_sentences_with_leading_verb_kept():
+    from src.outreach.verify import claim_ok
+
+    assert claim_ok(
+        "Studied Computer Science at Example University of Technology",
+        "BSc Computer Science, 2022 - 2026",
+        CV,
+        ["Python"],
+    )
+
+
+def test_draft_reply_ok_fixture_has_nothing_removed():
+    d = json.loads((FX / "draft_reply_ok.json").read_text())
+    cv = (FX / "cv_bait_fake.txt").read_text()
+    v = verify_draft(
+        d,
+        cv,
+        "Looking for Python and SQL for research tooling.",
+        "Jane Roe, Hiring Lead",
+        ["Python", "SQL"],
+    )
+    assert v.ok and v.removed == 0 and v.body == d["body"]
+
+
+def test_tailor_reply_honest_with_imperatives_removes_nothing():
+    res = {
+        "emphasize": [
+            {"text": "Highlight Sample Labs internship first", "cv_evidence": SL_LINE},
+            {"text": "Mention Python and C++ early", "cv_evidence": "Python, C++, Rust, SQL"},
+        ],
+        "reorder": [
+            {"text": "Move Experience above Education", "cv_evidence": SL_LINE},
+            {"text": "Put Projects right after Experience", "cv_evidence": "Toy Matching Engine"},
+        ],
+    }
+    v, removed = verify_tailoring(res, CV, POST, ["Python", "C++"])
+    assert removed == 0 and len(v["emphasize"]) == 2 and len(v["reorder"]) == 2

@@ -2234,7 +2234,7 @@ Third review pass, 2026-11-06. The reviewer re-checked FIX-26..FIX-30 (commits 5
     - "I was impressed by the work at Acme Fake.";
     - "I noticed Acme Fake is hiring a research tooling intern.".
 
-### FIX-34 [ ] Imperative tailoring items followed by a capitalized word are removed as invented names
+### FIX-34 [x] Imperative tailoring items followed by a capitalized word are removed as invented names
 - Severity: non-blocking (fails closed), but cheap and very visible. The bug came in with FIX-15: d66464f removes 0 items, HEAD removes 4.
 - Problem:
   - `entities()` treats a sentence-initial word as a name when the next token is capitalized (for "Sample Labs ..."). So imperative tailoring advice loses its verb as an "entity".

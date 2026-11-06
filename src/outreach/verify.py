@@ -141,6 +141,19 @@ _STARTER_WORDS = (
     "interested excited curious happy glad eager keen impressed inspired"
 )
 _STARTERS = frozenset(_STARTER_WORDS.split())
+# Sentence-initial verbs of tailoring advice and of CV-style claims ("Studied Mathematics at
+# X"): never names, even when the next token is capitalized (FIX-34, D-159).
+_VERB_STARTER_WORDS = (
+    "highlight mention emphasize emphasise stress move put list place add drop cut shorten "
+    "remove keep lead show note say feature foreground bring start open group combine merge "
+    "trim reword rename reorder swap include use expand quantify tailor link pair connect "
+    "describe explain frame position promote bold condense consolidate front reference "
+    "name cite call point tie spotlight showcase "
+    "studied built worked cleaned joined interned developed implemented wrote designed "
+    "created analyzed analysed researched completed graduated trained volunteered "
+    "participated contributed helped taught served"
+)
+_VERB_STARTERS = frozenset(_VERB_STARTER_WORDS.split())
 _FIRST_PERSON = re.compile(
     r"(?<!\w)(?:i|i['’](?:m|ve|d|ll)|me|my|mine|myself|я|мне|меня|мой|моя|моё|мои|моей)(?!\w)",
     re.IGNORECASE,
@@ -164,6 +177,8 @@ def entities(sentence: str, extra_skills: list[str] | None = None) -> list[str]:
         if skill_terms(norm(b), extra_skills):
             continue
         shouty = b.isupper() or any(c.isupper() for c in b[1:])  # MIT, OpenAI
+        if i == 0 and not shouty and (b.casefold() in _VERB_STARTERS | _STARTERS):
+            continue
         if i == 0 and not shouty and not (len(toks) > 1 and _is_cap(toks[1])):
             low = b.casefold()
             if not first_person or low in _STARTERS or low.endswith(("ly", "ing")):
