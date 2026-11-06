@@ -1803,7 +1803,7 @@ Per-type guidance in `draft.md`:
   - The README mentions `config/weights.yaml`, `/cv`, `/prepare`, `/draft`, `/addcontact`, `/forgetcv`, "never fetches LinkedIn" and "Anthropic API".
   - The `digest_min_items` and `digest_max_items` greps find nothing in the README.
 
-### F2 [ ] Capped live smoke test (at most 20 scoring calls)
+### F2 [x] Capped live smoke test (at most 20 scoring calls)
 - Depends on: F1, W6.
 - Build:
   - `--max-scores N` option for `collect` and `once` in `src/main.py`: the effective cap = `min(settings.max_scores_per_run, N)`, tested offline.

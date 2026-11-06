@@ -49,7 +49,7 @@ Outreach and weights (SPEC.md "Definition of done: outreach and weights"):
 - `/cv` ingests a PDF or pasted text, stores it only under `data/`, and never logs it: verified offline (tests plus a privacy sweep with canary strings, D-138); never run with a real CV.
 - `/prepare` and `/draft` output passes the claims-vs-CV verification, including a fabrication test fixture: verified offline with a faked model; never run against the real Claude API.
 - Contacts come only from the listed public sources, expire on schedule, and LinkedIn is never fetched (tested): verified offline (the HTTP client refuses LinkedIn hosts without any request, D-104).
-- A live smoke run with at most 20 scoring calls is recorded in DECISIONS.md, or listed as a user action: listed as a user action (item 8 of "First run / user actions"); no live run has been recorded yet.
+- A live smoke run with at most 20 scoring calls is recorded in DECISIONS.md (D-166): `once` scored 20, sent a 10-item digest. Not seen live: KZ flags and a mixed quota batch, and /cv, /prepare, /draft (offline tests only).
 
 ## Employer-region weights
 
