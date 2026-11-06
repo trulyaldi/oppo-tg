@@ -90,15 +90,41 @@ async def test_draft_command_shows_escaped_pre(env):
     out = m.sent[0]
     head, rest = out.split("\n", 1)
     assert head == "Draft for Jane &lt;Roe&gt; &amp; Co (recruiter). Not sent: copy it yourself."
-    assert rest.startswith("<pre>") and rest.endswith("</pre>") and len(out) <= 4000
+    n = conn.execute("SELECT removed_claims FROM outreach_drafts").fetchone()["removed_claims"]
+    assert n == 1  # the ok fixture carries one unsupported sentence
+    note = f"\nRemoved {n} unsupported statements."
+    assert rest.startswith("<pre>") and rest.endswith("</pre>" + note) and len(out) <= 4000
     body = conn.execute("SELECT body FROM outreach_drafts").fetchone()["body"]
-    assert rest == "<pre>" + body.replace("&", "&amp;").replace("<", "&lt;") + "</pre>"
+    assert rest == "<pre>" + body.replace("&", "&amp;").replace("<", "&lt;") + "</pre>" + note
 
 
 def test_render_draft_escapes_and_clips():
     out = render_draft("A", "other", "<b>&" * 3000)
     assert len(out) <= 4000 and "<b>" not in out and out.endswith("</pre>")
     assert "&lt;b&gt;&amp;" in out
+
+
+def test_render_draft_removed_note():
+    base = render_draft("A", "other", "body text")
+    assert render_draft("A", "other", "body text", 0) == base
+    out = render_draft("A", "other", "body text", 1)
+    assert out == base + "\nRemoved 1 unsupported statements."
+    big = render_draft("A", "other", "x" * 9000, 2)
+    assert len(big) <= 4000 and big.endswith("</pre>\nRemoved 2 unsupported statements.")
+
+
+async def test_draft_command_reports_removed(env, monkeypatch):
+    conn, cid = env
+
+    async def fake_make(*a, **k):
+        return dr.DraftResult(cid, "p", 1, "One. Two. Three.", "h", "a", 1, False)
+
+    monkeypatch.setattr("src.bot.outreach_handlers.make_draft", fake_make)
+    m = Msg()
+    await cmd_draft(m, conn, CLOCK, CFG, Fake(OK), str(cid))
+    assert len(m.sent) == 1 and len(m.sent[0]) <= 4000
+    head, rest = m.sent[0].split("\n", 1)
+    assert rest == "<pre>One. Two. Three.</pre>\nRemoved 1 unsupported statements."
 
 
 async def test_unknown_and_bad_ids(env):

@@ -168,14 +168,15 @@ def render_contacts(posting: Mapping, contacts: Sequence[Mapping]) -> list[str]:
 DRAFT_LIMIT = 4000
 
 
-def render_draft(name: Any, contact_type: Any, body: Any) -> str:
+def render_draft(name: Any, contact_type: Any, body: Any, removed: int = 0) -> str:
     """Header line plus the body in `<pre>`; the raw body is clipped so the result fits 4000."""
     header = (
         f"Draft for {_esc(_clip(name, 100))} ({_esc(contact_type)}). Not sent: copy it yourself."
     )
     text = str(body or "").strip()
+    note = f"\nRemoved {removed} unsupported statements." if removed and removed > 0 else ""
     while True:
-        out = f"{header}\n<pre>{_esc(text)}</pre>"
+        out = f"{header}\n<pre>{_esc(text)}</pre>{note}"
         if len(out) <= DRAFT_LIMIT or not text:
             return out
         text = text[: len(text) - max(1, (len(out) - DRAFT_LIMIT) // 5)].rstrip()

@@ -1894,7 +1894,7 @@ Verified with evidence, no FIX needed:
   - The same holds for a `prepare()` run with the real client.
   - App DEBUG logs (for example `src.*`) still appear at DEBUG.
 
-### FIX-17 [ ] `/draft` output does not say how many statements were removed
+### FIX-17 [x] `/draft` output does not say how many statements were removed
 - Severity: non-blocking (SPEC "Prepare and draft": "...and the output says how many statements were removed").
 - Problem:
   - `run_draft` sends `render_draft(name, type, body)`, and `DraftResult.removed` is never shown.

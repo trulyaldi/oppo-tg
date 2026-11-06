@@ -510,7 +510,7 @@ async def run_draft(
         await _say(message, draft_error_text(res.kind, oc.daily_llm_call_cap))
         return
     assert isinstance(res, DraftResult)
-    await _say(message, render_draft(row["name"], row["contact_type"], res.body))
+    await _say(message, render_draft(row["name"], row["contact_type"], res.body, res.removed))
 
 
 def parse_contact_id(text: str | None) -> int | None:
