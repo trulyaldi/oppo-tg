@@ -2266,3 +2266,127 @@ Known limitations (heuristic verifier; recorded, not tasks):
 - Anaphora passes: "I know Acme Fake well from my internship there."
 - Bare domains on TLDs outside the `_BARE` list (for example `evil.top`) are not flagged. Telegram may auto-link them.
 - `src/evals/run.py` does not call `configure_logging`. With `ANTHROPIC_LOG=debug` exported in the shell, the manual eval run logs request bodies (eval fixtures and `profile.md`, no CV) to the terminal.
+
+Fourth review pass, 2026-11-06. The reviewer re-checked FIX-31..FIX-35 (commits 49fa22a..f05c39f). Each fix meets its written acceptance criteria, and the evidence is below. The new problems are FIX-36..FIX-39. FIX-36 and FIX-37 are blocking. FIX-38 and FIX-39 are non-blocking but cheap.
+- `.venv/bin/python -m pytest` gives 801 passed and 0 skipped. `ruff check` and `ruff format --check` are clean (154 files).
+- FIX-31: all six probes are dropped or removed. "I'm a third-year Computer Science student." is kept. `test_bot_draft` now asserts removed=0 on `draft_reply_ok.json`.
+- FIX-32: all five probes are dropped or removed. These are kept: "I reduced replay time by 30% ...", "The role asks for 3 years of C++; point to the C++ parser.", "The posting mentions 3 years of C++." and the 15-minute ask.
+- FIX-33: every fit, gap and draft probe is dropped, including the Google variants. Every listed keep sentence is kept, and so is "Could I learn more about internships at Acme Fake?".
+- FIX-34: the four imperative items are kept, and "Highlight Jane Street internship first" is removed.
+- FIX-35: the doctorate and chief-technology-officer sentences are dropped, and the BSc sentence is kept. `src/evals/run.py` calls `configure_logging`, so the old evals-runner limitation is closed.
+- Extra fabrication probes against `cv_fake.txt`: 44 of 46 drafts are dropped, including "I bring two years of Python experience.", "With 3 years of C++ behind me, ...", "I spent ten weeks at Sample Labs ...", "I led a team of five engineers ...", "My harness doubled replay throughput.", "While at Jane Street, I built ...", "Я работал в Google два года." and "Я три года писал на Python.". The two that pass are filed as FIX-37.
+- Realistic honest output against `cv_fake.txt`:
+  - Five complete drafts are tried for a quant posting, a startup posting and a hackathon posting. All five verify ok. Three have removed=0. Two lose one sentence each to V4: "I would be glad to learn PostgreSQL and Docker" and "I haven't used Docker yet". Both fail closed, and that rule predates this pass.
+  - Three complete tailoring results lose 1-4 items each. The quant result loses four: "Lead with", a "low-latency" fit point (V4), a kdb+ gap (deduped) and a Linux gap (evidence under 8 chars). Every loss except "Lead with ..." is a correct fail-closed or by-design drop. The "Lead with ..." losses are filed as FIX-38.
+- Privacy and safety:
+  - `git log -p main..HEAD` has no key or token patterns. `git ls-files data` lists only `.gitkeep`, and `.env` is not tracked.
+  - The only CV fixtures are the fake ones. The outreach, CV and contacts log calls carry only ids, counts and reasons.
+  - The whitelist is a `dp.update` outer middleware, so it covers commands, plain text, documents and callbacks.
+  - `send_message` runs only in `src/delivery` and `src/pipeline/scoring_alert.py`, to `TELEGRAM_CHAT_ID`. There is no SMTP and there are no outbound POSTs.
+  - The README command list matches the registered handlers, and the README states that F2 is not done.
+  - `.env.example` was not inspected: the reviewer's permission settings deny it.
+
+Probe posting used by FIX-36 and FIX-37, verbatim: "Acme Fake is hiring a research tooling intern. We build research tooling for analysts and care about clean data pipelines. We need 2+ years of Python experience and 3 years with C++. Our founders are ex-Google and Jane Street engineers. The program runs for 10 weeks in Summer 2026 and serves thousands of analysts." Contact: "Sam Doe, Engineering Manager at Acme Fake". CV: `tests/fixtures/cv_fake.txt`.
+
+### FIX-36 [ ] Imperative gap tips restate posting numbers as the user's own experience
+- Severity: BLOCKING. This is the same mirroring failure as FIX-32. Gap tips are imperative by default, so the FIX-32 second-person test ("you", "your") misses the usual shape.
+- Problem:
+  - `verify_tailoring` checks a gap `how_to_address` against CV ∪ posting numbers. `gap_claims_posting_number` only fires in a clause with a second-person marker.
+  - With the probe posting, each of these gap tips is kept with removed=0:
+    - "Mention 2+ years of Python experience."
+    - "Stress 2+ years of Python experience."
+    - "Highlight 2+ years of Python across the internship and projects."
+    - "Note 3 years of C++ from projects and internship."
+    - "Show 2+ years of Python through the harness and engine."
+    - "Claim 3 years of C++ experience."
+    - "Point to two years of Python work at Sample Labs."
+    - "Present the Sample Labs internship as 10 weeks long."
+    - "Frame the harness as serving thousands of analysts."
+  - Fit, emphasize, cut and reorder items are not affected, because their V2 check is evidence-only.
+- Build (suggested, not prescribed): a gap clause that contains a number not in the CV is kept only when the same clause attributes the number to the posting. Attribution means a subject (role, posting, job, program, team, they, it) plus a verb (asks, wants, requires, needs, mentions, expects, lists). Otherwise the clause is removed whether or not it has a second-person marker. Years 19xx/20xx stay exempt, as in D-157. Record the rule in DECISIONS (D-157 addendum).
+- Files: `src/outreach/verify.py`, `tests/test_posting_numbers.py`, `DECISIONS.md`.
+- Acceptance:
+  - Every probe above is removed with the probe posting.
+  - These are still kept:
+    - "The role asks for 3 years of C++; point to the C++ parser.";
+    - "Your CV shows one internship; the role wants 2+ years, so stress project depth.";
+    - "Point to the C++ parser that cut replay time by 30%.".
+  - The existing `tailor_reply_honest.json` tests still give removed=0, using that fixture's own CV and posting. Its "low-latency" gap is dropped by V4 under the probe posting, which is unrelated to this fix.
+
+### FIX-37 [ ] Spelled-out singular durations ("one year", "a year", "a decade") are not checked
+- Severity: BLOCKING (invented duration).
+- Problem:
+  - FIX-31 left out "one" to protect "One thing ...". That makes "1 year" a checked number while "one year" is not.
+  - D-161 item 4 covers only "several", "many" and "a couple of".
+  - Against `cv_fake.txt` and the probe posting, each of these draft sentences is kept:
+    - "I have one year of Python experience."
+    - "I spent one year at Sample Labs."
+    - "I have a year of Python experience."
+    - "I have over a year of C++ experience."
+    - "I spent a year at Sample Labs."
+    - "I have a decade of coding experience."
+  - The tailoring claim "Highlight your year at Sample Labs" (evidence "Sample Labs - Research Intern, Summer 2025") passes `claim_ok`.
+  - The CV supports only a Summer 2025 internship.
+- Build:
+  - In `numbers()`, "one", "a", "an" or "single" directly before year(s), month(s), week(s), semester(s) or decade(s) counts as the number "1".
+  - "decade(s)" counts as "10".
+  - "your/my year at/with X" counts as the duration "1".
+  - Optionally, Russian "один год" / "год опыта".
+  - "summer" and "term" are not counted units: "I spent a summer at Sample Labs" must stay honest.
+  - Record the rule in DECISIONS (D-156 addendum).
+- Files: `src/outreach/lexicon.py`, `src/outreach/verify.py`, `tests/test_number_words.py`, `DECISIONS.md`.
+- Acceptance:
+  - Every probe above is dropped or removed.
+  - These are kept:
+    - "One thing that stood out to me is your focus on clean data pipelines.";
+    - "I'm a third-year Computer Science student.";
+    - "I spent a summer at Sample Labs as a research intern.";
+    - "I was a research intern at Sample Labs in Summer 2025.".
+  - `draft_reply_ok.json` and `tailor_reply_honest.json` still give removed=0.
+
+### FIX-38 [ ] "Lead with ..." tailoring advice is removed as inflation
+- Severity: non-blocking (fails closed). It is very visible, the same way FIX-34 was. It dates from P1 and is not a regression.
+- Problem:
+  - `"lead"` is in `INFLATION_STEMS`, so V3 removes every "Lead with X" emphasize or reorder item and every gap tip that says "lead with", unless the CV itself contains "lead".
+  - Against `cv_fake.txt`, these are all removed and counted as unsupported:
+    - "Lead with the Sample Labs research internship";
+    - "Lead with Experience, then Projects";
+    - "Lead with the 30% replay speedup";
+    - the gap "The posting wants 2+ years of Python; lead with the benchmark harness and the matching engine.".
+  - FIX-34 added "lead" to `_VERB_STARTERS`, but V3 still catches it.
+- Build: do not count the "lead" stem when it is followed by "with" ("lead with", "leading with"). Keep "led", "lead engineer", "team lead" and "I lead the team" as inflation. Record the change in DECISIONS (D-125 addendum).
+- Files: `src/outreach/verify.py` or `src/outreach/lexicon.py`, `tests/test_verify.py`, `DECISIONS.md`.
+- Acceptance:
+  - The four items above are kept.
+  - These are still dropped: "I led a team of engineers at Sample Labs.", "I was the lead engineer at Sample Labs." and "I lead the research team at Sample Labs.".
+
+### FIX-39 [ ] README overstates the claims check
+- Severity: non-blocking (docs).
+- Problem:
+  - README "CV, prepare and drafts" says "Every claim is checked against your CV text." It does not say the check is a deterministic heuristic with known gaps (D-161).
+  - Those gaps include unnamed or lowercase employers, temporal status and soft inflation such as "several years".
+  - A user can read the sentence as a guarantee and send a draft without reading it.
+- Build:
+  - Add one or two sentences after that line. They should say that the check is heuristic and removes most invented employers, degrees, titles and numbers, but cannot catch everything (see D-161).
+  - They should also say: read every draft and tailoring tip before you use it.
+- Files: `README.md` (and `tests/test_readme.py` if it pins that section).
+- Acceptance: the README says that the check is heuristic, names D-161, and tells the user to read drafts before sending.
+
+Known limitations after the fourth pass (heuristic verifier; consolidated; recorded, not tasks):
+- An invented lowercase or unnamed employer is not seen ("I was a quant researcher at a hedge fund.").
+- Lowercase invented titles are not seen ("staff engineer"), and neither is an invented lowercase name ("interned at google").
+- Temporal status is not checked: "I am a graduate of Example University of Technology." passes while the CV shows 2022 - 2026.
+- Soft inflation with no number, number word, inflation stem or name passes. Examples: "I mentored junior interns at Sample Labs.", and "several", "many" or "a couple of" years.
+- Anaphora passes: "I know Acme Fake well from my internship there."
+- Bare domains on TLDs outside the `_BARE` list (for example `evil.top`) are not flagged.
+- Draft fragments with no first-person marker may restate a posting number: "Python: 2+ years." and "That is 3 years of C++ in total." are kept. They are unlikely in 3-5 sentence prose.
+- Accepted fail-closed costs:
+  - "I noticed the posting mentions 3 years of C++." and "I am available for the full 10-week program in Summer 2026." are dropped (D-157).
+  - "half-day", "double major" and "manifold" are dropped unless they are in the CV (D-156).
+  - A gap tip with "your" and a posting number in one clause is dropped (D-157).
+  - "You are a research intern at X" fit text is dropped (D-158).
+  - A name equal to a listed verb at sentence start is not seen as an entity (D-159).
+  - "doctoral" does not ground "doctorate" (D-160).
+  - Honest admissions about skills not in the CV ("I haven't used Docker yet", "glad to learn PostgreSQL") are dropped by V4.
+  - A gap whose `posting_evidence` is shorter than `MIN_EVIDENCE` (8 chars, for example "Linux") is removed.
+  - A model gap whose requirement repeats a keyword the verifier already turned into a gap is silently deduped.
