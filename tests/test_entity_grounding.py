@@ -141,3 +141,50 @@ async def test_cv_parse_whole_word_grounding(tmp_path):
     assert r.error is None and r.dropped == 2
     assert [e.institution for e in r.sections.education] == ["Example University of Technology"]
     assert r.sections.skills == ["Python"]
+
+
+# ---- FIX-26: degree and title acronyms are grounded (D-151) ----
+
+SL = "Sample Labs - Research Intern, Summer 2025"
+
+
+def test_fix26_title_and_degree_claims_removed_from_tailoring():
+    from src.outreach.verify import claim_ok
+
+    for t in (
+        "I was the CTO at Sample Labs.",
+        "You were CEO of Sample Labs",
+        "Your MBA from Example University of Technology",
+        "Your MSc from Example University of Technology",
+        "Your master's degree from Example University of Technology",
+    ):
+        assert not claim_ok(t, SL, CV, ["Python"]), t
+    res = {
+        "gaps": [
+            {"requirement": "a", "posting_evidence": "", "how_to_address": h}
+            for h in ("Mention your MBA coursework", "Say you were CTO at Sample Labs")
+        ]
+    }
+    out, removed = verify_tailoring(res, CV, POST, ["Python"])
+    assert removed == 2 and out["gaps"] == []
+
+
+def test_fix26_draft_degree_and_title_sentences_dropped():
+    fab = [
+        "I hold an MSc in Computer Science.",
+        "I have an MBA.",
+        "I was the CTO of a startup.",
+        "I have a master's degree in physics.",
+    ]
+    for s in fab:
+        v = run([P["greeting"], s, P["legit"]["was_intern"], P["legit"]["intent"], ASK])
+        assert v.ok and v.removed == 1 and s not in v.body, s
+
+
+def test_fix26_honest_bsc_still_passes():
+    from src.outreach.verify import claim_ok
+
+    t = "I am a BSc Computer Science student at Example University of Technology."
+    assert claim_ok(t, "BSc Computer Science, 2022 - 2026", CV, ["Python"])
+    v = run([P["greeting"], t, P["legit"]["was_intern"], P["legit"]["intent"], ASK])
+    assert v.ok and v.removed == 0

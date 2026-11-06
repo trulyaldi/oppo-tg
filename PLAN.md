@@ -2029,7 +2029,7 @@ Second review pass, 2026-11-06. The reviewer re-checked FIX-15..FIX-25 (commits 
 - `git log -p f21aa21..HEAD` has no keys, tokens or personal data. `git ls-files data` lists only `.gitkeep`.
 - Draft regeneration is bounded at 2 calls, both reserved through `LlmBudget`. `verdict.unsupported` (which can now hold contact names) goes only into the retry prompt, never into a log line.
 
-### FIX-26 [ ] Degree and title acronyms are stop-listed, so invented degrees and titles pass the verifier
+### FIX-26 [x] Degree and title acronyms are stop-listed, so invented degrees and titles pass the verifier
 - Severity: BLOCKING (SPEC "Prepare and draft" hard rule: "Every factual claim about the user must trace to the CV text". FIX-15 was filed for "invented employers, schools, degrees").
 - Problem:
   - `ENTITY_STOP` in `src/outreach/lexicon.py` contains `msc`, `bsc`, `ba`, `ma`, `mba`, `gpa`, `ceo`, `cto`, `cfo`, `hr`, `qa`, `ui` and `ux`. These tokens are never grounded, and none of them is an inflation stem (only `phd` is).

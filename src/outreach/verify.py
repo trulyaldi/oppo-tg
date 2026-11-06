@@ -121,10 +121,21 @@ def entities(sentence: str, extra_skills: list[str] | None = None) -> list[str]:
     return out
 
 
+# Lowercase degree/title phrases that the capitalized-token rule cannot see (D-151).
+_CRED = re.compile(
+    r"(?<!\w)(?:(master)(?:['’]?s\b|\s+(?:degree|of)\b)|(bachelor)(?:['’]?s\b|\s+(?:degree|of)\b)"
+    r"|(vice\s+president)|(магистр)\w*|(бакалавр)\w*)"
+)
+
+
+def credentials(text_n: str) -> set[str]:
+    return {next(g for g in m.groups() if g) for m in _CRED.finditer(text_n)}
+
+
 def ungrounded_entities(
     text: str, corpus_n: str, extra_skills: list[str] | None = None
 ) -> list[str]:
-    bad: list[str] = []
+    bad: list[str] = sorted(credentials(norm(text)) - credentials(corpus_n))
     for s in split_sentences(text) or [text]:
         for e in entities(s, extra_skills):
             if not has_word(e, corpus_n) and e not in bad:
@@ -429,6 +440,7 @@ def verify_draft(
         }
         ents = entities(s, skills)
         miss |= {e for e in ents if not has_word(e, facts)}  # invented names
+        miss |= credentials(sn) - credentials(facts)  # "master's", "магистр"
         if not miss:
             only_ext = [e for e in ents if not has_word(e, cv_n) and has_word(e, non_cv)]
             if only_ext and is_past_claim(s, only_ext):  # "my internship at <posting company>"
