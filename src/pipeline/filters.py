@@ -18,7 +18,11 @@ from src.text import INTERN_RE
 LOCAL_TZ = ZoneInfo("Asia/Almaty")
 DEFAULT_MAX_AGE_DAYS = 60
 _JOB_KINDS = (Kind.JOB, Kind.INTERNSHIP)
-_NO_UNPAID_CHECK = (Kind.HACKATHON, Kind.COMPETITION)
+_NO_UNPAID_CHECK = (Kind.HACKATHON, Kind.COMPETITION, Kind.FELLOWSHIP)
+# Sources whose pages the user curates by hand: their items skip the title relevance check.
+_RELEVANCE_EXEMPT_SOURCES = ("pagewatch",)
+# PLAN 1.8 junior markers that waive senior_only (intern is handled by INTERN_RE).
+_JUNIOR_RE = re.compile(r"\b(?:junior|graduate|new grad|student|entry|trainee)\b|\bстаж", re.I)
 _EARN_SPAM = re.compile(
     r"\bearn\s+(?:up to\s+)?[$€£]\s?\d[\d,]*\s*(?:/|per\s+)\s*(?:day|week|hour)", re.I
 )
@@ -48,6 +52,7 @@ def hard_filter(p: Posting, cfg: AppConfig, today: date) -> str | None:
     if (
         p.kind in _JOB_KINDS
         and not INTERN_RE.search(p.title)
+        and not _JUNIOR_RE.search(p.title)
         and _any_kw(list(f.get("senior_only_keywords", [])), p.title)
     ):
         return "senior_only"
@@ -65,7 +70,7 @@ def hard_filter(p: Posting, cfg: AppConfig, today: date) -> str | None:
 
 def relevance_ok(p: Posting, cfg: AppConfig) -> bool:
     """JOB/INTERNSHIP titles must match a positive keyword; other kinds always pass."""
-    if p.kind not in _JOB_KINDS:
+    if p.kind not in _JOB_KINDS or p.source in _RELEVANCE_EXEMPT_SOURCES:
         return True
     return _any_kw(list(cfg.filters.get("positive_title_keywords", [])), p.title)
 

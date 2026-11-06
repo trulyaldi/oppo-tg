@@ -134,6 +134,10 @@ channels = []
 positive_title_keywords = [
   "intern", "quant", "research", "data", "ml", "machine learning", "ai",
   "scientist", "analyst", "engineer", "developer", "trader",
+  # Russian stems (prefix match): analyst, data, engineer, developer, programmer,
+  # researcher, scientist, trader, machine, intern(ship), quant
+  "аналитик", "данны", "инженер", "разработчик", "программист", "исследовател",
+  "учен", "трейдер", "машинн", "стаж", "квант",
 ]
 spam_keywords = ["crypto airdrop", "get rich", "mlm", "pyramid"]
 unpaid_keywords = ["unpaid", "no compensation", "volunteer only"]

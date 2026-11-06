@@ -36,9 +36,9 @@ def test_hard_filter_cases(case):
     assert hard_filter(make(case), CFG, TODAY) == case["expect"]
 
 
-def _p(title, kind=Kind.JOB, **kw):
+def _p(title, kind=Kind.JOB, source="t", **kw):
     return Posting(
-        source="t", external_id=title, title=title, company="Acme",
+        source=source, external_id=title, title=title, company="Acme",
         url="https://example.com/x", kind=kind, **kw,
     )  # fmt: skip
 
@@ -106,3 +106,58 @@ def test_internal_communications_not_relevant():
 )
 def test_real_internships_relevant(title):
     assert relevance_ok(_p(title, Kind.INTERNSHIP), CFG)
+
+
+def _run(posts):
+    conn = db.connect(":memory:")
+    db.migrate(conn)
+    for p in posts:
+        db.upsert_posting(conn, p, fingerprint(p), NOW)
+    apply_filters(conn, CFG, FixedClock(NOW))
+    return {
+        (r["source"], r["title"]): (r["status"], r["filter_reason"])
+        for r in conn.execute("SELECT * FROM postings")
+    }
+
+
+def test_pagewatch_items_skip_relevance():
+    titles = ["IMC Careers", "IMC Careers: page updated", "Optiver Jobs"]
+    got = _run([_p(t, Kind.INTERNSHIP, source="pagewatch") for t in titles])
+    assert all(got[("pagewatch", t)] == ("new", None) for t in titles)
+
+
+def test_russian_titles_relevant():
+    titles = [
+        "Аналитик данных",
+        "Стажер-аналитик данных",
+        "Python-разработчик",
+        "Аналитик данных (стажировка)",
+    ]
+    posts = [_p(t, source="hh") for t in titles[:3]] + [
+        _p(titles[3], Kind.INTERNSHIP, source="telegram")
+    ]
+    got = _run(posts)
+    assert all(v == ("new", None) for v in got.values())
+
+
+def test_irrelevant_still_filtered_via_apply_filters():
+    titles = ["Office Manager", "Account Executive", "Internal Communications Manager"]
+    got = _run([_p(t, source="hh") for t in titles + ["Менеджер по продажам"]])
+    assert all(v == ("filtered", "irrelevant") for v in got.values())
+    assert len(got) == 4
+
+
+@pytest.mark.parametrize(
+    "title", ["Junior/Senior Data Scientist", "Senior Graduate Analyst", "Lead Trainee Program"]
+)
+def test_junior_markers_waive_senior_only(title):
+    assert hard_filter(_p(title), CFG, TODAY) is None
+
+
+def test_senior_only_still_applies():
+    assert hard_filter(_p("Senior Quant Researcher"), CFG, TODAY) == "senior_only"
+
+
+def test_unpaid_fellowship_passes():
+    p = _p("Research Fellowship", Kind.FELLOWSHIP, description="This is an unpaid fellowship")
+    assert hard_filter(p, CFG, TODAY) is None
