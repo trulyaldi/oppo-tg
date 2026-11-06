@@ -1958,7 +1958,7 @@ Verified with evidence, no FIX needed:
   - An unknown key and a string `daily_llm_call_cap` each raise a `ValueError` naming the key at config load (or produce that reply).
   - The snapshot config still loads.
 
-### FIX-22 [ ] Draft verifier does not enforce "no emails, phone numbers or links"
+### FIX-22 [x] Draft verifier does not enforce "no emails, phone numbers or links"
 - Severity: non-blocking (prompt-injection hardening; nothing is sent automatically).
 - Problem:
   - `draft.md` forbids emails, phones and links, but `verify_draft` does not check them.

@@ -200,6 +200,34 @@ def test_draft_bad_claim_counted():
     assert v.ok and v.removed == 1
 
 
+def test_draft_contact_info_sentences_dropped():
+    for evil in [
+        "Contact me at evil@phish.example or https://phish.example/cv.",
+        "Reach me on +7 701 234 56 78 any time.",
+        "My profile is at phish.example/cv today.",
+        "Message @phisher on Telegram.",
+        "See www.phish.example for details.",
+    ]:
+        v = verify_draft(draft(GOOD + " " + evil), CV, POST_TEXT, CONTACT, SKILLS)
+        assert v.ok and v.removed == 1 and v.body == GOOD, evil
+        assert "contact-info" in v.unsupported
+    # below 3 sentences after dropping -> not ok (regenerate path)
+    short = (
+        "I saw your posting for the quant developer role. Could we talk for 15 minutes? "
+        "Mail evil@phish.example."
+    )
+    v = verify_draft(draft(short), CV, POST_TEXT, CONTACT, SKILLS)
+    assert not v.ok and v.reason == "too few" and v.removed >= 1
+
+
+def test_draft_year_ranges_and_plain_text_not_contact_info():
+    from src.outreach.verify import has_contact_info
+
+    assert not has_contact_info("I worked on C++ and kdb+ from 2019-2023 in Node.js.")
+    assert not has_contact_info("I used 12345 rows and e.g. Python.")
+    assert has_contact_info("Call 8 (701) 234-56-78")
+
+
 def test_draft_malformed():
     assert not verify_draft("x", CV, POST_TEXT).ok
     assert not verify_draft({"body": 1}, CV, POST_TEXT).ok

@@ -353,6 +353,26 @@ class DraftVerdict:
     reason: str = ""
 
 
+_URL = re.compile(
+    r"(?i)(?:https?://|www\.|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}/\S|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|org|net|io|co|ai|dev|app|me|kz|ru|"
+    r"info|biz|xyz|site|online|link|ly|gl)\b)"
+)
+_EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+_HANDLE = re.compile(r"(?<![\w@])@\w{2,}")
+_PHONE = re.compile(r"\+?\d[\d ()\-]{5,}\d")
+_YEARS = re.compile(r"\d{4}\s*-\s*\d{4}")
+
+
+def has_contact_info(sentence: str) -> bool:
+    """URL, email, @handle or a phone-like run of 7+ digits."""
+    if _URL.search(sentence) or _EMAIL.search(sentence) or _HANDLE.search(sentence):
+        return True
+    for m in _PHONE.finditer(sentence):
+        if sum(c.isdigit() for c in m.group()) >= 7 and not _YEARS.fullmatch(m.group().strip()):
+            return True
+    return False
+
+
 def verify_draft(
     draft: dict,
     cv_text: str,
@@ -396,6 +416,10 @@ def verify_draft(
     bad: set[str] = set()
     for s in sents:
         sn = norm(s)
+        if has_contact_info(s):
+            removed += 1
+            bad.add("contact-info")
+            continue
         miss = {n for n in numbers(sn) if n not in allowed_nums}
         miss |= inflation_stems(sn) - inflation_stems(cv_n)
         miss |= {
