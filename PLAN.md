@@ -1606,7 +1606,7 @@ Per-type guidance in `draft.md`:
   - The `/saved` fixture output includes `/prepare_<16hex>`.
   - The S4 dispatcher restart test stays green.
 
-### N1 [ ] Contacts table, classifier, sanitizer, expiry and pruning
+### N1 [x] Contacts table, classifier, sanitizer, expiry and pruning
 - Depends on: P2 (migration order v5 -> v6).
 - Build:
   - Migration v6 `contacts`.

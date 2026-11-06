@@ -44,7 +44,7 @@ def test_migrate_idempotent(tmp_path):
     c = db.connect(tmp_path / "m.db")
     db.migrate(c)
     db.migrate(c)
-    assert c.execute("PRAGMA user_version").fetchone()[0] == 5
+    assert c.execute("PRAGMA user_version").fetchone()[0] == 6
     names = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert names >= TABLES
     assert c.execute("PRAGMA foreign_keys").fetchone()[0] == 1

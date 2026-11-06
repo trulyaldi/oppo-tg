@@ -104,7 +104,7 @@ def test_prune():
                 (key + suffix, at.isoformat()),
             )
     res = db.prune(c, now)
-    assert res == {"http_cache": 1, "robots_cache": 1, "postings": 2}
+    assert res == {"http_cache": 1, "robots_cache": 1, "postings": 2, "contacts": 0}
     left = {r["id"] for r in c.execute("SELECT id FROM postings")}
     assert left == {ids[2], ids[3]}
     assert c.execute("SELECT count(*) FROM http_cache").fetchone()[0] == 1

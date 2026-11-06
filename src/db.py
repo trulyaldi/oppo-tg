@@ -10,7 +10,7 @@ from typing import Any
 
 from src.models import Posting, ScoreResult
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 MAX_SCORE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
 _EXCLUSIVE = {"like": "dislike", "dislike": "like"}
@@ -110,6 +110,22 @@ CREATE TABLE tailoring_cache (
 )
 """
 
+SCHEMA_6 = """
+CREATE TABLE contacts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  posting_id TEXT NOT NULL REFERENCES postings(id) ON DELETE CASCADE,
+  name TEXT NOT NULL, role TEXT NOT NULL DEFAULT '', company TEXT NOT NULL DEFAULT '',
+  contact_type TEXT NOT NULL,
+  type_confidence REAL NOT NULL,
+  source_kind TEXT NOT NULL,
+  source_url TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL, expires_at TEXT NOT NULL,
+  UNIQUE (posting_id, name, source_url)
+);
+CREATE INDEX idx_contacts_expires ON contacts(expires_at)
+"""
+
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
@@ -156,6 +172,12 @@ def migrate(conn: sqlite3.Connection) -> None:
     if version < 5:
         with conn:
             for stmt in SCHEMA_5.split(";"):
+                if stmt.strip():
+                    conn.execute(stmt)
+            conn.execute("PRAGMA user_version=5")
+    if version < 6:
+        with conn:
+            for stmt in SCHEMA_6.split(";"):
                 if stmt.strip():
                     conn.execute(stmt)
             conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -465,4 +487,7 @@ def prune(
             " AND id NOT IN (SELECT posting_id FROM reactions)",
             (post_cut,),
         ).rowcount
-    return {"http_cache": http, "robots_cache": robots, "postings": postings}
+    from src.contacts.store import prune_contacts
+
+    contacts = prune_contacts(conn, now)
+    return {"http_cache": http, "robots_cache": robots, "postings": postings, "contacts": contacts}
