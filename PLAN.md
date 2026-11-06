@@ -2133,3 +2133,136 @@ Second review pass, 2026-11-06. The reviewer re-checked FIX-15..FIX-25 (commits 
 - Acceptance:
   - Both probes are removed and counted.
   - `tailor_reply_honest.json` is unchanged (nothing removed).
+
+Third review pass, 2026-11-06. The reviewer re-checked FIX-26..FIX-30 (commits 52c1362..834b96e). Each fix meets its written acceptance criteria, and the evidence is below. The new problems are FIX-31..FIX-35. FIX-31, FIX-32 and FIX-33 are blocking. FIX-34 and FIX-35 are non-blocking but cheap.
+- `.venv/bin/python -m pytest` gives 722 passed and 0 skipped. `ruff check` and `ruff format --check` are clean (152 files).
+- FIX-26: with `cv_fake.txt`, "I hold an MSc in Computer Science.", "I have an MBA." and "I was the CTO of a startup." are dropped. "I hold a master's degree ..." is dropped. "I am a BSc Computer Science student at Example University of Technology." is kept.
+- FIX-27: every listed sentence is dropped, including "Я работал в Яндекс Маркете.", and the gap "Highlight your internship at Acme Fake" is removed. The legitimate sentences, including "Previously I was a research intern at Sample Labs.", are asserted in `tests/test_entity_grounding.py`.
+- FIX-28: "I was impressed by the work at Acme Fake." is kept, and so are both fit points. Socket.IO is kept when it is in the CV and dropped when it is not. The FIX-22 phishing repro is still dropped.
+- FIX-29: `configure_logging` pops `ANTHROPIC_LOG`, imports `anthropic`, then pins. `main` calls it after `load_dotenv`. The subprocess test and the real-client canary test pass.
+- FIX-30: both probes are removed and counted.
+- Honest-sample false positives: 24 honest single sentences and 3 complete honest drafts against `cv_fake.txt` are all kept (removed=0). Honest tailoring is not; see FIX-34.
+- `git log -p fd49926..HEAD` contains no keys or tokens. `git ls-files data` lists only `.gitkeep`.
+
+### FIX-31 [ ] Written-out numbers bypass V2, so invented metrics pass
+- Severity: BLOCKING (SPEC hard rule "never invent or inflate").
+- Problem:
+  - V2 (`numbers()`) only sees digits, so a metric written in words is never checked.
+  - Reproduced with `cv_fake.txt`. `verify_draft` keeps each of these body sentences with `removed=0`:
+    - "I built a harness used by thousands of traders."
+    - "My parser cut replay time in half."
+    - "I reduced replay time tenfold with a C++ parser."
+    - "I mentored five interns at Sample Labs."
+  - `claim_ok` keeps these emphasize items (evidence: the harness line, or the Sample Labs line):
+    - "Stress that the harness served thousands of users"
+    - "Stress your two years of Python experience"
+  - "thousands of users" style puffery is the typical LLM inflation.
+- Build:
+  - Add a number-word lexicon that counts as numbers wherever V2 and the draft `allowed_nums` check apply:
+    - two..twenty, dozen(s), hundred(s), thousand(s), million(s), billion(s);
+    - half, twice, double(d), triple(d), quadruple(d), and any `\w+fold` word;
+    - Russian: два..десять stems, тысяч*, миллион*, вдвое, втрое.
+  - Leave out "one" and ordinals ("first", "third-year"), so "One thing ..." and "third-year student" are not dropped.
+  - Each word must appear in the evidence (claims), in the CV ∪ posting (gaps) or in the draft facts (draft sentences), the same way digits are checked. FIX-32 then narrows the draft and gap cases.
+  - Record the choice in DECISIONS (D-125 addendum).
+- Files: `src/outreach/lexicon.py`, `src/outreach/verify.py`, `tests/test_verify.py`, `DECISIONS.md`.
+- Acceptance:
+  - Every probe above is dropped or removed.
+  - `draft_reply_ok.json` and `tailor_reply_honest.json` still pass with nothing removed.
+  - "I'm a third-year Computer Science student." is kept against `cv_fake.txt`.
+
+### FIX-32 [ ] Numbers that appear only in the posting can be stated as the user's own experience
+- Severity: BLOCKING. This is the most likely fabrication: the model mirrors the posting's requirement back as a claim about the user.
+- Problem:
+  - Draft sentences accept any number found in CV ∪ posting ∪ contact (`allowed_nums`). Gap `how_to_address` accepts any number found in CV ∪ posting.
+  - Reproduced with `cv_fake.txt`, the posting "We need 2+ years of Python experience and 3 years with C++." and contact "Sam Doe, Engineering Manager at Acme Fake". Each of these is kept:
+    - draft "I have 2 years of Python experience."
+    - draft "I have used C++ for 3 years."
+    - draft "I have 2+ years of Python."
+    - gap "Mention your 3 years of C++."
+    - gap "Say you have 2 years of Python experience."
+  - The CV contains neither number in that sense: it has 2022, 2026, 2024, 2025 and 30%.
+- Build:
+  - A number that is not in the CV is allowed only when the sentence makes no claim about the user.
+  - Drafts: drop a sentence that has a first-person marker (I, I'm, I've, my, me, я, мой, ...) and contains a number that is not in the CV, and is not the call length of the ask.
+  - Gaps: drop a `how_to_address` that has a second-person marker ("you have", "you've", "your") and contains a number that is not in the CV.
+  - Record the choice in DECISIONS (D-109/D-125 addendum).
+- Files: `src/outreach/verify.py`, `tests/test_verify.py`, `DECISIONS.md`.
+- Acceptance:
+  - All five probes are dropped or removed.
+  - These are kept:
+    - "I reduced replay time by 30% with a C++ parser." (30% is in the CV);
+    - the gap "The role asks for 3 years of C++; point to the C++ parser.";
+    - a draft sentence that names a posting number without a first-person marker ("The posting mentions 3 years of C++.");
+    - the ask "Could we have a 15-minute call?".
+
+### FIX-33 [ ] Experience at a posting-only company passes in fit points (FIX-28 regression), gaps and fronted draft sentences
+- Severity: BLOCKING. The fit-point case is a regression from this round: at fd49926 all four fit points below were removed (0 of 4 kept); at HEAD all four are kept.
+- Problem (`cv_fake.txt`, the `entity_probes.json` posting and contact):
+  - FIX-28(b) allows posting names in `fit.points` unless `is_second_person_claim` matches. That check only knows "your <noun/role> at X" and "your X <noun/role>", and "work" is not in `_NOUN`. These fit points are kept (evidence: the Sample Labs line):
+    - "You interned at Acme Fake, so you know the stack"
+    - "You were a research intern at Acme Fake"
+    - "Your work at Acme Fake on research tooling"
+    - "Acme Fake already knows you from your internship"
+  - Gap `how_to_address` items that are kept:
+    - "Mention that you interned at Acme Fake"
+    - "Say you worked with Acme Fake before"
+  - Draft sentences that are kept with `removed=0`:
+    - "At Acme Fake, I built a latency benchmark harness in Python."
+    - "Acme Fake hired me as an intern last summer."
+  - With a posting that says "Our founders are ex-Google and Jane Street engineers", these drafts are also kept:
+    - "At Google, I built a latency benchmark harness."
+    - "Google hired me as an intern."
+  - The fronted "At <company>, I <past verb> ..." form is exactly the shape the model uses for real experience (`draft_reply_ok.json`: "At Demo Analytics I cleaned ..."). So mixing up the employer with the posting company produces this sentence, and it is not exotic phrasing.
+- Build:
+  - `is_second_person_claim`:
+    - add "you (have/'ve)? <past verb> ... at/with/for X" and "you were/are (a/the)? ... <role> at X", mirroring `is_past_claim`;
+    - add "work" (and "time", "projects") to the second-person nouns;
+    - add "X ... knows you from".
+  - `is_past_claim`:
+    - add the fronted form "(at|with|for|in) X[,]? i (have )?<past verb>";
+    - add "X hired/employed/recruited/took on me".
+  - Record the patterns in DECISIONS (D-152/D-153 addendum).
+- Files: `src/outreach/verify.py`, `tests/test_entity_grounding.py`, `DECISIONS.md`.
+- Acceptance:
+  - Every probe above is dropped or removed.
+  - These are still kept:
+    - both FIX-28 fit points;
+    - "At Sample Labs I built a latency benchmark harness in Python for order book replay.";
+    - "I would love to join the research team at Acme Fake.";
+    - "Could I learn more about internships at Acme Fake?";
+    - "I was impressed by the work at Acme Fake.";
+    - "I noticed Acme Fake is hiring a research tooling intern.".
+
+### FIX-34 [ ] Imperative tailoring items followed by a capitalized word are removed as invented names
+- Severity: non-blocking (fails closed), but cheap and very visible. The bug came in with FIX-15: d66464f removes 0 items, HEAD removes 4.
+- Problem:
+  - `entities()` treats a sentence-initial word as a name when the next token is capitalized (for "Sample Labs ..."). So imperative tailoring advice loses its verb as an "entity".
+  - Each of these is removed against `cv_fake.txt`:
+    - "Highlight Sample Labs internship first"
+    - "Mention Python and C++ early"
+    - "Move Experience above Education"
+    - "Put Projects right after Experience"
+  - An entirely honest 11-item tailoring result loses 4 items, and `reorder` comes back empty. `/prepare` then tells the user that 4 statements were unsupported, which wrongly implies fabrication.
+- Build: skip the sentence-initial token when it is in an imperative/starter list. The list includes highlight, mention, emphasize, stress, move, put, list, place, add, drop, cut, shorten, remove, keep, lead, show, note and say, plus the existing `_STARTERS`. The tokens after it are still checked.
+- Files: `src/outreach/verify.py`, `tests/test_entity_grounding.py`.
+- Acceptance:
+  - The four items above are kept.
+  - "Highlight Jane Street internship first" is still removed, and Jane and Street are reported.
+  - Every FIX-15/26/27 fabrication probe is still removed.
+
+### FIX-35 [ ] "doctorate" and spelled-out C-level titles are not credential-checked
+- Severity: non-blocking, one-line addition next to FIX-26's `_CRED`.
+- Problem: against `cv_fake.txt`, "I hold a doctorate in Computer Science." and "I was the chief technology officer at Sample Labs." are kept.
+- Build: add `doctorate`, `doctoral` and `chief \w+ officer` (and Russian `доктор наук`, `кандидат наук`) to `_CRED`.
+- Files: `src/outreach/verify.py`, `tests/test_entity_grounding.py`.
+- Acceptance: both sentences are dropped, and "I am a BSc Computer Science student at Example University of Technology." is kept.
+
+Known limitations (heuristic verifier; recorded, not tasks):
+- An invented lowercase or unnamed employer is not seen ("I was a quant researcher at a hedge fund.").
+- Lowercase invented titles are not seen ("staff engineer"), and neither is an invented lowercase name ("interned at google").
+- Temporal status is not checked: "I am a graduate of Example University of Technology." passes while the CV shows 2022 - 2026.
+- Soft inflation with no number, inflation word or name passes ("I mentored junior interns at Sample Labs."), as D-125 already notes.
+- Anaphora passes: "I know Acme Fake well from my internship there."
+- Bare domains on TLDs outside the `_BARE` list (for example `evil.top`) are not flagged. Telegram may auto-link them.
+- `src/evals/run.py` does not call `configure_logging`. With `ANTHROPIC_LOG=debug` exported in the shell, the manual eval run logs request bodies (eval fixtures and `profile.md`, no CV) to the terminal.
