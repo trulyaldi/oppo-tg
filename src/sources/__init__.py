@@ -2,6 +2,7 @@
 
 from src.sources import (
     ashby,  # noqa: F401  (registers "ashby")
+    devpost,  # noqa: F401  (registers "devpost")
     greenhouse,  # noqa: F401  (registers "greenhouse")
     hh,  # noqa: F401  (registers "hh")
     hn,  # noqa: F401  (registers "hn")

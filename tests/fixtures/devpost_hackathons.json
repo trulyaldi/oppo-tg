@@ -1,0 +1,245 @@
+{
+ "hackathons": [
+  {
+   "id": 31302,
+   "title": "PayPal AI Hackathon",
+   "displayed_location": {
+    "icon": "globe",
+    "location": "Online"
+   },
+   "open_state": "open",
+   "thumbnail_url": "//d112y698adiu2z.cloudfront.net/photos/production/challenge_thumbnails/005/288/985/datas/medium_square.png",
+   "analytics_identifier": "PayPal AI Hackathon (31302)",
+   "url": "https://paypalaihackathon.devpost.com/",
+   "time_left_to_submission": "6 days left",
+   "submission_period_dates": "Oct 01 - Nov 12, 2026",
+   "themes": [
+    {
+     "id": 17,
+     "name": "Low/No Code"
+    },
+    {
+     "id": 6,
+     "name": "Machine Learning/AI"
+    },
+    {
+     "id": 25,
+     "name": "Web"
+    }
+   ],
+   "prize_amount": "$<span data-currency-value>67,500</span>",
+   "prizes_counts": {
+    "cash": 14,
+    "other": 3
+   },
+   "registrations_count": 29565,
+   "featured": true,
+   "organization_name": "PayPal",
+   "winners_announced": false,
+   "submission_gallery_url": "https://paypalaihackathon.devpost.com/project-gallery",
+   "start_a_submission_url": "https://paypalaihackathon.devpost.com/challenges/start_a_submission",
+   "invite_only": false,
+   "eligibility_requirement_invite_only_description": null,
+   "managed_by_devpost_badge": true
+  },
+  {
+   "id": 31667,
+   "title": "Kiroween 2026",
+   "displayed_location": {
+    "icon": "globe",
+    "location": "Online"
+   },
+   "open_state": "open",
+   "thumbnail_url": "//d112y698adiu2z.cloudfront.net/photos/production/challenge_thumbnails/005/585/149/datas/medium_square.png",
+   "analytics_identifier": "Kiroween 2026 (31667)",
+   "url": "https://kiroween.devpost.com/",
+   "time_left_to_submission": "29 days left",
+   "submission_period_dates": "Oct 30 - Dec 04, 2026",
+   "themes": [
+    {
+     "id": 23,
+     "name": "Beginner Friendly"
+    },
+    {
+     "id": 6,
+     "name": "Machine Learning/AI"
+    },
+    {
+     "id": 22,
+     "name": "Open Ended"
+    }
+   ],
+   "prize_amount": "$<span data-currency-value>100,000</span>",
+   "prizes_counts": {
+    "cash": 15,
+    "other": 2
+   },
+   "registrations_count": 9519,
+   "featured": false,
+   "organization_name": "Kiro",
+   "winners_announced": false,
+   "submission_gallery_url": "https://kiroween.devpost.com/project-gallery",
+   "start_a_submission_url": "https://kiroween.devpost.com/challenges/start_a_submission",
+   "invite_only": false,
+   "eligibility_requirement_invite_only_description": null,
+   "managed_by_devpost_badge": true
+  },
+  {
+   "id": 31024,
+   "title": "Meta VR Start Developer Competition 2026",
+   "displayed_location": {
+    "icon": "globe",
+    "location": "Online"
+   },
+   "open_state": "open",
+   "thumbnail_url": "//d112y698adiu2z.cloudfront.net/photos/production/challenge_thumbnails/005/374/843/datas/medium_square.png",
+   "analytics_identifier": "Meta VR Start Developer Competition 2026 (31024)",
+   "url": "https://start-developer-competition-26.devpost.com/",
+   "time_left_to_submission": "12 days left",
+   "submission_period_dates": "Sep 24 - Nov 18, 2026",
+   "themes": [
+    {
+     "id": 5,
+     "name": "AR/VR"
+    },
+    {
+     "id": 6,
+     "name": "Machine Learning/AI"
+    },
+    {
+     "id": 25,
+     "name": "Web"
+    }
+   ],
+   "prize_amount": "$<span data-currency-value>1,000,000</span>",
+   "prizes_counts": {
+    "cash": 1,
+    "other": 0
+   },
+   "registrations_count": 5292,
+   "featured": false,
+   "organization_name": "Meta",
+   "winners_announced": false,
+   "submission_gallery_url": "https://start-developer-competition-26.devpost.com/project-gallery",
+   "start_a_submission_url": "https://start-developer-competition-26.devpost.com/challenges/start_a_submission",
+   "invite_only": false,
+   "eligibility_requirement_invite_only_description": null,
+   "managed_by_devpost_badge": true
+  },
+  {
+   "id": 31572,
+   "title": "Codegeist 2026: Build with context. Ship with confidence.",
+   "displayed_location": {
+    "icon": "globe",
+    "location": "Online"
+   },
+   "open_state": "open",
+   "thumbnail_url": "//d112y698adiu2z.cloudfront.net/photos/production/challenge_thumbnails/005/624/479/datas/medium_square.png",
+   "analytics_identifier": "Codegeist 2026: Build with context. Ship with confidence. (31572)",
+   "url": "https://codegeist2026.devpost.com/",
+   "time_left_to_submission": "about 2 months left",
+   "submission_period_dates": "Oct 27 - Dec 22, 2026",
+   "themes": [
+    {
+     "id": 6,
+     "name": "Machine Learning/AI"
+    },
+    {
+     "id": 21,
+     "name": "Enterprise"
+    },
+    {
+     "id": 11,
+     "name": "Productivity"
+    }
+   ],
+   "prize_amount": "$<span data-currency-value>120,000</span>",
+   "prizes_counts": {
+    "cash": 7,
+    "other": 1
+   },
+   "registrations_count": 1865,
+   "featured": true,
+   "organization_name": "Atlassian",
+   "winners_announced": false,
+   "submission_gallery_url": "https://codegeist2026.devpost.com/project-gallery",
+   "start_a_submission_url": "https://codegeist2026.devpost.com/challenges/start_a_submission",
+   "invite_only": false,
+   "eligibility_requirement_invite_only_description": null,
+   "managed_by_devpost_badge": true
+  },
+  {
+   "id": 39999,
+   "title": "Winter Quant Hack (hand-written)",
+   "displayed_location": {
+    "icon": "map-marker",
+    "location": "Berlin, Germany"
+   },
+   "open_state": "open",
+   "thumbnail_url": "//d112y698adiu2z.cloudfront.net/photos/production/challenge_thumbnails/005/624/690/datas/medium_square.png",
+   "analytics_identifier": "UGREEN Hackathon 2026 on AI NAS (31552)",
+   "url": "https://winter-quant.devpost.com/",
+   "time_left_to_submission": "10 days left",
+   "submission_period_dates": "Dec 15, 2026 - Jan 20, 2027",
+   "themes": [
+    {
+     "id": 6,
+     "name": "Machine Learning/AI"
+    }
+   ],
+   "prize_amount": "$<span data-currency-value>46,000</span>",
+   "prizes_counts": {
+    "cash": 1,
+    "other": 0
+   },
+   "registrations_count": 1379,
+   "featured": false,
+   "organization_name": "Example Org",
+   "winners_announced": false,
+   "submission_gallery_url": "https://ugreenhackathon.devpost.com/project-gallery",
+   "start_a_submission_url": "https://ugreenhackathon.devpost.com/challenges/start_a_submission",
+   "invite_only": false,
+   "eligibility_requirement_invite_only_description": null,
+   "managed_by_devpost_badge": false
+  },
+  {
+   "id": 39998,
+   "title": "Weekend Hack (hand-written)",
+   "displayed_location": {
+    "icon": "globe",
+    "location": "Online"
+   },
+   "open_state": "open",
+   "thumbnail_url": "//d112y698adiu2z.cloudfront.net/photos/production/challenge_thumbnails/005/624/690/datas/medium_square.png",
+   "analytics_identifier": "UGREEN Hackathon 2026 on AI NAS (31552)",
+   "url": "https://weekend-hack.devpost.com/",
+   "time_left_to_submission": "10 days left",
+   "submission_period_dates": "Dec 28 - 30, 2026",
+   "themes": [
+    {
+     "id": 6,
+     "name": "Machine Learning/AI"
+    }
+   ],
+   "prize_amount": "$<span data-currency-value>46,000</span>",
+   "prizes_counts": {
+    "cash": 1,
+    "other": 0
+   },
+   "registrations_count": 1379,
+   "featured": false,
+   "organization_name": "Example Org",
+   "winners_announced": false,
+   "submission_gallery_url": "https://ugreenhackathon.devpost.com/project-gallery",
+   "start_a_submission_url": "https://ugreenhackathon.devpost.com/challenges/start_a_submission",
+   "invite_only": false,
+   "eligibility_requirement_invite_only_description": null,
+   "managed_by_devpost_badge": false
+  }
+ ],
+ "meta": {
+  "total_count": 191,
+  "per_page": 9,
+  "fuzzy": false
+ }
+}

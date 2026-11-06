@@ -406,7 +406,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Files: `src/sources/hh.py`, `config.toml`, `tests/fixtures/hh_vacancies.json`, `tests/test_source_hh.py`.
 - Acceptance: fixture parses with Cyrillic titles intact; request carries `HH-User-Agent`; remote mapping; duplicate vacancy across two queries returned once; 403/500/malformed -> `[]`; registered.
 
-### T18 [ ] Source: Devpost hackathons (probe-dependent)
+### T18 [x] Source: Devpost hackathons (probe-dependent)
 - Probe `https://devpost.com/robots.txt` and ToS. If `/api/hackathons` is allowed: `src/sources/devpost.py` GETs `https://devpost.com/api/hackathons?status[]=upcoming&status[]=open&page=1` (max 3 pages), maps title, url, organization_name, displayed_location, `submission_period_dates` -> deadline (end date), prize_amount/themes -> raw_tags, kind HACKATHON, remote if location "Online".
 - Exit: if disallowed, do not implement fetching; write DECISIONS entry "Devpost dropped: <reason>", mark task done.
 - Files: `src/sources/devpost.py`, `tests/fixtures/devpost_hackathons.json`, `tests/test_source_devpost.py` (or DECISIONS.md only).

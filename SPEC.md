@@ -47,7 +47,7 @@ Hard filters (applied before the LLM): obvious spam, unpaid "exposure" roles, se
 - YC Work at a Startup.
 - hh.kz. (implemented: hh in src/sources/hh.py; needs HH_ACCESS_TOKEN, disabled without it)
 - Selected Kazakh Telegram job channels via Telethon.
-- Hackathon/competition feeds (Devpost, MLH, Kaggle).
+- Hackathon/competition feeds (Devpost, MLH, Kaggle). (implemented: devpost in src/sources/devpost.py)
 - Fellowship and research-program pages. (implemented: rss in src/sources/rss.py for RSS/Atom feeds; pagewatch in src/sources/pagewatch.py for page change watching)
 
 **[EDIT: add companies for the ATS watchlist and Telegram channels]**
