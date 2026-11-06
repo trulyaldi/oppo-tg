@@ -2344,7 +2344,7 @@ Probe posting used by FIX-36 and FIX-37, verbatim: "Acme Fake is hiring a resear
     - "I was a research intern at Sample Labs in Summer 2025.".
   - `draft_reply_ok.json` and `tailor_reply_honest.json` still give removed=0.
 
-### FIX-38 [ ] "Lead with ..." tailoring advice is removed as inflation
+### FIX-38 [x] "Lead with ..." tailoring advice is removed as inflation
 - Severity: non-blocking (fails closed). It is very visible, the same way FIX-34 was. It dates from P1 and is not a regression.
 - Problem:
   - `"lead"` is in `INFLATION_STEMS`, so V3 removes every "Lead with X" emphasize or reorder item and every gap tip that says "lead with", unless the CV itself contains "lead".

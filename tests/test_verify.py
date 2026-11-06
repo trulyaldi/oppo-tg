@@ -271,3 +271,53 @@ def test_fix30_contact_info_removed_from_tailoring():
     out, removed = verify_tailoring(res, cv, "Acme Fake is hiring.", [])
     assert removed == 3 and out["gaps"] == [] and out["emphasize"] == []
     assert "phish" not in json.dumps(out)
+
+
+# ---- FIX-38: "Lead with ..." is advice, not an inflation claim (D-164) ----
+
+CV_FAKE = (FX / "cv_fake.txt").read_text()
+SL_EV = "Sample Labs - Research Intern, Summer 2025"
+SPEEDUP_EV = "Reduced replay time by 30% with a C++ parser"
+
+
+def _claim(text, ev):
+    from src.outreach.verify import claim_ok
+
+    return claim_ok(text, ev, CV_FAKE, ["Python", "C++"])
+
+
+def test_lead_with_claims_kept():
+    assert _claim("Lead with the Sample Labs research internship", SL_EV)
+    assert _claim("Lead with the 30% replay speedup", SPEEDUP_EV)
+    assert _claim("Leading with the Sample Labs research internship", SL_EV)
+
+
+def test_lead_with_gap_and_reorder_kept():
+    reply = {
+        "gaps": [
+            {
+                "requirement": "Python experience",
+                "posting_evidence": "",
+                "how_to_address": "The posting wants 2+ years of Python; lead with the "
+                "benchmark harness and the matching engine.",
+            }
+        ],
+        "reorder": [{"text": "Lead with Experience, then Projects", "cv_evidence": SL_EV}],
+    }
+    v, removed = verify_tailoring(
+        reply, CV_FAKE, "We need 2+ years of Python experience.", ["Python", "C++"]
+    )
+    assert removed == 0 and v["gaps"] and v["reorder"]
+
+
+def test_real_lead_claims_still_inflation():
+    from src.outreach.verify import inflation_stems
+
+    for s in (
+        "i led a team of engineers at sample labs.",
+        "i was the lead engineer at sample labs.",
+        "i lead the research team at sample labs.",
+        "team lead with five reports",
+    ):
+        assert inflation_stems(s), s
+    assert not inflation_stems("lead with the benchmark harness")

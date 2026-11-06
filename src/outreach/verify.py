@@ -101,7 +101,12 @@ def numbers(text: str) -> set[str]:
     return {m.replace(",", ".") for m in _NUM.findall(n)} | number_words(n)
 
 
+_LEAD_WITH = re.compile(r"(?<!\w)(?<!team )(?<!tech )(?:lead|leads|leading)\s+with(?!\w)")
+
+
 def inflation_stems(text_norm: str) -> set[str]:
+    """Inflation words in normalized text; "lead with X" is advice, not a claim (FIX-38)."""
+    text_norm = _LEAD_WITH.sub(" ", text_norm)
     return {s for s, rx in _STEM_RES if rx.search(text_norm)}
 
 
