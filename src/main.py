@@ -52,6 +52,16 @@ async def _run(command: str, settings: Settings) -> None:
                 conn, client, settings.scoring_model, clock, settings.max_scores_per_run
             )
             log.info("scored: %s", scored)
+            from aiogram import Bot
+
+            from src.delivery.alerts import send_alerts
+
+            bot = Bot(settings.telegram_bot_token)
+            try:
+                n_alerts = await send_alerts(bot, conn, settings, cfg, clock)
+            finally:
+                await bot.session.close()
+            log.info("alerts sent: %d", n_alerts)
         if command in ("digest", "once"):
             from aiogram import Bot
 

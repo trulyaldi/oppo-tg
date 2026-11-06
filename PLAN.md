@@ -604,7 +604,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - `/pause` sets `paused=1` and replies "Paused. /pause again or /resume to resume."; second `/pause` and `/resume` unpause.
   - All outputs HTML-escaped (title with `<` asserted).
 
-### T23 [ ] Instant alerts
+### T23 [x] Instant alerts
 - Build `src/delivery/alerts.py` `select_alerts(conn, cfg, clock)`, `send_alerts(bot, conn, settings, cfg, clock)`; call after scoring in `collect` CLI path.
 - Files: `src/delivery/alerts.py`, `src/main.py`, `tests/test_alerts.py`.
 - Acceptance (FixedClock 2026-11-06 Asia/Almaty):
