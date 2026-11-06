@@ -7,7 +7,14 @@ from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import SourceContext, SourceUnavailable, Target, fetch_all_targets, register
+from src.sources.base import (
+    SourceContext,
+    SourceUnavailable,
+    Target,
+    fetch_all_targets,
+    fetch_board_json,
+    register,
+)
 from src.text import INTERN_RE, html_to_text
 
 API = "https://api.ashbyhq.com/posting-api/job-board/{board}"
@@ -85,8 +92,8 @@ class AshbySource:
 
     async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
         board = target.key
-        data = await ctx.http.get_json(
-            API.format(board=board), params={"includeCompensation": "false"}, ttl_s=CACHE_TTL_S
+        data = await fetch_board_json(
+            ctx, target, API.format(board=board), {"includeCompensation": "false"}
         )
         if data is None:
             raise SourceUnavailable(f"ashby board {board}: no data")

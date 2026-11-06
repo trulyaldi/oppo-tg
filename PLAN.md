@@ -2586,7 +2586,7 @@ Each migration gets a test that starts from the previous version with sample row
   - `Retry-After: 3600` sets the backoff with no 3600 s sleep.
   - The existing `test_http*.py` tests pass.
 
-### FC-08 [ ] Status-aware conditional fetch and tier1 revalidation
+### FC-08 [x] Status-aware conditional fetch and tier1 revalidation
 - Build (D-186):
   - Add `PoliteClient.fetch(url, *, params, headers, ttl_s, revalidate=False, check_robots=True) -> FetchResult(status, text, not_modified, from_cache, has_validators, error)`.
     - With `revalidate`, the fresh-cache short-circuit is skipped and If-None-Match / If-Modified-Since is always sent when cached.

@@ -8,6 +8,7 @@ import logging
 import random
 import time
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import urlsplit
@@ -75,6 +76,20 @@ def is_unsafe_host(url: str) -> bool:
         return True
     last = host.rsplit(".", 1)[-1]
     return last.isdigit() or last.startswith("0x")  # 1.2.3.4, 2130706433, 0x7f.1
+
+
+@dataclass(frozen=True)
+class FetchResult:
+    status: int | None = None
+    text: str | None = None
+    not_modified: bool = False
+    from_cache: bool = False
+    has_validators: bool = False
+    error: str | None = None
+
+
+def _has_val(resp: httpx.Response) -> bool:
+    return bool(resp.headers.get("ETag") or resp.headers.get("Last-Modified"))
 
 
 SleepFn = Callable[[float], Awaitable[None]]
@@ -270,6 +285,98 @@ class PoliteClient:
             target += "?" + parts.query
         return rp.can_fetch(ROBOTS_AGENT, target)
 
+    async def fetch(
+        self,
+        url: str,
+        *,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        ttl_s: float | None = None,
+        revalidate: bool = False,
+        check_robots: bool = True,
+    ) -> FetchResult:
+        """Status-aware GET (D-186). Never raises; 4xx gives status and no text.
+
+        With revalidate the fresh-cache short-circuit is skipped and the validators
+        (If-None-Match / If-Modified-Since) are always sent when a cached copy exists.
+        """
+        if is_blocked_host(url):
+            log.info("blocked host, not fetching %s", urlsplit(url).hostname)
+            return FetchResult(error="blocked host")
+        # Without a db (and clock) there is no robots/response cache (see D-34).
+        if self.db is None or self.clock is None:
+            resp = await self._fetch(url, params, headers, raw=True)
+            if resp is None:
+                return FetchResult(error="request failed")
+            if resp.status_code == 304:
+                return FetchResult(status=304, error="304 without a cached response")
+            if resp.status_code >= 400:
+                return FetchResult(status=resp.status_code, error=f"HTTP {resp.status_code}")
+            return FetchResult(
+                status=resp.status_code, text=resp.text, has_validators=_has_val(resp)
+            )
+        use_cache = ttl_s is not None or revalidate
+        cache_key = str(httpx.URL(url, params=params))
+        now = self.clock.now()
+        cached = None
+        if use_cache:
+            cached = self.db.execute(
+                "SELECT * FROM http_cache WHERE url=?", (cache_key,)
+            ).fetchone()
+            if (
+                not revalidate
+                and ttl_s is not None
+                and cached is not None
+                and cached["status"] == 200
+                and (now - datetime.fromisoformat(cached["fetched_at"])).total_seconds() < ttl_s
+            ):
+                return FetchResult(
+                    status=200,
+                    text=cached["body"],
+                    from_cache=True,
+                    has_validators=bool(cached["etag"] or cached["last_modified"]),
+                )
+        if check_robots and not await self._robots_allowed(url):
+            log.info("robots.txt disallows %s", url)
+            return FetchResult(error="robots.txt disallows")
+        req_headers = dict(headers or {})
+        if cached is not None and cached["status"] == 200:
+            if cached["etag"]:
+                req_headers["If-None-Match"] = cached["etag"]
+            if cached["last_modified"]:
+                req_headers["If-Modified-Since"] = cached["last_modified"]
+        resp = await self._fetch(
+            url, params, req_headers or None, raw=True, check_robots=check_robots
+        )
+        if resp is None:
+            return FetchResult(error="request failed")
+        if resp.status_code == 304 and cached is None:
+            log.warning("304 without a cached response for %s", url)
+            return FetchResult(status=304, error="304 without a cached response")
+        if resp.status_code >= 400:
+            log.info("HTTP %s for %s", resp.status_code, url)
+            return FetchResult(status=resp.status_code, error=f"HTTP {resp.status_code}")
+        not_modified = resp.status_code == 304
+        if not_modified:
+            body = cached["body"]
+            etag, lm = cached["etag"], cached["last_modified"]
+        else:
+            body = resp.text
+            etag, lm = resp.headers.get("ETag"), resp.headers.get("Last-Modified")
+        if use_cache:
+            with self.db:
+                self.db.execute(
+                    "INSERT OR REPLACE INTO http_cache(url, status, etag, last_modified, body,"
+                    " fetched_at) VALUES (?,?,?,?,?,?)",
+                    (cache_key, 200, etag, lm, body, now.isoformat()),
+                )
+        return FetchResult(
+            status=resp.status_code,
+            text=body,
+            not_modified=not_modified,
+            has_validators=bool(etag or lm),
+        )
+
     async def get_text(
         self,
         url: str,
@@ -279,58 +386,10 @@ class PoliteClient:
         ttl_s: float | None = None,
         check_robots: bool = True,
     ) -> str | None:
-        if is_blocked_host(url):
-            log.info("blocked host, not fetching %s", urlsplit(url).hostname)
-            return None
-        # Without a db (and clock) there is no robots/response cache (see D-34).
-        if self.db is None or self.clock is None:
-            resp = await self._fetch(url, params, headers)
-            if resp is None or resp.status_code == 304:
-                return None
-            return resp.text
-        cache_key = str(httpx.URL(url, params=params))
-        now = self.clock.now()
-        cached = None
-        if ttl_s is not None:
-            cached = self.db.execute(
-                "SELECT * FROM http_cache WHERE url=?", (cache_key,)
-            ).fetchone()
-            if (
-                cached is not None
-                and cached["status"] == 200
-                and (now - datetime.fromisoformat(cached["fetched_at"])).total_seconds() < ttl_s
-            ):
-                return cached["body"]
-        if check_robots and not await self._robots_allowed(url):
-            log.info("robots.txt disallows %s", url)
-            return None
-        req_headers = dict(headers or {})
-        if cached is not None and cached["status"] == 200:
-            if cached["etag"]:
-                req_headers["If-None-Match"] = cached["etag"]
-            if cached["last_modified"]:
-                req_headers["If-Modified-Since"] = cached["last_modified"]
-        resp = await self._fetch(url, params, req_headers or None, check_robots=check_robots)
-        if resp is None:
-            return None
-        if resp.status_code == 304 and cached is None:
-            log.warning("304 without a cached response for %s", url)
-            return None
-        if ttl_s is None:
-            return resp.text
-        if resp.status_code == 304 and cached is not None:
-            body = cached["body"]
-            etag, lm = cached["etag"], cached["last_modified"]
-        else:
-            body = resp.text
-            etag, lm = resp.headers.get("ETag"), resp.headers.get("Last-Modified")
-        with self.db:
-            self.db.execute(
-                "INSERT OR REPLACE INTO http_cache(url, status, etag, last_modified, body,"
-                " fetched_at) VALUES (?,?,?,?,?,?)",
-                (cache_key, 200, etag, lm, body, now.isoformat()),
-            )
-        return body
+        res = await self.fetch(
+            url, params=params, headers=headers, ttl_s=ttl_s, check_robots=check_robots
+        )
+        return res.text
 
     async def get_json(
         self,

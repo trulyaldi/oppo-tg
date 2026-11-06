@@ -8,7 +8,14 @@ from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import SourceContext, SourceUnavailable, Target, fetch_all_targets, register
+from src.sources.base import (
+    SourceContext,
+    SourceUnavailable,
+    Target,
+    fetch_all_targets,
+    fetch_board_json,
+    register,
+)
 from src.text import INTERN_RE, html_to_text
 
 API = "https://api.lever.co/v0/postings/{company}"
@@ -89,9 +96,7 @@ class LeverSource:
 
     async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
         slug = target.key
-        data = await ctx.http.get_json(
-            API.format(company=slug), params={"mode": "json"}, ttl_s=CACHE_TTL_S
-        )
+        data = await fetch_board_json(ctx, target, API.format(company=slug), {"mode": "json"})
         if data is None:
             raise SourceUnavailable(f"lever slug {slug}: no data")
         return parse_postings(data, slug, target.company)

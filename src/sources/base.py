@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -29,6 +30,9 @@ class SourceContext:
     cfg: AppConfig
     clock: Clock
     log: logging.Logger = field(default_factory=lambda: logging.getLogger("src.sources"))
+    revalidate: bool = False
+    # (source, target key) -> has_validators, reported by board sources (FC-08).
+    validators: dict[tuple[str, str], bool] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         # D-34: without db+clock the client silently skips robots checks and caching.
@@ -147,8 +151,27 @@ async def run_target(src: Source, ctx: SourceContext, target: Target) -> TargetR
         items = await fn(ctx, target) if callable(fn) else await src.fetch(ctx)
     except Exception as exc:  # noqa: BLE001 - isolation boundary
         ctx.log.exception("source %s target %r failed", src.name, target.key)
+        ctx.validators.pop((src.name, target.key), None)
         return TargetResult(src.name, target, False, [], f"{type(exc).__name__}: {exc}")
-    return TargetResult(src.name, target, True, list(items))
+    hv = ctx.validators.pop((src.name, target.key), None)
+    return TargetResult(src.name, target, True, list(items), has_validators=hv)
+
+
+async def fetch_board_json(ctx: SourceContext, target: Target, url: str, params: dict) -> object:
+    """Fetch a board's JSON (revalidating for tier1) and note its has_validators.
+
+    Returns None on any failure. A 304 returns the cached body, so it is parsed again
+    and last_seen_at stays current (FC-08).
+    """
+    res = await ctx.http.fetch(url, params=params, ttl_s=3600.0, revalidate=ctx.revalidate)
+    if res.text is None:
+        return None
+    ctx.validators[(target.source, target.key)] = res.has_validators
+    try:
+        return json.loads(res.text)
+    except ValueError:
+        ctx.log.warning("invalid JSON from %s", url)
+        return None
 
 
 MIN_SOURCE_FAMILIES = 6  # D-52
