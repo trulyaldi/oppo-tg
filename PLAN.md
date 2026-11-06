@@ -578,7 +578,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - Run `.venv/bin/python -m src.main probe` and paste its output into a DECISIONS entry.
   - If it exits 1, report a blocker naming the families that failed. Do not mark the task done in that case.
 
-### T20 [ ] Telegram bot: dispatcher, whitelist, feedback callbacks
+### T20 [x] Telegram bot: dispatcher, whitelist, feedback callbacks
 - Build `src/bot/app.py` (`build_dispatcher(conn, settings, cfg, clock) -> Dispatcher`, whitelist middleware) and `src/bot/handlers.py` callback handler for `fb:*` (1.10). Tests call handler functions directly with fake `CallbackQuery`/`Message` objects (no network, no real Bot).
 - Files: `src/bot/__init__.py`, `src/bot/app.py`, `src/bot/handlers.py`, `tests/test_bot_feedback.py`.
 - Acceptance:
