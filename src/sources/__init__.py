@@ -11,4 +11,5 @@ from src.sources import (
     mlh,  # noqa: F401  (registers "mlh")
     pagewatch,  # noqa: F401  (registers "pagewatch")
     rss,  # noqa: F401  (registers "rss")
+    telegram_channels,  # noqa: F401  (registers "telegram_channels")
 )

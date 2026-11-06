@@ -46,7 +46,7 @@ Hard filters (applied before the LLM): obvious spam, unpaid "exposure" roles, se
 - Hacker News "Who is hiring". (implemented: hn in src/sources/hn.py)
 - YC Work at a Startup.
 - hh.kz. (implemented: hh in src/sources/hh.py; needs HH_ACCESS_TOKEN, disabled without it)
-- Selected Kazakh Telegram job channels via Telethon.
+- Selected Kazakh Telegram job channels via Telethon. (implemented: src/sources/telegram_channels.py, credential-gated, see D-69)
 - Hackathon/competition feeds (Devpost, MLH, Kaggle). (implemented: mlh in src/sources/mlh.py; devpost in src/sources/devpost.py but dropped: see D-50, disabled in config; kaggle dropped: see D-68)
 - Fellowship and research-program pages. (implemented: rss in src/sources/rss.py for RSS/Atom feeds; pagewatch in src/sources/pagewatch.py for page change watching; EURAXESS research job listings dropped, see D-59, disabled in config)
 - Remote job board API: Jobicy. (implemented: jobicy in src/sources/jobicy.py; added by agent, D-55)

@@ -631,7 +631,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Set `credentials = ("KAGGLE_USERNAME", "KAGGLE_KEY")` (D-52).
 - Acceptance: fixture parses with deadlines; Basic auth header present (asserted in MockTransport, value from fake creds); disabled without creds with reason shown in `/sources`; empty/malformed/401/500 -> `[]`; registered. `tests/test_source_count.py` still passes and lists kaggle under `credential_gated`, never under `counted` (even with creds set).
 
-### T26 [ ] Source: Kazakh Telegram job channels via Telethon (credential-gated)
+### T26 [x] Source: Kazakh Telegram job channels via Telethon (credential-gated)
 - `src/sources/telegram_channels.py`: with `TG_API_ID`, `TG_API_HASH` and an existing session file, read the last 100 messages (or since last seen id stored in `state`) from each channel in `[sources.telegram_channels].channels` (public channels only, read-only, `flood_sleep_threshold` respected). Each message -> Posting (external_id `channel:msg_id`, title = first line <= 120 chars, url `https://t.me/{channel}/{msg_id}`, description text, posted_at date, company "" unless "Company:"/"Компания:" line). Skip messages without text and forwards of ads (keyword list). Add `src/tools/telethon_login.py` (interactive one-time login, never run in tests). Without creds/session: disabled with reason. Telethon client is injected; tests use a fake with `iter_messages`.
 - Files: `src/sources/telegram_channels.py`, `src/tools/__init__.py`, `src/tools/telethon_login.py`, `tests/fixtures/tg_messages.json`, `tests/test_source_telegram_channels.py`.
 - Set `credentials = ("TG_API_ID", "TG_API_HASH")` (D-52).

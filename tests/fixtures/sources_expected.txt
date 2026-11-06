@@ -8,4 +8,5 @@
 <b>mlh</b> [mlh] counted; last run: never run
 <b>pagewatch</b> [pagewatch] counted; last run: never run
 <b>rss</b> [rss] counted; last run: failed (Boom &lt;x&gt;), 2026-11-06T06:00:00+00:00
+<b>telegram_channels</b> [telegram_channels] credentials: TG_API_ID, TG_API_HASH; last run: never run
 Credential-free source families enabled: 6 (need 6)
