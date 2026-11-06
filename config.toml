@@ -44,7 +44,11 @@ enabled = true
 [sources.hh]
 enabled = true
 area = 40 # Kazakhstan
-queries = ["data scientist", "machine learning", "intern analyst"]
+period = 14 # days
+queries = [
+  "data scientist", "machine learning", "quant",
+  "аналитик данных стажер", "стажировка python",
+]
 
 [sources.rss]
 enabled = true

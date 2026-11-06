@@ -1,0 +1,143 @@
+{
+  "items": [
+    {
+      "id": "100000001",
+      "name": "Стажёр Data Scientist",
+      "area": {
+        "id": "160",
+        "name": "Алматы",
+        "url": "https://api.hh.ru/areas/160"
+      },
+      "employer": {
+        "id": "1001",
+        "name": "Kaspi.kz"
+      },
+      "alternate_url": "https://hh.kz/vacancy/100000001",
+      "published_at": "2026-11-03T10:15:30+0500",
+      "schedule": {
+        "id": "fullDay",
+        "name": "x"
+      },
+      "experience": {
+        "id": "noExperience",
+        "name": "Нет опыта"
+      },
+      "snippet": {
+        "requirement": "Знание <highlighttext>Python</highlighttext>, SQL, основы статистики.",
+        "responsibility": "Помощь в построении моделей <highlighttext>машинного обучения</highlighttext>."
+      }
+    },
+    {
+      "id": "100000002",
+      "name": "Machine Learning Engineer",
+      "area": {
+        "id": "160",
+        "name": "Астана",
+        "url": "https://api.hh.ru/areas/160"
+      },
+      "employer": {
+        "id": "1002",
+        "name": "Freedom Holding"
+      },
+      "alternate_url": "https://hh.kz/vacancy/100000002",
+      "published_at": "2026-11-04T09:00:00+0500",
+      "schedule": {
+        "id": "remote",
+        "name": "x"
+      },
+      "experience": {
+        "id": "between1And3",
+        "name": "Нет опыта"
+      },
+      "snippet": {
+        "requirement": "Опыт с PyTorch от 2 лет.",
+        "responsibility": "Разработка ML-сервисов."
+      }
+    },
+    {
+      "id": "100000003",
+      "name": "Аналитик данных (стажировка)",
+      "area": {
+        "id": "160",
+        "name": "Алматы",
+        "url": "https://api.hh.ru/areas/160"
+      },
+      "employer": {
+        "id": "1003",
+        "name": "Halyk Bank"
+      },
+      "alternate_url": "https://hh.kz/vacancy/100000003",
+      "published_at": "2026-11-01T12:00:00+0500",
+      "schedule": {
+        "id": "fullDay",
+        "name": "x"
+      },
+      "experience": {
+        "id": "between1And3",
+        "name": "Нет опыта"
+      },
+      "snippet": {
+        "requirement": "SQL, Excel.",
+        "responsibility": "Подготовка отчётов."
+      }
+    },
+    {
+      "id": "100000004",
+      "name": "Data Analyst Intern",
+      "area": {
+        "id": "160",
+        "name": "Алматы",
+        "url": "https://api.hh.ru/areas/160"
+      },
+      "employer": {
+        "id": "1004",
+        "name": "Beeline Kazakhstan"
+      },
+      "alternate_url": "https://hh.kz/vacancy/100000004",
+      "published_at": "2026-10-30T08:30:00+0500",
+      "schedule": {
+        "id": "flexible",
+        "name": "x"
+      },
+      "experience": {
+        "id": "between1And3",
+        "name": "Нет опыта"
+      },
+      "snippet": {
+        "requirement": "Python, <highlighttext>pandas</highlighttext>.",
+        "responsibility": "Анализ данных."
+      }
+    },
+    {
+      "id": "100000005",
+      "name": "Quant Researcher",
+      "area": {
+        "id": "160",
+        "name": "Алматы",
+        "url": "https://api.hh.ru/areas/160"
+      },
+      "employer": {
+        "id": "1005",
+        "name": "Tengri Capital"
+      },
+      "alternate_url": "https://hh.kz/vacancy/100000005",
+      "published_at": "2026-11-02T15:45:00+0500",
+      "schedule": {
+        "id": "fullDay",
+        "name": "x"
+      },
+      "experience": {
+        "id": "between3And6",
+        "name": "Нет опыта"
+      },
+      "snippet": {
+        "requirement": "Матстатистика.",
+        "responsibility": "Исследования."
+      }
+    }
+  ],
+  "found": 5,
+  "pages": 1,
+  "page": 0,
+  "per_page": 50
+}

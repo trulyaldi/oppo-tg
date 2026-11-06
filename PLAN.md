@@ -400,7 +400,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Files: `src/sources/pagewatch.py`, `config.toml`, `tests/fixtures/page_v1.html`, `tests/fixtures/page_v2.html`, `tests/test_source_pagewatch.py`.
 - Acceptance: v1 first run -> 1 posting; v1 again -> 0; v2 (content change) -> 1 posting with "page updated"; change only in `<script>`/whitespace -> 0; selector applied when configured; 500 -> `[]`; registered.
 
-### T17 [ ] Source: hh.kz (HeadHunter API)
+### T17 [x] Source: hh.kz (HeadHunter API)
 - `src/sources/hh.py`: GET `https://api.hh.ru/vacancies` with `area` (Kazakhstan = 40, from config), `text` per configured query (e.g. "data scientist", "machine learning", "quant", "аналитик данных стажер", "стажировка python"), `per_page=50`, `period=14`, headers `HH-User-Agent` = our UA (+ `Authorization: Bearer` if `HH_ACCESS_TOKEN`). Map id, name, employer.name, area.name, alternate_url, snippet (html_to_text), published_at, schedule.id=="remote", experience.id=="noExperience" or "intern" in name -> INTERNSHIP.
 - Probe at implementation time: if anonymous access is refused (403) and no token, the source reports `enabled=False` with reason "needs HH_ACCESS_TOKEN" (still fully implemented and fixture-tested); record in DECISIONS.md.
 - Files: `src/sources/hh.py`, `config.toml`, `tests/fixtures/hh_vacancies.json`, `tests/test_source_hh.py`.

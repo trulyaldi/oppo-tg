@@ -3,6 +3,7 @@
 from src.sources import (
     ashby,  # noqa: F401  (registers "ashby")
     greenhouse,  # noqa: F401  (registers "greenhouse")
+    hh,  # noqa: F401  (registers "hh")
     hn,  # noqa: F401  (registers "hn")
     lever,  # noqa: F401  (registers "lever")
     pagewatch,  # noqa: F401  (registers "pagewatch")
