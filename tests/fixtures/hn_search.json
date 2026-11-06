@@ -1,0 +1,45 @@
+{
+ "hits": [
+  {
+   "objectID": "50338728",
+   "title": "Ask HN: Who is hiring? (November 2026)",
+   "author": "whoishiring",
+   "created_at": "2026-11-02T16:01:37Z",
+   "created_at_i": 1793635297,
+   "story_id": 50338728,
+   "num_comments": 278,
+   "points": 250
+  },
+  {
+   "objectID": "50338726",
+   "title": "Ask HN: Who wants to be hired? (November 2026)",
+   "author": "whoishiring",
+   "created_at": "2026-11-02T16:01:37Z",
+   "created_at_i": 1793635297,
+   "story_id": 50338726,
+   "num_comments": 485,
+   "points": 51
+  },
+  {
+   "objectID": "49922569",
+   "title": "Ask HN: Who is hiring? (October 2026)",
+   "author": "whoishiring",
+   "created_at": "2026-10-01T15:02:07Z",
+   "created_at_i": 1790866927,
+   "story_id": 49922569,
+   "num_comments": 383,
+   "points": 277
+  },
+  {
+   "objectID": "49922568",
+   "title": "Ask HN: Who wants to be hired? (October 2026)",
+   "author": "whoishiring",
+   "created_at": "2026-10-01T15:02:07Z",
+   "created_at_i": 1790866927,
+   "story_id": 49922568,
+   "num_comments": 684,
+   "points": 136
+  }
+ ],
+ "nbHits": 4
+}

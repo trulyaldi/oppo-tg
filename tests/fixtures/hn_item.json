@@ -1,0 +1,105 @@
+{
+ "id": 50338728,
+ "created_at": "2026-11-02T16:01:37.000Z",
+ "created_at_i": 1793635297,
+ "title": "Ask HN: Who is hiring? (November 2026)",
+ "type": "story",
+ "story_id": 50338728,
+ "options": [],
+ "parent_id": null,
+ "url": null,
+ "points": 250,
+ "children": [
+  {
+   "id": 50338732,
+   "created_at": "2026-11-02T16:01:43.000Z",
+   "created_at_i": 1793635303,
+   "type": "comment",
+   "parent_id": 50338728,
+   "story_id": 50338728,
+   "text": "Simple Analytics | DevOps Engineer | REMOTE (worldwide, any timezone) | Full-time, 32h, 24h possible | \u20ac5,000&#x2F;month (full-time) | <a href=\"https:&#x2F;&#x2F;www.simpleanalytics.com&#x2F;jobs&#x2F;devops\" rel=\"nofollow\">https:&#x2F;&#x2F;www.simpleanalytics.com&#x2F;jobs&#x2F;devops</a><p>Hi HN, I&#x27;m Adriaan. Simple Analytics exists thanks to HN: it started with my Show HN in 2018 [1]. Today we&#x27;re a self-funded, profitable team of four building privacy-first analytics.<p>Privacy is why we run our own bare-metal servers instead of the cloud. We&#x27;re preparing for a LOT more traffic, and you&#x27;ll own the infrastructure and its reliability. We have good documentation. First project: leading the infra side of our Elasticsearch to ClickHouse migration, with Alex, our developer.<p>Stack: Ansible, OpenTofu, Docker Compose, Grafana, GitHub Actions, TypeScript. Clear async communication matters more than knowing every tool.<p>You can apply from your terminal:<p><pre><code>  curl https:&#x2F;&#x2F;www.simpleanalytics.com&#x2F;jobs&#x2F;devops.md\n</code></pre>\n[1] <a href=\"https:&#x2F;&#x2F;news.ycombinator.com&#x2F;item?id=18024277\">https:&#x2F;&#x2F;news.ycombinator.com&#x2F;item?id=18024277</a>",
+   "children": [
+    {
+     "created_at": "2026-11-02T17:08:06.000Z",
+     "created_at_i": 1793639286,
+     "id": 50339964,
+     "parent_id": 50338732,
+     "text": "Interesting post!<p>When you say &quot;Full-time, 32h, 24h possible | \u20ac5,000&#x2F;month (full-time)&quot; is the \u20ac5,000&#x2F;month salary pegged at 40h&#x2F;week so that the actual payment is scaled u",
+     "type": "comment",
+     "children": []
+    }
+   ]
+  },
+  {
+   "id": 50338736,
+   "created_at": "2026-11-02T16:01:53.000Z",
+   "created_at_i": 1793635313,
+   "type": "comment",
+   "parent_id": 50338728,
+   "story_id": 50338728,
+   "text": "Synteq | Growth Lead &amp; Systems Administrator | Austin, TX | REMOTE (US) | Full-time<p>Synteq is a developer cloud running our own hardware and network. We do large-scale bare-metal, GPU, VPS, storage, and PaaS deployments across 5 US datacenters.<p>- Growth Lead: own top of funnel for a developer cloud product, covering SEO, community, PLG, and partnerships. Open to people new to growth or with some experience. <a href=\"https:&#x2F;&#x2F;synteq.com&#x2F;career&#x2F;growth-lead\" rel=\"nofollow\">https:&#x2F;&#x2F;synteq.com&#x2F;career&#x2F;growth-lead</a><p>- Systems Administrator: Proxmox hypervisors, networking, physical builds, Ceph, and bare metal. Ideally 2\u201315 YOE. <a href=\"https:&#x2F;&#x2F;synteq.com&#x2F;career&#x2F;systems-administrator\" rel=\"nofollow\">https:&#x2F;&#x2F;synteq.com&#x2F;career&#x2F;systems-administrator</a><p>Small, close-knit team that takes on hard problems. We&#x27;ve grown a lot this past year and there&#x27;s much more ahead. Come build it with us.",
+   "children": []
+  },
+  {
+   "id": 50338792,
+   "created_at": "2026-11-02T16:04:26.000Z",
+   "created_at_i": 1793635466,
+   "type": "comment",
+   "parent_id": 50338728,
+   "story_id": 50338728,
+   "text": "Shepherd (Series B) | ONSITE | San Francisco, CA<p>At Shepherd, we&#x27;re pursuing the most ambitious technical vision in commercial insurance: fully autonomous underwriting. Shepherd is an AI-native commercial insurance platform transforming how high-hazard industries get covered.<p>The infrastructure behind the AI boom (data centers, semiconductor fabs, renewable energy assets) has to be built and insured, but traditional carriers weren&#x27;t built for this speed. We built Shepherd to solve that.<p>We announced our $42M Series B earlier this year! That brings our total funding to over $60M \u2014 led by Intact Private Capital, the investment arm of one of the largest insurers in the world. Intact is not only our lead investor but also a carrier partner, a testament to the confidence the incumbent industry has in what we&#x27;re building.<p>We\u2019re looking for product-minded, high ownership engineers to join our team! The Engineering team is HQ\u2019d in SF, but we\u2019re growing in NYC now too!<p>We\u2019re hiring for 2 Senior SWEs, 1 MLE and 1 AI PM in SF, and 2 Staff SWEs in NYC. Engineers own projects end-to-end so full stack ability is expected.<p>Check out our open roles here: <a href=\"https:&#x2F;&#x2F;shepherdinsurance.com&#x2F;careers\">https:&#x2F;&#x2F;shepherdinsurance.com&#x2F;careers</a>\nOur stack includes: Typescript, React, Next.js, GraphQL w&#x2F; Apollo, Node.js, Postgres &amp; Redis\n\u2013 If you have experience building AI agents or multi-step reasoning systems, we\u2019d love to hear",
+   "children": []
+  },
+  {
+   "id": 50339999,
+   "created_at": "2026-11-02T20:00:00.000Z",
+   "created_at_i": 1793649600,
+   "type": "comment",
+   "parent_id": 50338728,
+   "story_id": 50338728,
+   "text": null,
+   "author": null,
+   "children": []
+  },
+  {
+   "id": 50339294,
+   "created_at": "2026-11-02T16:29:42.000Z",
+   "created_at_i": 1793636982,
+   "type": "comment",
+   "parent_id": 50338728,
+   "story_id": 50338728,
+   "text": "SwingVision | Berkeley, CA | Full time + Internships<p>SwingVision uses computer vision to turn a single phone camera into an automated stats, highlights, and line-calling system for tennis, pickleball, and padel. Models run on-device in real time, and the app won an Apple Design Award for Innovation. We&#x27;re growing the ML and product teams.<p>- Head of Machine Learning: <a href=\"https:&#x2F;&#x2F;jobs.deel.com&#x2F;swingvision&#x2F;job-details&#x2F;c2cc0f23-3e59-4c03-849e-d53e7567a3fd&#x2F;overview\" rel=\"nofollow\">https:&#x2F;&#x2F;jobs.deel.com&#x2F;swingvision&#x2F;job-details&#x2F;c2cc0f23-3e59-...</a><p>- Machine Learning Engineer: <a href=\"https:&#x2F;&#x2F;jobs.deel.com&#x2F;swingvision&#x2F;job-details&#x2F;cc271cef-58f7-45f5-9f1e-f8df9646fb9f&#x2F;overview\" rel=\"nofollow\">https:&#x2F;&#x2F;jobs.deel.com&#x2F;swingvision&#x2F;job-details&#x2F;cc271cef-58f7-...</a><p>- Head of Product: <a href=\"https:&#x2F;&#x2F;jobs.deel.com&#x2F;swingvision&#x2F;job-details&#x2F;cb631dcb-1a80-4678-ab29-0ec2853c5ee4&#x2F;overview\" rel=\"nofollow\">https:&#x2F;&#x2F;jobs.deel.com&#x2F;swingvision&#x2F;job-details&#x2F;cb631dcb-1a80-...</a><p>- Machine Learning Intern: <a href=\"https:&#x2F;&#x2F;jobs.deel.com&#x2F;swingvision&#x2F;job-details&#x2F;0597eeac-eded-4d42-80de-5a109862c642&#x2F;overview\" rel=\"nofollow\">https:&#x2F;&#x2F;jobs.deel.com&#x2F;swingvision&#x2F;job-details&#x2F;0597eeac-eded-...</a><p>- Data Labeling Intern: <a href=\"https:&#x2F;&#x2F;app.deel.com&#x2F;job-boards",
+   "children": []
+  },
+  {
+   "id": 50339641,
+   "created_at": "2026-11-02T16:48:54.000Z",
+   "created_at_i": 1793638134,
+   "type": "comment",
+   "parent_id": 50338728,
+   "story_id": 50338728,
+   "text": "CNH | AI Engineer Intern | Tempe, AZ, USA | ON-SITE | Summer internship (40 hours&#x2F;week, May\u2013August)<p>Work on autonomy and precision agriculture, applying AI, machine learning, and computer vision to real-world agricultural problems. You&#x27;ll help develop, evaluate, and deploy models alongside our engineering team.<p>Stack: C++, Python, PyTorch&#x2F;TensorFlow, ONNX, TensorRT, Git.<p>We&#x27;re looking for strong programming skills and a solid understanding of ML fundamentals. You must be a current college student actively pursuing a degree. Visa sponsorship is not available.<p>Apply: <a href=\"https:&#x2F;&#x2F;join.cnh.com&#x2F;job&#x2F;AI-Engineer-Intern&#x2F;5686-en_US\" rel=\"nofollow\">https:&#x2F;&#x2F;join.cnh.com&#x2F;job&#x2F;AI-Engineer-Intern&#x2F;5686-en_US</a>",
+   "children": []
+  },
+  {
+   "id": 50338775,
+   "created_at": "2026-11-02T16:03:39.000Z",
+   "created_at_i": 1793635419,
+   "type": "comment",
+   "parent_id": 50338728,
+   "story_id": 50338728,
+   "text": "Open Education Applications &#x2F; Neon | Senior Frontend Engineer | Utrecht, The Netherlands | HYBRID | DUTCH REQUIRED<p>Please note: working proficiency in Dutch is strictly required for these roles, and we kindly ask for no automated applications. The rest of this post will continue in Dutch.<p>Wij zijn een non-profit die zich inzet om lesmateriaal voor scholen beter, betaalbaarder en flexibeler te maken, in zowel digitale als gedrukte vorm.<p>Werktijden en kantoordagen zijn flexibel en worden in overleg bepaald op basis van de rol. Wij bieden een competitief salaris.<p>Openstaande rol:<p>- Senior Frontend Engineer\n  Ervaring met Yjs of vergelijkbare CRDT frameworks&#x2F;algoritmen vereist.<p>E-mail jobs[at]openeducation.foundation met (HN) + de functienaam in het onderwerp, samen met een korte introductie en een link naar je LinkedIn-profiel en&#x2F;of GitHub. Als er van beide kanten een goede match lijkt te zijn, plan ik graag een kennismakingsgesprek in.<p><a href=\"https:&#x2F;&#x2F;openeducation.foundation\" rel=\"nofollow\">https:&#x2F;&#x2F;openeducation.foundation</a> | <a href=\"https:&#x2F;&#x2F;www.neon.nl\" rel=\"nofollow\">https:&#x2F;&#x2F;www.neon.nl</a>",
+   "children": []
+  },
+  {
+   "id": 50338768,
+   "created_at": "2026-11-02T16:03:23.000Z",
+   "created_at_i": 1793635403,
+   "type": "comment",
+   "parent_id": 50338728,
+   "story_id": 50338728,
+   "text": "University of Cambridge, University of Manchester | PhD in AI &#x2F; Earth Observation &#x2F; Environmental Science | ONSITE | UK home fee status only | \u00a330k tax-free annual stipend<p>Our group at Cambridge works on Earth Observation foundation models (Tessera: v1 <a href=\"https:&#x2F;&#x2F;arxiv.org&#x2F;abs&#x2F;2506.20380\" rel=\"nofollow\">https:&#x2F;&#x2F;arxiv.org&#x2F;abs&#x2F;2506.20380</a>, v2 <a href=\"https:&#x2F;&#x2F;arxiv.org&#x2F;abs&#x2F;2607.03949\" rel=\"nofollow\">https:&#x2F;&#x2F;arxiv.org&#x2F;abs&#x2F;2607.03949</a>, <a href=\"https:&#x2F;&#x2F;geotessera.org&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;geotessera.org&#x2F;</a>) and we&#x27;ve started a collaboration with Manchester to understand how they can be used to improve pollution models and then environmental decision making in general. This involves training new models and doing high-resolution inference across national or even global scales, as well as figuring out how to use that data to help policymakers make better decisions.<p>As part of this work we have a PhD studentship through the joint Manchester-Cambridge Centre for Doctoral Training for AI in Decision Making for Complex Systems. This involves one year at Manchester doing taught postgraduate study and then three years at Cambridge for the PhD.<p>Our work is all open source and involves solving significant compute and data challenges. Training our current-generation model takes ~250k GPU hours and a single year of global inference needs to move o",
+   "children": []
+  }
+ ]
+}

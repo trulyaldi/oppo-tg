@@ -385,7 +385,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Files: `src/sources/ashby.py`, `config.toml`, `tests/fixtures/ashby_board.json`, `tests/test_source_ashby.py`.
 - Acceptance: fixture parses with `remote=True` for `isRemote`; `employmentType: Intern` -> INTERNSHIP; empty/malformed/500 -> `[]`; registered.
 
-### T14 [ ] Source: Hacker News "Who is hiring" (Algolia API)
+### T14 [x] Source: Hacker News "Who is hiring" (Algolia API)
 - `src/sources/hn.py`: find the latest "Ask HN: Who is hiring?" story by user `whoishiring` via `https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring&hitsPerPage=10`, then `https://hn.algolia.com/api/v1/items/{id}`; each top-level comment -> Posting: first line `Company | Role | Location | ...` parsed heuristically (company = first pipe segment, title = segment containing a role keyword else first 80 chars), url = `https://news.ycombinator.com/item?id={comment_id}`, description = html_to_text(text), remote if "remote" in header, posted_at from `created_at`, kind JOB (INTERNSHIP if intern mentioned). Skip deleted/empty comments. Ignore "Who wants to be hired" / "Freelancer" threads.
 - Files: `src/sources/hn.py`, `tests/fixtures/hn_search.json`, `tests/fixtures/hn_item.json`, `tests/test_source_hn.py`.
 - Acceptance: fixture item with >=5 comments yields one posting per non-deleted top-level comment; header `Acme | ML Engineer Intern | Remote (EU)` -> company Acme, kind INTERNSHIP, remote True; search fixture containing a "Who wants to be hired" story picks the "Who is hiring" one; empty hits/malformed/500 -> `[]`; registered.
