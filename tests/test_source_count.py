@@ -29,7 +29,7 @@ def test_every_module_is_registered():
     mods = {
         p.stem
         for p in (ROOT / "src" / "sources").glob("*.py")
-        if p.stem not in {"base", "__init__"}
+        if p.stem not in {"base", "__init__", "telegram_live"}  # helper, not a source
     }
     assert mods <= set(REGISTRY)
 

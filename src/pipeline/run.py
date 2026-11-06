@@ -164,6 +164,11 @@ async def _collect_tier(
                     )
                     if outcome is db.Upsert.INSERTED:
                         n_new += 1
+                if tr.on_stored is not None:
+                    try:
+                        tr.on_stored()  # post-store hook: cursors advance after the store
+                    except Exception:  # noqa: BLE001
+                        log.exception("post-store hook failed for %s", tr.target.key)
             db.record_target_attempt(
                 conn,
                 source.name,

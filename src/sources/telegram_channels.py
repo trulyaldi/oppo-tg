@@ -16,7 +16,7 @@ from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
-from src.sources.base import SourceContext, Target, register
+from src.sources.base import RequestTally, SourceContext, SourceUnavailable, Target, register
 
 BATCH = 100
 FLOOD_SLEEP_THRESHOLD_S = 60
@@ -138,6 +138,31 @@ def _state_key(channel: str) -> str:
     return f"telegram_channels:last_id:{channel}"
 
 
+def advance_last_id(conn: Any, channel: str, msg_id: int) -> None:
+    """Move the channel cursor forward only (never back); call after the store (D-193)."""
+    from src import db as dbm
+
+    if msg_id > int(dbm.get_state(conn, _state_key(channel), "0") or 0):
+        dbm.set_state(conn, _state_key(channel), str(msg_id))
+
+
+_LISTENER: Any = None  # the running TelegramListener (run mode), set by main._serve
+
+
+def set_listener(listener: Any) -> None:
+    global _LISTENER
+    _LISTENER = listener
+
+
+def get_listener() -> Any:
+    return _LISTENER
+
+
+def live_channels() -> set[str]:
+    """Channels currently delivered by the live listener (empty while disconnected)."""
+    return set(_LISTENER.live_channels()) if _LISTENER is not None else set()
+
+
 @register("telegram_channels")
 class TelegramChannelsSource:
     name = "telegram_channels"
@@ -170,66 +195,92 @@ class TelegramChannelsSource:
     def enabled(self, settings: Settings, cfg: AppConfig, conn: Any = None) -> bool:
         return self.disabled_reason(settings, cfg, conn) is None
 
+    def _shared_client(self) -> Any:
+        """The live listener's client, so one session file has one client (D-193)."""
+        client = getattr(_LISTENER, "client", None) if _LISTENER is not None else None
+        return client if client is not None and getattr(_LISTENER, "started", False) else None
+
+    async def _open(self, ctx: SourceContext) -> tuple[Any, bool]:
+        """(connected, authorized client, owned). Shared clients are never disconnected."""
+        shared = self._shared_client()
+        if shared is not None:
+            if not shared.is_connected():
+                await shared.connect()
+            return shared, False
+        client = self._factory(ctx.settings)
+        await client.connect()
+        return client, True
+
+    async def _close(self, client: Any, owned: bool, ctx: SourceContext) -> None:
+        if client is None or not owned:
+            return
+        try:
+            await client.disconnect()
+        except Exception:  # noqa: BLE001
+            ctx.log.debug("telegram_channels: disconnect failed", exc_info=True)
+
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
+        """All channels in one run. Raises SourceUnavailable when no channel was read (D-172)."""
         if not self.enabled(ctx.settings, ctx.cfg, ctx.http.db):
             return []
         from telethon.errors import FloodWaitError
 
         db = ctx.http.db
         out: list[Posting] = []
-        client = None
+        tally = RequestTally()
+        client, owned = None, True
         try:
-            client = self._factory(ctx.settings)
-            await client.connect()
+            client, owned = await self._open(ctx)
             if not await client.is_user_authorized():
-                ctx.log.warning("telegram_channels: session not authorized, skipping")
-                return []
+                raise SourceUnavailable("telegram session not authorized")
             for i, channel in enumerate(channels(ctx.cfg, db)):
                 if i and self._pause_s:
                     await self._sleep(self._pause_s)
                 try:
                     out.extend(await self._read_channel(client, channel, ctx, db))
+                    tally.success()
                 except FloodWaitError as exc:
                     ctx.log.warning(
                         "telegram_channels: flood wait %ss on %s, stopping run",
                         getattr(exc, "seconds", "?"),
                         channel,
                     )
+                    tally.failure()
                     break
                 except Exception:  # noqa: BLE001 - one bad channel must not stop the others
                     ctx.log.exception("telegram_channels: channel %s failed", channel)
-            return out
-        except Exception:  # noqa: BLE001 - a failing source must not crash the pipeline
-            ctx.log.exception("telegram_channels failed")
+                    tally.failure()
+            tally.raise_if_all_failed()
             return out
         finally:
-            if client is not None:
-                try:
-                    await client.disconnect()
-                except Exception:  # noqa: BLE001
-                    ctx.log.debug("telegram_channels: disconnect failed", exc_info=True)
+            await self._close(client, owned, ctx)
 
     def targets(self, ctx: SourceContext) -> list[Target]:
         if not self.enabled(ctx.settings, ctx.cfg, ctx.http.db):
             return []
-        return [Target("telegram_channels", c) for c in channels(ctx.cfg, ctx.http.db)]
+        live = {c.casefold() for c in live_channels()}
+        return [
+            Target("telegram_channels", c)
+            for c in channels(ctx.cfg, ctx.http.db)
+            if c.casefold() not in live  # live channels need no polling (D-193)
+        ]
 
     async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
-        """One channel per call; raises on any failure so the target is marked failed."""
-        client = self._factory(ctx.settings)
+        """One channel per call; raises on any failure so the target is marked failed.
+
+        `last_id` is advanced by a post-store hook, not here (D-193).
+        """
+        client, owned = None, True
         try:
-            await client.connect()
+            client, owned = await self._open(ctx)
             if not await client.is_user_authorized():
-                raise RuntimeError("telegram session not authorized")
-            return await self._read_channel(client, target.key, ctx, ctx.http.db)
+                raise SourceUnavailable("telegram session not authorized")
+            return await self._read_channel(client, target.key, ctx, ctx.http.db, commit=False)
         finally:
-            try:
-                await client.disconnect()
-            except Exception:  # noqa: BLE001
-                ctx.log.debug("telegram_channels: disconnect failed", exc_info=True)
+            await self._close(client, owned, ctx)
 
     async def _read_channel(
-        self, client: Any, channel: str, ctx: SourceContext, db: Any
+        self, client: Any, channel: str, ctx: SourceContext, db: Any, commit: bool = True
     ) -> list[Posting]:
         from src import db as dbm
 
@@ -247,6 +298,11 @@ class TelegramChannelsSource:
             p = parse_message(channel, msg)
             if p is not None:
                 posts.append(p)
-        if max_id > last:  # only after a fully successful read of this channel
-            dbm.set_state(db, _state_key(channel), str(max_id))
+        if max_id > last:
+            if commit:  # legacy fetch(): no store step, advance after a full read
+                dbm.set_state(db, _state_key(channel), str(max_id))
+            else:
+                ctx.after_store[("telegram_channels", channel)] = lambda: advance_last_id(
+                    db, channel, max_id
+                )
         return posts

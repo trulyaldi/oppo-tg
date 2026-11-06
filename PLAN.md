@@ -2823,7 +2823,7 @@ Each migration gets a test that starts from the previous version with sample row
   - Another chat is ignored.
   - The migration test passes.
 
-### FC-24 [ ] Telethon live listener with polling fallback
+### FC-24 [x] Telethon live listener with polling fallback
 - Build (D-193):
   - `src/sources/telegram_live.py`, `TelegramListener(settings, cfg, conn, client_factory, on_new)`. When credentials or the session are missing, `start()` returns False and logs once.
   - It subscribes `events.NewMessage` to the configured channels the account has joined, then for each message: `parse_message`, upsert (`target=channel`, `baseline=0`), advance `last_id` after the store, and enqueue.

@@ -381,8 +381,14 @@ BAD_CHANNEL = "That is not a valid public channel handle (5-32 letters, digits o
 
 
 def render_channels(conn: sqlite3.Connection, settings: Settings, cfg: AppConfig) -> list[str]:
-    from src.sources.telegram_channels import TelegramChannelsSource, channels, config_channels
+    from src.sources.telegram_channels import (
+        TelegramChannelsSource,
+        channels,
+        config_channels,
+        live_channels,
+    )
 
+    live = {c.casefold() for c in live_channels()}
     in_config = set(config_channels(cfg))
     reason = TelegramChannelsSource().disabled_reason(settings, cfg, conn)
     polled = {
@@ -394,7 +400,9 @@ def render_channels(conn: sqlite3.Connection, settings: Settings, cfg: AppConfig
     lines = []
     for i, c in enumerate(channels(cfg, conn), 1):
         origin = "config" if c in in_config else "added"
-        if reason:
+        if c.casefold() in live:
+            status = "live"
+        elif reason:
             status = f"not polling ({reason})"
         elif polled.get(c):
             status = "polling, baselined"
@@ -402,6 +410,19 @@ def render_channels(conn: sqlite3.Connection, settings: Settings, cfg: AppConfig
             status = "polling, first poll pending"
         lines.append(f"{i}. @{_esc(c)} [{origin}] {_esc(status)}")
     return lines
+
+
+async def _reload_listener() -> None:
+    """Tell the live listener the channel list changed (FC-24); never raises."""
+    from src.sources.telegram_channels import get_listener
+
+    listener = get_listener()
+    if listener is None:
+        return
+    try:
+        await listener.reload()
+    except Exception:  # noqa: BLE001
+        log.exception("live listener reload failed")
 
 
 async def cmd_channels(
@@ -440,6 +461,7 @@ async def cmd_channels(
             await _say(message, f"At most {MAX_CHANNELS} channels; remove one first.")
             return
         db.set_tg_channel(conn, handle, "added", clock.now())
+        await _reload_listener()
         await _say(message, f"Added @{_esc(handle)}. Its first poll is a baseline.")
         return
     existing = current.get(handle.casefold())
@@ -447,6 +469,7 @@ async def cmd_channels(
         await _say(message, f"@{_esc(handle)} is not in the list.")
         return
     db.set_tg_channel(conn, existing, "removed", clock.now())
+    await _reload_listener()
     await _say(message, f"Removed @{_esc(existing)}.")
 
 

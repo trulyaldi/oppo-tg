@@ -51,9 +51,12 @@ class FakeClient:
         self.calls.append((channel, limit, min_id))
         if self.error:
             raise self.error
-        raw = [d for d in self.data.get(channel, []) if d["id"] > min_id]
+        items = self.data.get(channel, [])
+        for d in [d for d in items if not isinstance(d, dict)]:
+            yield d  # pre-built (possibly malformed) message objects
+        raw = [d for d in items if isinstance(d, dict) and d["id"] > min_id]
         for d in sorted(raw, key=lambda d: -d["id"])[:limit]:
-            yield Msg(d) if isinstance(d, dict) else d
+            yield Msg(d)
 
 
 def _cfg(chs=("jobkz_example",)):
@@ -154,22 +157,23 @@ async def test_flood_wait_returns_empty_and_logs(caplog):
     err = FloodWaitError(request=None, capture=120)
     with caplog.at_level(logging.WARNING, logger="t"):
         res = await run_source(_src(FakeClient(FIX, error=err)), _ctx())
-    assert res.ok and res.items == []
+    assert not res.ok and res.items == []  # D-172: no channel read means failed, not ok
     assert "flood wait" in caplog.text
     # nothing persisted, so a later run retries from scratch
     ctx = _ctx()
     assert len(await _src(FakeClient(FIX)).fetch(ctx)) == 3
 
 
-async def test_client_error_returns_empty():
+async def test_client_error_is_a_failed_run():
     res = await run_source(_src(FakeClient(FIX, error=RuntimeError("net down"))), _ctx())
-    assert res.ok and res.items == []
+    assert not res.ok and res.items == []
 
 
-async def test_unauthorized_session_returns_empty():
+async def test_unauthorized_session_is_a_failed_run():
     client = FakeClient(FIX)
     client.authorized = False
-    assert await _src(client).fetch(_ctx()) == []
+    res = await run_source(_src(client), _ctx())
+    assert not res.ok and "not authorized" in res.error
     assert client.calls == []
 
 

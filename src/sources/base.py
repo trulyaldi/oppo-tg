@@ -33,6 +33,9 @@ class SourceContext:
     revalidate: bool = False
     # (source, target key) -> has_validators, reported by board sources (FC-08).
     validators: dict[tuple[str, str], bool] = field(default_factory=dict)
+    # (source, target key) -> callback the collector runs after the target's items are
+    # stored (e.g. advance a cursor only once the data is safe, D-193).
+    after_store: dict[tuple[str, str], Callable[[], None]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         # D-34: without db+clock the client silently skips robots checks and caching.
@@ -70,6 +73,7 @@ class TargetResult:
     items: list[Posting]
     error: str | None = None
     has_validators: bool | None = None
+    on_stored: Callable[[], None] | None = None
 
 
 class SourceUnavailable(Exception):
@@ -164,9 +168,11 @@ async def run_target(src: Source, ctx: SourceContext, target: Target) -> TargetR
     except Exception as exc:  # noqa: BLE001 - isolation boundary
         ctx.log.exception("source %s target %r failed", src.name, target.key)
         ctx.validators.pop((src.name, target.key), None)
+        ctx.after_store.pop((src.name, target.key), None)
         return TargetResult(src.name, target, False, [], f"{type(exc).__name__}: {exc}")
     hv = ctx.validators.pop((src.name, target.key), None)
-    return TargetResult(src.name, target, True, list(items), has_validators=hv)
+    hook = ctx.after_store.pop((src.name, target.key), None)
+    return TargetResult(src.name, target, True, list(items), has_validators=hv, on_stored=hook)
 
 
 async def fetch_board_json(ctx: SourceContext, target: Target, url: str, params: dict) -> object:

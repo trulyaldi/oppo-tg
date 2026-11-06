@@ -134,6 +134,10 @@ async def run_until_stopped(
         await asyncio.gather(poll_task, return_exceptions=True)
 
 
+async def _noop() -> None:
+    return None
+
+
 async def _serve(settings: Settings) -> None:
     from aiogram import Bot
     from anthropic import AsyncAnthropic
@@ -194,6 +198,16 @@ async def _serve(settings: Settings) -> None:
     async def prune() -> None:
         log.info("pruned: %s", db.prune(conn, clock.now()))
 
+    async def live_flush(batch: list) -> None:
+        log.info("live telegram: %d new messages", len(batch))
+        await run_tier_cycle("live", collect=_noop, process=process, score=score, alerts=alerts)
+
+    from src.sources.telegram_channels import set_listener
+    from src.sources.telegram_live import TelegramListener
+
+    listener = TelegramListener(settings, cfg, conn, on_new=live_flush, clock=clock)
+    set_listener(listener)
+
     scheduler = build_scheduler(
         SchedulerDeps(
             clock=clock,
@@ -214,10 +228,13 @@ async def _serve(settings: Settings) -> None:
         with contextlib.suppress(NotImplementedError):  # non-Unix
             loop.add_signal_handler(sig, stop.set)
     try:
+        await listener.start()  # False (logged once) falls back to polling; never raises
         await run_until_stopped(
             scheduler, lambda: dp.start_polling(bot, handle_signals=False), stop
         )
     finally:
+        set_listener(None)
+        await listener.stop()
         await http.aclose()
         await bot.session.close()
         conn.close()

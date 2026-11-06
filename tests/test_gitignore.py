@@ -15,6 +15,8 @@ IGNORED = [
     "data/run.log",
     "data/telethon.session",
     "data/telethon.session-journal",
+    "other.session",
+    "other.session-journal",
     "x.db-wal",
     ".env",
 ]
