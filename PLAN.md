@@ -2103,7 +2103,7 @@ Second review pass, 2026-11-06. The reviewer re-checked FIX-15..FIX-25 (commits 
   - The FIX-22 repro ("Contact me at evil@phish.example or https://phish.example/cv.") is still dropped.
   - Every FIX-15, FIX-26 and FIX-27 fabrication probe is still removed.
 
-### FIX-29 [ ] `ANTHROPIC_LOG=debug` re-enables SDK request-body logging despite the FIX-16 pin
+### FIX-29 [x] `ANTHROPIC_LOG=debug` re-enables SDK request-body logging despite the FIX-16 pin
 - Severity: non-blocking. The user has to set an env var, but README promises the SDK loggers "stay at WARNING even at DEBUG".
 - Problem:
   - `configure_logging()` pins the `anthropic` logger to WARNING in `main()`.

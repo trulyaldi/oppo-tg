@@ -127,3 +127,57 @@ async def test_prepare_real_client_no_canary(tmp_path, caplog):
     assert b"CANARY-CV" in blob and b"CANARY-POSTING" in blob
     for c in ("CANARY-CV", "CANARY-POSTING", "CANARY-REPLY"):
         assert c not in caplog.text
+
+
+# ---- FIX-29: ANTHROPIC_LOG=debug cannot undo the pin (D-154) ----
+
+
+def test_anthropic_log_env_dropped_and_pin_holds(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_LOG", "debug")
+    configure_logging("DEBUG")
+    import os
+
+    assert "ANTHROPIC_LOG" not in os.environ
+    from anthropic._utils import _logs
+
+    _logs.setup_logging()  # what an SDK import would run
+    for n in QUIET_LOGGERS:
+        assert logging.getLogger(n).getEffectiveLevel() == logging.WARNING
+
+
+def test_fresh_process_import_order_with_anthropic_log_debug():
+    """In a new interpreter the SDK is not yet imported when configure_logging runs."""
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    code = (
+        "import logging;"
+        "from src.logging_setup import configure_logging;"
+        "configure_logging('DEBUG');"
+        "import anthropic;"
+        "print(logging.getLogger('anthropic').level, logging.getLogger('httpx2').level)"
+    )
+    env = {**os.environ, "ANTHROPIC_LOG": "debug", "PYTHONPATH": str(Path(__file__).parent.parent)}
+    out = subprocess.run(
+        [sys.executable, "-c", code], env=env, capture_output=True, text=True, check=True
+    )
+    assert out.stdout.split() == ["30", "30"]
+
+
+async def test_call_json_no_canary_with_anthropic_log_debug(tmp_path, caplog, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_LOG", "debug")
+    configure_logging("DEBUG")
+    caplog.set_level(logging.DEBUG)
+    conn = db.connect(tmp_path / "o.db")
+    db.migrate(conn)
+    seen = []
+    client = real_client([json.dumps({"answer": "CANARY-REPLY"})], seen)
+    await call_json(
+        client, model="m", system_blocks=[{"type": "text", "text": "sys"}],
+        user_text="<cv>CANARY-CV-TEXT</cv>", schema=Out, max_tokens=50,
+        budget=LlmBudget(conn, ps.CLOCK, 10), purpose="t",
+    )  # fmt: skip
+    assert b"CANARY-CV-TEXT" in seen[0].content
+    assert "CANARY-CV-TEXT" not in caplog.text and "CANARY-REPLY" not in caplog.text
