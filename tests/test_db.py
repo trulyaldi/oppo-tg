@@ -151,3 +151,11 @@ def test_source_runs(conn):
     assert [r["source"] for r in runs] == ["gh", "hn"]
     assert runs[0]["ok"] == 1 and runs[0]["n_items"] == 5 and runs[0]["n_new"] == 2
     assert runs[1]["id"] == r3 and runs[1]["finished_at"] is None
+
+
+def test_connect_creates_missing_parent_dirs(tmp_path):
+    path = tmp_path / "missing" / "sub" / "oppo.db"
+    conn = db.connect(path)
+    db.migrate(conn)
+    conn.close()
+    assert path.is_file()

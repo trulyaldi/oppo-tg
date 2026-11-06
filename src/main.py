@@ -10,7 +10,6 @@ import os
 import signal
 import sys
 from collections.abc import Awaitable, Callable, Mapping, Sequence
-from pathlib import Path
 from typing import Any
 
 from src import config as config_mod
@@ -171,8 +170,6 @@ async def _probe(settings: Settings, db_path: str) -> int:
 
     clock = SystemClock()
     cfg = AppConfig.load(settings.oppo_config)
-    if db_path != ":memory:":
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     conn = db.connect(db_path)
     db.migrate(conn)
     reset_probe_state(conn)  # pagewatch must see its pages as new on every probe run (FIX-01)

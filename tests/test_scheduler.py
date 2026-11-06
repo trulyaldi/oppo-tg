@@ -217,3 +217,39 @@ async def test_main_collect_once_wiring(monkeypatch, tmp_path, command, digest_c
     if digest_calls:
         expected += ["digest", "bot_closed"]
     assert order == expected
+
+
+def test_main_digest_missing_db_dir(monkeypatch, tmp_path):
+    import aiogram
+    import anthropic
+
+    async def _aclose():
+        pass
+
+    class FakeBot:
+        def __init__(self, token):
+            self.session = type("S", (), {"close": staticmethod(_aclose)})()
+
+    class FakeHttp:
+        async def aclose(self):
+            pass
+
+    async def send_digest(*a, **k):
+        return 0
+
+    monkeypatch.setattr(aiogram, "Bot", FakeBot)
+    monkeypatch.setattr(anthropic, "AsyncAnthropic", lambda api_key: object())
+    monkeypatch.setattr(main, "build_client", lambda *a, **k: FakeHttp())
+    monkeypatch.setattr(main, "send_digest", send_digest)
+    db_path = tmp_path / "nope" / "x.db"
+    rc = main.main(
+        ["digest"],
+        environ={
+            "TELEGRAM_BOT_TOKEN": "t",
+            "TELEGRAM_CHAT_ID": "1",
+            "ANTHROPIC_API_KEY": "k",
+            "DB_PATH": str(db_path),
+        },
+    )
+    assert rc == 0
+    assert db_path.is_file()

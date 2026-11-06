@@ -106,6 +106,7 @@ def default_client_factory(settings: Settings) -> Any:
     """Real Telethon client on the existing session. Never used in tests."""
     from telethon import TelegramClient  # lazy: only needed for live runs
 
+    Path(settings.tg_session_path).parent.mkdir(parents=True, exist_ok=True)
     return TelegramClient(
         settings.tg_session_path,
         int(settings.tg_api_id or 0),

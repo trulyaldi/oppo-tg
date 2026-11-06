@@ -740,7 +740,7 @@ Evidence from the review: 275 tests pass, `ruff check` and `ruff format --check`
   - pagewatch with unchanged pages (200, same content) gives `ok is True, items == []`.
   - `tests/test_e2e_all_sources.py` still passes. All tests green, ruff clean.
 
-### FIX-03 [ ] Fresh clone: collect/digest/once/run crash because data/ does not exist
+### FIX-03 [x] Fresh clone: collect/digest/once/run crash because data/ does not exist
 - Problem: `db.connect` does not create the parent directory, and `data/` is not in git (only `*.db` files would live there). In a fresh clone, `db.connect("data/oppo.db")` raises `sqlite3.OperationalError: unable to open database file`. Only `probe` runs `mkdir`. Any `DB_PATH` in a missing directory crashes `once` and `run`, and so does the systemd unit if `probe` never ran. README's `nohup ... >> data/run.log` also needs `data/` to exist.
 - Build: create the parent directory of a file DB path in `db.connect` (or in `_run`/`_serve`), skipping `:memory:`. Remove the now-redundant `mkdir` in `_probe` if it is covered.
 - Files: `src/db.py` and/or `src/main.py`, `tests/test_db.py` or `tests/test_scheduler.py`.
