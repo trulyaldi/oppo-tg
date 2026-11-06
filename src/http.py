@@ -14,6 +14,8 @@ from urllib.robotparser import RobotFileParser
 
 import httpx
 
+from src.config import DEFAULT_HTTP_CONTACT
+
 log = logging.getLogger(__name__)
 
 RETRY_AFTER_CAP_S = 60.0
@@ -33,7 +35,7 @@ class PoliteClient:
         clock: Any = None,
         transport: httpx.AsyncBaseTransport | None = None,
         user_agent: str | None = None,
-        contact: str = "https://github.com/oppo-tg",
+        contact: str = DEFAULT_HTTP_CONTACT,
         min_interval_s: float = 2.0,
         timeout_s: float = 20.0,
         max_retries: int = 3,
@@ -98,10 +100,24 @@ class PoliteClient:
             if check_robots and not await self._robots_allowed(nxt_url):
                 log.info("robots.txt disallows redirect target %s", nxt_url)
                 return None
-            # Custom headers (may carry credentials) are not forwarded off-host.
-            same_host = nxt.netloc.decode().lower() == urlsplit(url).netloc.lower()
+            cur = httpx.URL(url)
+            if cur.scheme == "https" and nxt.scheme == "http":
+                log.warning("refusing https -> http redirect to %s", nxt_url)
+                return None
+            # Custom headers (may carry credentials) only on same-origin hops, or the
+            # http -> https upgrade of the same host on default ports (FIX-12).
+            same_origin = _origin(cur) == _origin(nxt) or (
+                cur.scheme == "http"
+                and nxt.scheme == "https"
+                and (cur.host or "").lower() == (nxt.host or "").lower()
+                and _origin(cur)[2] == 80
+                and _origin(nxt)[2] == 443
+            )
             url = nxt_url
-            resp = await self._fetch_once(url, None, headers if same_host else None, raw)
+            resp = await self._fetch_once(url, None, headers if same_origin else None, raw)
+        if resp is not None and 300 <= resp.status_code < 400 and resp.status_code != 304:
+            log.warning("redirect status %s without usable Location from %s", resp.status_code, url)
+            return None
         return resp
 
     async def _fetch_once(
@@ -187,7 +203,9 @@ class PoliteClient:
         # Without a db (and clock) there is no robots/response cache (see D-34).
         if self.db is None or self.clock is None:
             resp = await self._fetch(url, params, headers)
-            return None if resp is None else resp.text
+            if resp is None or resp.status_code == 304:
+                return None
+            return resp.text
         cache_key = str(httpx.URL(url, params=params))
         now = self.clock.now()
         cached = None
@@ -212,6 +230,9 @@ class PoliteClient:
                 req_headers["If-Modified-Since"] = cached["last_modified"]
         resp = await self._fetch(url, params, req_headers or None, check_robots=check_robots)
         if resp is None:
+            return None
+        if resp.status_code == 304 and cached is None:
+            log.warning("304 without a cached response for %s", url)
             return None
         if ttl_s is None:
             return resp.text
@@ -254,7 +275,7 @@ def build_client(
     db: Any,
     clock: Any,
     *,
-    contact: str = "https://github.com/oppo-tg",
+    contact: str = DEFAULT_HTTP_CONTACT,
     transport: httpx.AsyncBaseTransport | None = None,
     **kwargs: Any,
 ) -> PoliteClient:
@@ -279,3 +300,8 @@ def _parse_retry_after(value: str | None) -> float | None:
 def _is_redirect(resp: httpx.Response) -> bool:
     # Not resp.is_redirect: httpx counts 304 Not Modified, which must stay a plain response.
     return resp.status_code in REDIRECT_STATUSES and "location" in resp.headers
+
+
+def _origin(url: httpx.URL) -> tuple[str, str, int | None]:
+    port = url.port or {"http": 80, "https": 443}.get(url.scheme)
+    return (url.scheme, (url.host or "").lower(), port)

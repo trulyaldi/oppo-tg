@@ -164,3 +164,120 @@ async def test_redirect_loop_stops_after_five_hops():
     assert await c.get_text("https://a.test/x") is None
     non_robots = [r for r in st["reqs"] if not r.endswith("/robots.txt")]
     assert len(non_robots) == 6  # original + 5 hops
+
+
+# ---- FIX-12: redirect hardening ----
+
+SECRET = {"Authorization": "Bearer T", "HH-User-Agent": "u"}
+
+
+def _hop_client(routes, db=True):
+    seen: list[httpx.Request] = []
+
+    def handler(req):
+        seen.append(req)
+        key = f"{req.url.scheme}://{req.url.host}{req.url.path}"
+        r = routes.get(key)
+        return r if r is not None else httpx.Response(404)
+
+    async def sleep(d):
+        pass
+
+    conn = None
+    clock = None
+    if db:
+        conn = dbm.connect(":memory:")
+        dbm.migrate(conn)
+        clock = FixedClock(datetime(2026, 1, 1, tzinfo=UTC))
+    c = PoliteClient(
+        db=conn,
+        clock=clock,
+        transport=httpx.MockTransport(handler),
+        min_interval_s=0,
+        sleep=sleep,
+    )
+    return c, conn, seen
+
+
+def _redir(loc, code=301):
+    return httpx.Response(code, headers={"Location": loc})
+
+
+async def test_cross_host_hop_strips_caller_headers():
+    c, _, seen = _hop_client(
+        {
+            "https://a.test/x": _redir("https://b.test/y"),
+            "https://b.test/y": httpx.Response(200, text="Y"),
+        }
+    )
+    assert await c.get_text("https://a.test/x", headers=SECRET, check_robots=False) == "Y"
+    last = seen[-1]
+    assert last.url.host == "b.test"
+    assert "authorization" not in last.headers
+    assert "hh-user-agent" not in last.headers
+    assert last.headers["user-agent"] == c.user_agent
+    assert seen[0].headers["authorization"] == "Bearer T"
+
+
+async def test_same_origin_hop_forwards_headers():
+    c, _, seen = _hop_client(
+        {"https://a.test/x": _redir("/z"), "https://a.test/z": httpx.Response(200, text="Z")}
+    )
+    assert await c.get_text("https://a.test/x", headers=SECRET, check_robots=False) == "Z"
+    assert seen[-1].headers["authorization"] == "Bearer T"
+    assert seen[-1].headers["hh-user-agent"] == "u"
+
+
+async def test_different_port_hop_strips_headers():
+    c, _, seen = _hop_client(
+        {
+            "https://a.test/x": _redir("https://a.test:8443/z"),
+            "https://a.test/z": httpx.Response(200, text="Z"),
+        }
+    )
+    await c.get_text("https://a.test/x", headers=SECRET, check_robots=False)
+    assert seen[-1].url.port == 8443
+    assert "authorization" not in seen[-1].headers
+
+
+async def test_https_to_http_downgrade_refused():
+    c, _, seen = _hop_client(
+        {
+            "https://a.test/down": _redir("http://a.test/z"),
+            "http://a.test/z": httpx.Response(200, text="Z"),
+        }
+    )
+    assert await c.get_text("https://a.test/down", headers=SECRET, check_robots=False) is None
+    assert all(r.url.scheme == "https" for r in seen)
+
+
+async def test_http_to_https_upgrade_allowed():
+    c, _, seen = _hop_client(
+        {
+            "http://a.test/x": _redir("https://a.test/x"),
+            "https://a.test/x": httpx.Response(200, text="S"),
+        }
+    )
+    assert await c.get_text("http://a.test/x", headers=SECRET, check_robots=False) == "S"
+    assert seen[-1].url.scheme == "https"
+
+
+async def test_3xx_without_location_is_failure_and_not_cached():
+    c, conn, _ = _hop_client({"https://a.test/noloc": httpx.Response(302, text="moved")})
+    assert await c.get_text("https://a.test/noloc", ttl_s=3600, check_robots=False) is None
+    assert conn.execute("SELECT COUNT(*) FROM http_cache").fetchone()[0] == 0
+
+
+async def test_304_without_cache_is_failure():
+    c, conn, _ = _hop_client({"https://a.test/n": httpx.Response(304)})
+    assert await c.get_text("https://a.test/n", ttl_s=3600, check_robots=False) is None
+    assert conn.execute("SELECT COUNT(*) FROM http_cache").fetchone()[0] == 0
+
+
+def test_default_contact_is_project_repo():
+    from src.http import build_client
+
+    assert "https://github.com/trulyaldi/oppo-tg" in PoliteClient().user_agent
+    conn = dbm.connect(":memory:")
+    c = build_client(conn, FixedClock(datetime(2026, 1, 1, tzinfo=UTC)))
+    assert "https://github.com/trulyaldi/oppo-tg" in c.user_agent

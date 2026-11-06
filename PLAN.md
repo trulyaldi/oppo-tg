@@ -848,7 +848,7 @@ Filed by the second reviewer pass. It re-checked FIX-01..FIX-10 against their ac
   - An unpaid FELLOWSHIP passes the unpaid filter, or DECISIONS records why it does not.
   - `tests/test_source_count.py` is unaffected. All tests green, ruff clean.
 
-### FIX-12 [ ] Redirect hardening in PoliteClient: origin-based header forwarding, 3xx without Location, one UA contact default
+### FIX-12 [x] Redirect hardening in PoliteClient: origin-based header forwarding, 3xx without Location, one UA contact default
 - Problems (found while verifying FIX-10, reproduced with a MockTransport script):
   - `_fetch` decides "same host" by comparing netloc only. An `https://a.test/down` -> 301 `http://a.test/z` hop therefore forwards caller headers, including `Authorization: Bearer <HH_ACCESS_TOKEN>`, in cleartext over http. httpx's built-in redirect handling, which FIX-10 replaced, strips `Authorization` when the origin changes. Cross-host stripping works (verified), but no test asserts it.
   - A 3xx response without a `Location` header (or a 304 with no cached row) is returned as a normal response. `get_text` caches it as `status 200` with its body (verified: `https://a.test/noloc` -> 302 `"moved"` cached as 200 `"moved"`), so pagewatch would hash and emit the redirect stub as a posting.

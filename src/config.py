@@ -23,6 +23,8 @@ class EnvVar:
     description: str
 
 
+DEFAULT_HTTP_CONTACT = "https://github.com/trulyaldi/oppo-tg"
+
 ENV_VARS: list[EnvVar] = [
     EnvVar("TELEGRAM_BOT_TOKEN", True, None, "Bot token from @BotFather"),
     EnvVar("TELEGRAM_CHAT_ID", True, None, "Your chat id; the only chat the bot answers"),
@@ -38,7 +40,7 @@ ENV_VARS: list[EnvVar] = [
     EnvVar(
         "HTTP_CONTACT",
         False,
-        "https://github.com/trulyaldi/oppo-tg",
+        DEFAULT_HTTP_CONTACT,
         "Email or URL placed in the HTTP User-Agent",
     ),
     EnvVar("HH_ACCESS_TOKEN", False, None, "hh.kz API token, if required"),
@@ -61,7 +63,7 @@ class Settings:
     collect_cron_hours: int = 3
     max_scores_per_run: int = 150
     log_level: str = "INFO"
-    http_contact: str = "https://github.com/trulyaldi/oppo-tg"
+    http_contact: str = DEFAULT_HTTP_CONTACT
     hh_access_token: str | None = None
     tg_api_id: str | None = None
     tg_api_hash: str | None = None
