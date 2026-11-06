@@ -366,7 +366,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - Keyboard has one row of 4 buttons; every `callback_data` is `fb:<action>:<id>` and <= 64 bytes; active `like` label starts with `✓ `.
   - Alert render starts with `<b>ALERT</b>\n`.
 
-### T11 [ ] Digest selection, sending, and end-to-end slice
+### T11 [x] Digest selection, sending, and end-to-end slice
 - Build `src/delivery/digest.py`: `select_digest(conn, cfg) -> list[Item]`, `async send_digest(bot, conn, settings, cfg, clock) -> int` (respects paused; header message, then one message per item with keyboard; records deliveries kind `digest` with `message_id`; empty -> "No new opportunities today."). Build `src/pipeline/run.py::collect_all` (concurrent `run_source`, `source_runs`, upsert, dedupe, filter). Build `src/main.py` CLI with `collect`, `digest`, `once` subcommands (real Bot/Anthropic constructed only here; `load_dotenv()` only here).
 - Files: `src/delivery/digest.py`, `src/pipeline/run.py`, `src/main.py`, `tests/test_digest.py`, `tests/test_e2e_slice.py`.
 - Acceptance:
