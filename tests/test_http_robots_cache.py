@@ -97,3 +97,70 @@ async def test_cache_ttl_and_conditional():
     # fetched_at refreshed by 304 -> within TTL again
     await e.client.get_text("https://x.test/p", ttl_s=3600)
     assert e.paths().count("/p") == 2
+
+
+def _redir_env(b_robots, loop=False):
+    def a_x(req):
+        return httpx.Response(302, headers={"Location": "https://b.test/y"})
+
+    handler_state = {}
+
+    def handler(req):
+        handler_state.setdefault("reqs", []).append(f"{req.url.host}{req.url.path}")
+        h, p = req.url.host, req.url.path
+        if p == "/robots.txt":
+            return b_robots if h == "b.test" else httpx.Response(404)
+        if loop:
+            return httpx.Response(302, headers={"Location": f"/loop{len(handler_state['reqs'])}"})
+        if h == "a.test" and p == "/x":
+            return a_x(req)
+        if h == "a.test" and p == "/old":
+            return httpx.Response(301, headers={"Location": "/new"})
+        if h == "a.test" and p == "/new":
+            return httpx.Response(200, text="new")
+        if h == "b.test" and p == "/y":
+            return httpx.Response(200, text="Y")
+        return httpx.Response(404)
+
+    conn = dbm.connect(":memory:")
+    dbm.migrate(conn)
+    sleeps = []
+
+    async def sleep(d):
+        sleeps.append(d)
+
+    client = PoliteClient(
+        db=conn,
+        clock=FixedClock(datetime(2026, 1, 1, tzinfo=UTC)),
+        transport=httpx.MockTransport(handler),
+        min_interval_s=0,
+        sleep=sleep,
+    )
+    return client, conn, handler_state
+
+
+async def test_redirect_to_disallowed_host_refused():
+    c, _, st = _redir_env(httpx.Response(200, text="User-agent: *\nDisallow: /y\n"))
+    assert await c.get_text("https://a.test/x") is None
+    assert "b.test/y" not in st["reqs"]
+    assert "b.test/robots.txt" in st["reqs"]
+
+
+async def test_redirect_to_allowed_host_returns_body_and_caches_robots():
+    c, conn, _ = _redir_env(httpx.Response(200, text="User-agent: *\nAllow: /\n"))
+    assert await c.get_text("https://a.test/x") == "Y"
+    hosts = {r["host"] for r in conn.execute("SELECT host FROM robots_cache")}
+    assert hosts == {"a.test", "b.test"}
+
+
+async def test_same_host_redirect_no_extra_robots_fetch():
+    c, _, st = _redir_env(httpx.Response(404))
+    assert await c.get_text("https://a.test/old") == "new"
+    assert st["reqs"].count("a.test/robots.txt") == 1
+
+
+async def test_redirect_loop_stops_after_five_hops():
+    c, _, st = _redir_env(httpx.Response(404), loop=True)
+    assert await c.get_text("https://a.test/x") is None
+    non_robots = [r for r in st["reqs"] if not r.endswith("/robots.txt")]
+    assert len(non_robots) == 6  # original + 5 hops

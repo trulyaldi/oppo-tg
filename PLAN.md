@@ -815,7 +815,7 @@ Evidence from the review: 275 tests pass, `ruff check` and `ruff format --check`
   - `grep -rn digest_min_items src config.toml README.md` matches either nothing or a real use in `src/delivery/digest.py` with a test.
   - All tests green, ruff clean.
 
-### FIX-10 [ ] Cross-host redirects skip robots.txt and the per-host throttle
+### FIX-10 [x] Cross-host redirects skip robots.txt and the per-host throttle
 - Problem: `PoliteClient` uses httpx `follow_redirects=True` and checks robots.txt and the 2s per-host throttle only for the ORIGINAL host. D-62 records that mlh.io redirects (302) to www.mlh.com and that the request followed it. The robots_cache in `data/probe.db` has `mlh.io` but no `www.mlh.com`, so the destination host's robots.txt was never consulted. Any configured RSS or pagewatch URL that redirects off-host has the same gap.
 - Build: turn off automatic redirects in `PoliteClient` and follow them manually in `get_text`/`_fetch`. Allow at most 5 hops. Resolve relative `Location` headers. For each hop to a different host, run `_robots_allowed` on the new URL (when `check_robots` is on) and apply `_throttle`/the lock for that host. Cache the response under the original request key as today. Add a DECISIONS entry, and in D-49 note that MLH's canonical host is now www.mlh.com. Optionally point `src/sources/mlh.py` at the canonical host if its robots.txt and terms allow it, and record the check.
 - Files: `src/http.py`, `tests/test_http.py` and/or `tests/test_http_robots_cache.py`, `DECISIONS.md`, optionally `src/sources/mlh.py`.

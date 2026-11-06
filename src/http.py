@@ -19,6 +19,8 @@ log = logging.getLogger(__name__)
 RETRY_AFTER_CAP_S = 60.0
 ROBOTS_TTL = timedelta(hours=24)
 ROBOTS_AGENT = "oppo-tg"
+MAX_REDIRECTS = 5
+REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 RETRY_STATUSES = frozenset({429}) | frozenset(range(500, 600))
 
 SleepFn = Callable[[float], Awaitable[None]]
@@ -51,7 +53,7 @@ class PoliteClient:
             transport=transport,
             timeout=timeout_s,
             headers={"User-Agent": self.user_agent},
-            follow_redirects=True,
+            follow_redirects=False,
         )
 
     async def aclose(self) -> None:
@@ -70,8 +72,46 @@ class PoliteClient:
         params: dict[str, Any] | None,
         headers: dict[str, str] | None,
         raw: bool = False,
+        check_robots: bool = False,
     ) -> httpx.Response | None:
-        """GET with rate limiting and retries. None on failure; never raises."""
+        """GET following redirects manually (FIX-10, D-80). None on failure; never raises.
+
+        Every hop gets the per-host throttle and retries; with check_robots each hop's
+        URL is also checked against its host's robots.txt. At most MAX_REDIRECTS hops.
+        """
+        resp = await self._fetch_once(url, params, headers, raw)
+        hops = 0
+        while resp is not None and _is_redirect(resp):
+            hops += 1
+            if hops > MAX_REDIRECTS:
+                log.warning("too many redirects for %s", url)
+                return None
+            try:
+                nxt = httpx.URL(url).join(resp.headers["location"])
+            except (httpx.InvalidURL, ValueError):
+                log.warning("bad redirect Location from %s", url)
+                return None
+            if nxt.scheme not in ("http", "https") or not nxt.host:
+                log.warning("refusing redirect to %s", nxt)
+                return None
+            nxt_url = str(nxt)
+            if check_robots and not await self._robots_allowed(nxt_url):
+                log.info("robots.txt disallows redirect target %s", nxt_url)
+                return None
+            # Custom headers (may carry credentials) are not forwarded off-host.
+            same_host = nxt.netloc.decode().lower() == urlsplit(url).netloc.lower()
+            url = nxt_url
+            resp = await self._fetch_once(url, None, headers if same_host else None, raw)
+        return resp
+
+    async def _fetch_once(
+        self,
+        url: str,
+        params: dict[str, Any] | None,
+        headers: dict[str, str] | None,
+        raw: bool = False,
+    ) -> httpx.Response | None:
+        """Single GET with rate limiting and retries (no redirect handling)."""
         host = urlsplit(url).netloc.lower()
         lock = self._locks.setdefault(host, asyncio.Lock())
         for attempt in range(self.max_retries + 1):
@@ -170,7 +210,7 @@ class PoliteClient:
                 req_headers["If-None-Match"] = cached["etag"]
             if cached["last_modified"]:
                 req_headers["If-Modified-Since"] = cached["last_modified"]
-        resp = await self._fetch(url, params, req_headers or None)
+        resp = await self._fetch(url, params, req_headers or None, check_robots=check_robots)
         if resp is None:
             return None
         if ttl_s is None:
@@ -234,3 +274,8 @@ def _parse_retry_after(value: str | None) -> float | None:
         return max(0.0, float(value.strip()))
     except ValueError:
         return None
+
+
+def _is_redirect(resp: httpx.Response) -> bool:
+    # Not resp.is_redirect: httpx counts 304 Not Modified, which must stay a plain response.
+    return resp.status_code in REDIRECT_STATUSES and "location" in resp.headers
