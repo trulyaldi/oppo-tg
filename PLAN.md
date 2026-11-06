@@ -825,3 +825,62 @@ Evidence from the review: 275 tests pass, `ruff check` and `ruff format --check`
   - A same-host 301 still works without an extra robots fetch.
   - A redirect loop stops after 5 hops and returns None.
   - Existing http tests stay green. All tests green, ruff clean.
+
+---
+
+## 5. Review fixes (second reviewer pass 2026-11-06)
+
+Filed by the second reviewer pass. It re-checked FIX-01..FIX-10 against their acceptance criteria and they all pass. Evidence: a fresh `git clone` set up with the README steps literally passes 313 tests, and `ruff check` and `ruff format --check` are clean. The suite stays green after adding channels (`"kz_jobs_example"`, `"@kz_jobs_example"`, `"https://t.me/another_one"`) and an extra Greenhouse board to `config.toml`. Searches of the code, fixtures and git history (`git log --all -p`) found no secrets, `.env`, `data/` and the session/WAL files are ignored, and no LinkedIn access was found. Handle these tasks like FIX-01..FIX-10: one commit each, mark done in the same commit. The SPEC "`.env.example` complete" item stays a user action (D-30) and is not filed.
+
+### FIX-11 [ ] Relevance prefilter drops the IMC/Optiver page watchers and Russian titles; the senior-only exemption is narrower than PLAN 1.8
+- Problem (pre-existing, not a FIX-04 regression). `relevance_ok` (`src/pipeline/filters.py`) requires a JOB/INTERNSHIP title to match an English `positive_title_keywords` entry. Verified with the repo config:
+  - pagewatch `IMC Careers` and `Optiver Jobs` have `kind = "internship"`. Their items are titled `IMC Careers`, `IMC Careers: page updated`, `Optiver Jobs` and `Optiver Jobs: page updated`, and all four give `relevance_ok == False`, so `apply_filters` marks them `irrelevant`. They are never scored or delivered, even though IMC is SPEC's named #1 target. `probe` counts raw items, so it cannot catch this.
+  - Russian titles fail: `Аналитик данных`, `Стажер-аналитик данных`, `Python-разработчик` all give False. On the hh fixture, `Аналитик данных (стажировка)` is filtered (1 of 5; the fixture is mostly English, real hh.kz/Telegram titles are mostly Russian). hh and telegram_channels are the only Kazakhstan sources (SPEC goal 3), and hh's configured queries are partly Russian (`аналитик данных стажер`, `стажировка python`).
+  - Senior-only exemption: PLAN 1.8 exempts titles matching `intern|junior|graduate|new grad|student|entry|trainee|стаж`, but the code exempts only `INTERN_RE` (D-37 records this, without a reason). `hard_filter` returns `senior_only` for `Junior/Senior Data Scientist`, `Senior Graduate Analyst` and `Lead Trainee Program`.
+  - `_NO_UNPAID_CHECK` is HACKATHON and COMPETITION only. PLAN 1.8 also exempts FELLOWSHIP, and DECISIONS has no reason for leaving it out.
+- Build: the mechanism is the implementer's choice. Options: exempt pagewatch items (the user curates those pages) from the relevance check, add Cyrillic keywords/stems, implement the PLAN 1.8 senior exemption list, and add FELLOWSHIP to the unpaid exemption (or record a reason in DECISIONS). Keyword changes go into BOTH `config.toml` and `tests/fixtures/config_repo_snapshot.toml`, because filter tests read the snapshot (FIX-06). Keep `\b` word matching Unicode-aware, so Cyrillic stems also need prefix matching.
+- Files: `src/pipeline/filters.py`, `config.toml`, `tests/fixtures/config_repo_snapshot.toml`, `tests/test_filters.py` and/or `tests/fixtures/filter_cases.json`, `DECISIONS.md` (D-37 addendum), README `[filters]` line if keys change.
+- Acceptance (tests through `apply_filters` with the snapshot config):
+  - pagewatch rows `IMC Careers`, `IMC Careers: page updated` and `Optiver Jobs` (kind internship) stay `new`.
+  - hh/telegram rows `Аналитик данных`, `Стажер-аналитик данных`, `Python-разработчик` and `Аналитик данных (стажировка)` (kind job/internship) stay `new`.
+  - `Office Manager`, `Account Executive` and `Internal Communications Manager` are still `irrelevant`. `Менеджер по продажам` is `irrelevant`.
+  - `hard_filter` returns None for `Junior/Senior Data Scientist`, `Senior Graduate Analyst` and `Senior Software Engineer Intern`, and still returns `senior_only` for `Senior Quant Researcher`, `Senior Internal Tools Engineer` and `Head of International Sales`.
+  - An unpaid FELLOWSHIP passes the unpaid filter, or DECISIONS records why it does not.
+  - `tests/test_source_count.py` is unaffected. All tests green, ruff clean.
+
+### FIX-12 [ ] Redirect hardening in PoliteClient: origin-based header forwarding, 3xx without Location, one UA contact default
+- Problems (found while verifying FIX-10, reproduced with a MockTransport script):
+  - `_fetch` decides "same host" by comparing netloc only. An `https://a.test/down` -> 301 `http://a.test/z` hop therefore forwards caller headers, including `Authorization: Bearer <HH_ACCESS_TOKEN>`, in cleartext over http. httpx's built-in redirect handling, which FIX-10 replaced, strips `Authorization` when the origin changes. Cross-host stripping works (verified), but no test asserts it.
+  - A 3xx response without a `Location` header (or a 304 with no cached row) is returned as a normal response. `get_text` caches it as `status 200` with its body (verified: `https://a.test/noloc` -> 302 `"moved"` cached as 200 `"moved"`), so pagewatch would hash and emit the redirect stub as a posting.
+  - `PoliteClient.__init__` (`contact`) and `build_client` still default to `https://github.com/oppo-tg`, which D-79 says is wrong. All production callers pass `settings.http_contact`, but the defaults contradict D-79.
+- Build:
+  - Forward caller headers only when the hop keeps the same origin (scheme, host, port). Allow the http -> https upgrade on default ports, as httpx does. Refuse https -> http downgrades (return None and log), or at least strip all caller headers on them.
+  - Treat a 3xx without a usable `Location`, and a 304 when nothing is cached, as a failure (None, not cached).
+  - Define the default contact once (e.g. `DEFAULT_HTTP_CONTACT` in `src/config.py`) and use it in `Settings`, `ENV_VARS`, `PoliteClient` and `build_client`.
+- Files: `src/http.py`, `src/config.py`, `tests/test_http_robots_cache.py` and/or `tests/test_http.py`, `DECISIONS.md` (D-80 addendum).
+- Acceptance (MockTransport tests):
+  - With `headers={"Authorization": "Bearer T", "HH-User-Agent": "u"}`, the request to `b.test/y` after an `a.test/x` -> `b.test/y` hop carries neither header. `User-Agent` is still our UA.
+  - A same-origin 301 still forwards them.
+  - `https://a.test/down` -> `http://a.test/z` either returns None without requesting `http://a.test/z`, or requests it without `Authorization`.
+  - A 302 without `Location` returns None and leaves no `http_cache` row.
+  - `grep -rn "github.com/oppo-tg" src` finds nothing, and `PoliteClient(...).user_agent` contains `https://github.com/trulyaldi/oppo-tg` by default.
+  - The existing FIX-10 tests stay green. All tests green, ruff clean.
+
+### FIX-13 [ ] Point MLH at its canonical host www.mlh.com and record that host's robots/terms check
+- Problem: `src/sources/mlh.py` fetches `https://mlh.io/seasons/<year>/events`, which now answers `302 Location: https://www.mlh.com/seasons/2027/events` (re-checked 2026-11-06). D-80 says www.mlh.com's robots/terms "were not re-verified", but section 0 requires a recorded robots check of the exact fetched path and a terms read for the host actually fetched. The cross-host hop also drops `If-None-Match`/`If-Modified-Since` (FIX-10 design), so MLH can never answer 304. Every stale fetch re-downloads the ~378 KB page and pays two robots/throttle cycles.
+- Reviewer's check (2026-11-06, UA `oppo-tg/0.1 (personal job-alert bot; +https://github.com/trulyaldi/oppo-tg)`, one request each, 2s apart). Record this in DECISIONS verbatim; do not re-fetch:
+  - `https://www.mlh.com/robots.txt` returned HTTP 200 with `User-agent: *`. Disallows: `/account/ /tools/ /_/ /v4/ /auth/ /admin/ /sidekiq/ /marksmith/ /graphql /events/*/partners/*/promo_codes/ /projects/invites/ /submissions/invites/ /submissions/*/invites/`, then `Allow: /`. `urllib.robotparser.can_fetch("oppo-tg", "/seasons/2027/events")` is True.
+  - The terms page `https://www.mlh.com/terms` returned HTTP 200, "Last updated: June 16th, 2021". It grants a right "to access, view, and use the Site solely for your personal purposes and non-commercial use". Prohibited conduct includes "Use the Service or Site commercially", reverse engineering and interfering with the Site. It has no clause about robots, scraping, crawling, spiders, automated access or data mining. So MLH stays kept: personal, non-commercial, one cached request per hour.
+- Build:
+  - Change the season URL host in `src/sources/mlh.py` to `https://www.mlh.com`.
+  - Update `tests/test_source_mlh.py` (season URLs and the MockTransport host).
+  - In the README sources table, change the mlh note to "MLH season events page (www.mlh.com)".
+  - Add a D-49/D-80 addendum (or a new D-entry) with the check above.
+  - Optional one-line README fix while editing it: Setup says "Copy `.env.example` to `.env`", but `.env.example` is only complete after "First run / user actions" step 1. Say so.
+- Files: `src/sources/mlh.py`, `tests/test_source_mlh.py`, `README.md`, `DECISIONS.md`.
+- Acceptance:
+  - `season_url(date(2026, 11, 6)) == "https://www.mlh.com/seasons/2027/events"` and `season_url(date(2027, 3, 1))` is the same.
+  - The mlh tests pass against a `www.mlh.com` MockTransport, including the robots fetch for `www.mlh.com`.
+  - `grep -n "mlh.io" src README.md` finds nothing outside historical DECISIONS text.
+  - DECISIONS has the dated robots and terms finding for www.mlh.com.
+  - All tests green, ruff clean.
