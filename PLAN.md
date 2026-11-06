@@ -2118,7 +2118,7 @@ Second review pass, 2026-11-06. The reviewer re-checked FIX-15..FIX-25 (commits 
 - Files: `src/logging_setup.py`, `tests/test_logging_setup.py`, `README.md`, `DECISIONS.md` (D-141 addendum).
 - Acceptance: with `ANTHROPIC_LOG=debug` set (monkeypatched) and `LOG_LEVEL=DEBUG`, the existing real-`AsyncAnthropic` `call_json` canary test still finds neither canary in the captured logs.
 
-### FIX-30 [ ] Tailoring output does not filter URLs or emails (FIX-22 covers drafts only)
+### FIX-30 [x] Tailoring output does not filter URLs or emails (FIX-22 covers drafts only)
 - Severity: non-blocking (prompt-injection hardening).
 - Problem:
   - `claim_ok` and the gap `how_to_address` check never call `has_contact_info`.

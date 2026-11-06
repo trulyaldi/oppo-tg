@@ -307,6 +307,8 @@ def claim_ok(
     if not v1(evidence, cv_text):
         return False
     t, ev, cv = norm(text), norm(evidence), norm(cv_text)
+    if has_contact_info(text, cv):  # no clickable link/address in /prepare output (D-155)
+        return False
     if not numbers(t) <= numbers(ev):  # V2
         return False
     if not inflation_stems(t) <= inflation_stems(ev):  # V3
@@ -421,7 +423,7 @@ def verify_tailoring(
         )
         if ok:
             h = norm(how)
-            ok = (
+            ok = not has_contact_info(how, cv_n) and (
                 numbers(h) <= numbers(corpus)  # G: V2 against CV + posting
                 and inflation_stems(h) <= inflation_stems(corpus)
                 and _skills_in(h, skills) <= _skills_in(corpus, skills)  # G: V4

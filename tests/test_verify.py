@@ -231,3 +231,43 @@ def test_draft_year_ranges_and_plain_text_not_contact_info():
 def test_draft_malformed():
     assert not verify_draft("x", CV, POST_TEXT).ok
     assert not verify_draft({"body": 1}, CV, POST_TEXT).ok
+
+
+# ---- FIX-30: tailoring output carries no URL, email, handle or phone (D-155) ----
+
+
+def test_fix30_contact_info_removed_from_tailoring():
+    import json
+    from pathlib import Path
+
+    from src.outreach.verify import claim_ok, verify_tailoring
+
+    fx = Path(__file__).parent / "fixtures"
+    cv = (fx / "cv_fake.txt").read_text()
+    ev = "Sample Labs - Research Intern, Summer 2025"
+    for t in (
+        "Highlight your Sample Labs work, details at https://phish.example/cv",
+        "Highlight your Sample Labs work, write evil@phish.example",
+        "Highlight your Sample Labs work, ping @phisher",
+        "Highlight your Sample Labs work, call +7 701 234 56 78",
+    ):
+        assert not claim_ok(t, ev, cv, [])
+    res = {
+        "fit": {
+            "level": "partial",
+            "points": [{"text": "see www.phish.example", "cv_evidence": ev}],
+        },
+        "emphasize": [
+            {"text": "Highlight your Sample Labs work, evil@phish.example", "cv_evidence": ev}
+        ],
+        "gaps": [
+            {
+                "requirement": "x",
+                "posting_evidence": "",
+                "how_to_address": "Email your CV to hr@phish.example",
+            }
+        ],
+    }
+    out, removed = verify_tailoring(res, cv, "Acme Fake is hiring.", [])
+    assert removed == 3 and out["gaps"] == [] and out["emphasize"] == []
+    assert "phish" not in json.dumps(out)
