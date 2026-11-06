@@ -10,12 +10,12 @@ from typing import Any
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
 from src.sources.base import RequestTally, SourceContext, register
-from src.text import html_to_text
+from src.text import INTERN_RE, html_to_text
 
 API = "https://boards-api.greenhouse.io/v1/boards/{token}/jobs"
-INTERN_RE = re.compile(r"\b(intern\w*|summer)\b", re.IGNORECASE)
 REMOTE_RE = re.compile(r"\bremote\b", re.IGNORECASE)
 CACHE_TTL_S = 3600.0
+SUMMER_RE = re.compile(r"\bsummer\b", re.IGNORECASE)
 
 
 def _parse_dt(value: Any) -> datetime | None:
@@ -53,6 +53,7 @@ def parse_jobs(data: Any, token: str, company: str) -> list[Posting]:
                 for d in job.get("departments") or []
                 if isinstance(d, dict) and d.get("name")
             )
+            is_intern = bool(INTERN_RE.search(title) or SUMMER_RE.search(title))
             out.append(
                 Posting(
                     source="greenhouse",
@@ -65,7 +66,7 @@ def parse_jobs(data: Any, token: str, company: str) -> list[Posting]:
                     description=html_to_text(html.unescape(job.get("content") or "")),
                     posted_at=_parse_dt(job.get("updated_at")),
                     deadline=_parse_date(job.get("application_deadline")),
-                    kind=Kind.INTERNSHIP if INTERN_RE.search(title) else Kind.JOB,
+                    kind=Kind.INTERNSHIP if is_intern else Kind.JOB,
                     raw_tags=tags,
                 )
             )

@@ -145,3 +145,21 @@ def test_enabled():
     assert s.enabled(None, _cfg(["a"]))
     assert not s.enabled(None, _cfg([]))
     assert not s.enabled(None, AppConfig())
+
+
+def test_internal_is_not_internship():
+    titles = {
+        "Internal Applications Engineer": Kind.JOB,
+        "International Tax Analyst": Kind.JOB,
+        "Software Engineer Intern": Kind.INTERNSHIP,
+        "Internship 2027": Kind.INTERNSHIP,
+        "Summer Analyst": Kind.INTERNSHIP,
+    }
+    data = {
+        "jobs": [
+            {"id": i, "title": t, "absolute_url": f"https://example.com/{i}"}
+            for i, t in enumerate(titles)
+        ]
+    }
+    got = {p.title: p.kind for p in parse_jobs(data, "x", "")}
+    assert got == titles

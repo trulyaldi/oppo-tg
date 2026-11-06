@@ -13,6 +13,7 @@ from src import db
 from src.clock import Clock
 from src.config import AppConfig
 from src.models import Kind, Posting
+from src.text import INTERN_RE
 
 LOCAL_TZ = ZoneInfo("Asia/Almaty")
 DEFAULT_MAX_AGE_DAYS = 60
@@ -24,6 +25,8 @@ _EARN_SPAM = re.compile(
 
 
 def _kw_match(keyword: str, text: str, prefix: bool) -> bool:
+    if keyword.casefold() == "intern":
+        return INTERN_RE.search(text) is not None
     pat = r"\b" + re.escape(keyword.casefold()) + (r"\w*" if prefix else r"\b")
     return re.search(pat, text.casefold()) is not None
 
@@ -44,7 +47,7 @@ def hard_filter(p: Posting, cfg: AppConfig, today: date) -> str | None:
         return "unpaid"
     if (
         p.kind in _JOB_KINDS
-        and not _kw_match("intern", p.title, prefix=True)
+        and not INTERN_RE.search(p.title)
         and _any_kw(list(f.get("senior_only_keywords", [])), p.title)
     ):
         return "senior_only"

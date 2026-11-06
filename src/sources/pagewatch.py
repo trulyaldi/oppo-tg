@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import re
 from typing import Any
 
 from bs4 import BeautifulSoup
@@ -11,9 +10,8 @@ from bs4 import BeautifulSoup
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
 from src.sources.base import RequestTally, SourceContext, register
-from src.text import html_to_text
+from src.text import INTERN_RE, html_to_text
 
-INTERN_RE = re.compile(r"\bintern(?:ship)?s?\b", re.IGNORECASE)
 CACHE_TTL_S = 3600.0
 MAX_DESC = 3000
 

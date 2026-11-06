@@ -12,9 +12,8 @@ import feedparser
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
 from src.sources.base import RequestTally, SourceContext, register
-from src.text import html_to_text
+from src.text import INTERN_RE, html_to_text
 
-INTERN_RE = re.compile(r"\bintern(?:ship)?s?\b", re.IGNORECASE)
 DEADLINE_RE = re.compile(r"deadline(?: date)?:\s*([A-Z][a-z]+ \d{1,2}, \d{4})", re.IGNORECASE)
 CACHE_TTL_S = 3600.0
 

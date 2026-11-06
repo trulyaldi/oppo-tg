@@ -86,3 +86,23 @@ def test_apply_filters_sets_status():
     assert got["Office Manager"] == ("filtered", "irrelevant")
     assert got["Quant Intern"] == ("new", None)
     assert got["Hack Night"] == ("new", None)
+
+
+@pytest.mark.parametrize("title", ["Senior Internal Tools Engineer", "Head of International Sales"])
+def test_internal_does_not_exempt_senior_only(title):
+    assert hard_filter(_p(title), CFG, TODAY) == "senior_only"
+
+
+def test_senior_intern_still_exempt():
+    assert hard_filter(_p("Senior Software Engineer Intern", Kind.INTERNSHIP), CFG, TODAY) is None
+
+
+def test_internal_communications_not_relevant():
+    assert not relevance_ok(_p("Internal Communications Manager"), CFG)
+
+
+@pytest.mark.parametrize(
+    "title", ["Intern", "Internship", "Interns", "Summer Intern", "Quant Research Intern"]
+)
+def test_real_internships_relevant(title):
+    assert relevance_ok(_p(title, Kind.INTERNSHIP), CFG)

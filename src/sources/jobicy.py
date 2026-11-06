@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import re
 from datetime import UTC, datetime
 from typing import Any
 
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
 from src.sources.base import RequestTally, SourceContext, register
-from src.text import html_to_text
+from src.text import INTERN_RE, html_to_text
 
 API = "https://jobicy.com/api/jobs"
 CACHE_TTL_S = 3600.0  # terms: automated passes no more than once per hour
-INTERN_RE = re.compile(r"\bintern(?:ship)?s?\b", re.IGNORECASE)
 DEFAULT_INDUSTRIES = ("data-science", "engineering")
 
 

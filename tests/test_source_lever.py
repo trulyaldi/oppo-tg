@@ -139,3 +139,19 @@ def test_registered_and_enabled():
     )
     assert src.enabled(s, _cfg(["a"]))
     assert not src.enabled(s, _cfg([]))
+
+
+def test_internal_is_not_internship():
+    titles = {
+        "Internal Applications Engineer": Kind.JOB,
+        "International Tax Analyst": Kind.JOB,
+        "Software Engineer Intern": Kind.INTERNSHIP,
+        "Internship 2027": Kind.INTERNSHIP,
+        "Quant Research Interns": Kind.INTERNSHIP,
+    }
+    data = [
+        {"id": str(i), "text": t, "hostedUrl": f"https://jobs.lever.co/x/{i}", "categories": {}}
+        for i, t in enumerate(titles)
+    ]
+    got = {p.title: p.kind for p in parse_postings(data, "x", "")}
+    assert got == titles

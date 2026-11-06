@@ -9,12 +9,11 @@ from typing import Any
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
 from src.sources.base import SourceContext, SourceUnavailable, register
-from src.text import html_to_text
+from src.text import INTERN_RE, html_to_text
 
 SEARCH_URL = "https://hn.algolia.com/api/v1/search_by_date"
 ITEM_URL = "https://hn.algolia.com/api/v1/items/{id}"
 COMMENT_URL = "https://news.ycombinator.com/item?id={id}"
-INTERN_RE = re.compile(r"\bintern(?:ship)?s?\b", re.IGNORECASE)
 HIRING_RE = re.compile(r"who\s+is\s+hiring", re.IGNORECASE)
 ROLE_RE = re.compile(
     r"\b(?:engineers?|developers?|designers?|scientists?|managers?|analysts?|researchers?|"

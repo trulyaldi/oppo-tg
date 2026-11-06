@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import re
+
 from bs4 import BeautifulSoup
+
+# Whole-word intern match: "Intern", "Internship", "Interns", never "Internal"/"International".
+INTERN_RE = re.compile(r"\bintern(?:ship)?s?\b", re.IGNORECASE)
 
 _BLOCK_TAGS = ("p", "div", "li", "ul", "ol", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "section")
 

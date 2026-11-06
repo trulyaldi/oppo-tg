@@ -9,10 +9,9 @@ from typing import Any
 from src.config import AppConfig, Settings
 from src.models import Kind, Posting
 from src.sources.base import RequestTally, SourceContext, register
-from src.text import html_to_text
+from src.text import INTERN_RE, html_to_text
 
 API = "https://api.lever.co/v0/postings/{company}"
-INTERN_RE = re.compile(r"\bintern\w*\b", re.IGNORECASE)
 REMOTE_RE = re.compile(r"\bremote\b", re.IGNORECASE)
 CACHE_TTL_S = 3600.0
 

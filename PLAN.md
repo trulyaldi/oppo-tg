@@ -746,7 +746,7 @@ Evidence from the review: 275 tests pass, `ruff check` and `ruff format --check`
 - Files: `src/db.py` and/or `src/main.py`, `tests/test_db.py` or `tests/test_scheduler.py`.
 - Acceptance: a test calls `db.connect(tmp_path / "missing" / "sub" / "oppo.db")` and `db.migrate` on it, and the file exists afterwards. A test runs `main(["digest"], environ={...three required..., "DB_PATH": str(tmp_path/"nope"/"x.db")})` with the Bot faked (as in `test_main_collect_once_wiring`) and it does not raise `OperationalError`. All tests green.
 
-### FIX-04 [ ] Intern matching: Lever/Greenhouse regex and the filter's "intern" prefix match "Internal"/"International"
+### FIX-04 [x] Intern matching: Lever/Greenhouse regex and the filter's "intern" prefix match "Internal"/"International"
 - Problem:
   - `src/sources/lever.py` uses `\bintern\w*\b` and `src/sources/greenhouse.py` uses `\b(intern\w*|summer)\b`. Both mark "Internal Applications Engineer" and "International Tax Analyst" as `Kind.INTERNSHIP`. The other sources use `\bintern(?:ship)?s?\b`.
   - `src/pipeline/filters.py` applies the same prefix match in two places, verified by running `hard_filter`/`relevance_ok` with the repo config:
