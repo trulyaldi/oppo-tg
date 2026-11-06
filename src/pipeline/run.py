@@ -14,6 +14,7 @@ from src.config import AppConfig, Settings
 from src.http import PoliteClient
 from src.pipeline.dedupe import fingerprint, mark_duplicates
 from src.pipeline.filters import apply_filters
+from src.pipeline.scoring_alert import report_scoring_outcome
 from src.scoring.scorer import Scorer
 from src.sources import base
 from src.sources.base import SourceContext, SourceResult, run_source
@@ -64,7 +65,16 @@ async def score_pending(
     clock: Clock,
     max_calls: int,
     limit: int | None = None,
+    bot: Any | None = None,
+    chat_id: int | str | None = None,
 ) -> dict[str, int]:
-    """Score pending postings, at most `max_calls` API calls (retries count)."""
+    """Score pending postings, at most `max_calls` API calls (retries count).
+
+    With `bot` and `chat_id`, a run where every posting failed sends a Telegram
+    error notice (D-83) instead of failing silently.
+    """
     scorer = Scorer(client, model, conn, clock, max_calls)
-    return await scorer.score_pending(limit if limit is not None else max_calls)
+    stats = await scorer.score_pending(limit if limit is not None else max_calls)
+    if bot is not None and chat_id is not None:
+        await report_scoring_outcome(bot, chat_id, conn, clock, stats, scorer.last_error, model)
+    return stats

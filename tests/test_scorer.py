@@ -71,8 +71,70 @@ async def test_valid_saved(conn):
     assert row["score"] == 8.5 and row["model"] == "test-model" and row["prompt_version"]
     assert status(conn, pid)["status"] == "scored"
     kw = client.calls[0]
-    assert kw["temperature"] == 0 and kw["max_tokens"] == 300 and kw["model"] == "test-model"
+    assert kw["max_tokens"] == 300 and kw["model"] == "test-model"
+    assert "temperature" not in kw  # removed from the current SDK/models (D-83)
     assert kw["system"][0]["cache_control"] == {"type": "ephemeral"}
+
+
+# --- the call must fit the REAL anthropic SDK signature (D-83) ---------------
+
+
+class SignatureCheckedClient(FakeClient):
+    """Fake that rejects any keyword the installed SDK's create() would not accept."""
+
+    async def create(self, **kw):
+        import inspect
+
+        from anthropic.resources.messages import AsyncMessages
+
+        inspect.signature(AsyncMessages.create).bind(None, **kw)  # TypeError like the real one
+        return await super().create(**kw)
+
+
+async def test_call_matches_installed_sdk_signature(conn):
+    (pid,) = add(conn, 1)
+    client = SignatureCheckedClient([GOOD])
+    await scorer(conn, client).score_pending(10)
+    assert status(conn, pid)["status"] == "scored"
+    assert set(client.calls[0]) <= {"model", "max_tokens", "system", "messages"}
+
+
+def test_signature_check_would_have_caught_temperature():
+    import inspect
+
+    from anthropic.resources.messages import AsyncMessages
+
+    sig = inspect.signature(AsyncMessages.create)
+    with pytest.raises(TypeError, match="temperature"):
+        sig.bind(None, model="m", max_tokens=1, messages=[], temperature=0)
+
+
+async def test_rejected_keyword_marks_error_and_records_reason(conn):
+    (pid,) = add(conn, 1)
+    client = FakeClient([TypeError("create() got an unexpected keyword argument 'temperature'")])
+    s = scorer(conn, client)
+    stats = await s.score_pending(10)
+    assert stats["errors"] == 1 and stats["scored"] == 0
+    assert status(conn, pid)["status"] != "scored"
+    assert "TypeError" in s.last_error and "temperature" in s.last_error
+
+
+def test_default_model_is_a_known_sdk_model():
+    import typing
+
+    from anthropic.types import Model
+
+    from src.config import Settings
+
+    known = {a for a in typing.get_args(Model) if isinstance(a, str)} or {
+        x for a in typing.get_args(Model) for x in typing.get_args(a)
+    }
+    assert (
+        Settings.from_env(
+            {"TELEGRAM_BOT_TOKEN": "t", "TELEGRAM_CHAT_ID": "1", "ANTHROPIC_API_KEY": "k"}
+        ).scoring_model
+        in known
+    )
 
 
 async def test_retry_with_correction(conn):

@@ -64,6 +64,7 @@ class Scorer:
         self.clock = clock
         self.max_calls = max_calls
         self.calls = 0
+        self.last_error: str | None = None  # most recent call failure, for the failure alert
         self.version = prompt_version()
 
     @property
@@ -81,7 +82,6 @@ class Scorer:
         response = await self.client.messages.create(
             model=self.model,
             max_tokens=MAX_TOKENS,
-            temperature=0,
             system=system,
             messages=messages,
         )
@@ -110,8 +110,10 @@ class Scorer:
             ]
             return parse_score_response(await self._call(system, messages))
         except ScoreParseError:
+            self.last_error = "model reply was not valid JSON twice in a row"
             log.warning("score parse failed twice for %s", posting.id)
-        except Exception:
+        except Exception as e:
+            self.last_error = f"{type(e).__name__}: {str(e)[:200]}"
             log.exception("scoring call failed for %s", posting.id)
         return None
 

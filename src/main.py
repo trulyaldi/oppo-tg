@@ -48,19 +48,24 @@ async def _run(command: str, settings: Settings) -> None:
             finally:
                 await http.aclose()
             log.info("collected: %s", stats)
-            from anthropic import AsyncAnthropic
-
-            client = AsyncAnthropic(api_key=settings.anthropic_api_key)
-            scored = await score_pending(
-                conn, client, settings.scoring_model, clock, settings.max_scores_per_run
-            )
-            log.info("scored: %s", scored)
             from aiogram import Bot
+            from anthropic import AsyncAnthropic
 
             from src.delivery.alerts import send_alerts
 
+            client = AsyncAnthropic(api_key=settings.anthropic_api_key)
             bot = Bot(settings.telegram_bot_token)
             try:
+                scored = await score_pending(
+                    conn,
+                    client,
+                    settings.scoring_model,
+                    clock,
+                    settings.max_scores_per_run,
+                    bot=bot,
+                    chat_id=settings.telegram_chat_id,
+                )
+                log.info("scored: %s", scored)
                 n_alerts = await send_alerts(bot, conn, settings, cfg, clock)
             finally:
                 await bot.session.close()
@@ -121,7 +126,13 @@ async def _serve(settings: Settings) -> None:
         log.info(
             "scored: %s",
             await score_pending(
-                conn, client, settings.scoring_model, clock, settings.max_scores_per_run
+                conn,
+                client,
+                settings.scoring_model,
+                clock,
+                settings.max_scores_per_run,
+                bot=bot,
+                chat_id=settings.telegram_chat_id,
             ),
         )
 

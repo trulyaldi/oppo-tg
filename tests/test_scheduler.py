@@ -186,6 +186,8 @@ async def test_main_collect_once_wiring(monkeypatch, tmp_path, command, digest_c
 
     async def score_pending(*a, **k):
         order.append("score")
+        # total-failure alerts need the bot and the user's chat (D-83)
+        assert isinstance(k["bot"], FakeBot) and k["chat_id"] == "1"
         return {}
 
     async def send_alerts(bot, conn, settings, cfg, clock):
