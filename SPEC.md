@@ -48,7 +48,7 @@ Hard filters (applied before the LLM): obvious spam, unpaid "exposure" roles, se
 - hh.kz.
 - Selected Kazakh Telegram job channels via Telethon.
 - Hackathon/competition feeds (Devpost, MLH, Kaggle).
-- Fellowship and research-program pages. (RSS/Atom feeds implemented: rss in src/sources/rss.py)
+- Fellowship and research-program pages. (implemented: rss in src/sources/rss.py for RSS/Atom feeds; pagewatch in src/sources/pagewatch.py for page change watching)
 
 **[EDIT: add companies for the ATS watchlist and Telegram channels]**
 

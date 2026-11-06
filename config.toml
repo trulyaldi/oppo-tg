@@ -61,7 +61,41 @@ kind = "research"
 
 [sources.pagewatch]
 enabled = true
-urls = []
+
+[[sources.pagewatch.pages]]
+url = "https://www.imc.com/eu/careers/"
+name = "IMC Careers"
+kind = "internship"
+
+[[sources.pagewatch.pages]]
+url = "https://www.optiver.com/join-us/jobs/"
+name = "Optiver Jobs"
+kind = "internship"
+
+[[sources.pagewatch.pages]]
+url = "https://www.janestreet.com/join-jane-street/internships/"
+name = "Jane Street Internships"
+kind = "internship"
+
+[[sources.pagewatch.pages]]
+url = "https://home.cern/summer-student-programme"
+name = "CERN Summer Student Programme"
+kind = "research"
+
+[[sources.pagewatch.pages]]
+url = "https://summer.epfl.ch/"
+name = "Summer@EPFL"
+kind = "research"
+
+[[sources.pagewatch.pages]]
+url = "https://inf.ethz.ch/studies/summer-research-fellowship.html"
+name = "ETH Student Summer Research Fellowship"
+kind = "fellowship"
+
+[[sources.pagewatch.pages]]
+url = "https://www.oist.jp/admissions/research-internship/apply-research-internship"
+name = "OIST Research Internship"
+kind = "research"
 
 [sources.devpost]
 enabled = true

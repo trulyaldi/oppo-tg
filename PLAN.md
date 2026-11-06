@@ -395,7 +395,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Files: `src/sources/rss.py`, `config.toml`, `tests/fixtures/rss_sample.xml`, `tests/fixtures/atom_sample.xml`, `tests/test_source_rss.py`.
 - Acceptance: RSS and Atom fixtures both parse (titles, links, dates); kind from config applied; entry without link skipped; garbage XML -> `[]`; 500 -> `[]`; registered.
 
-### T16 [ ] Source: fellowship/research page watcher
+### T16 [x] Source: fellowship/research page watcher
 - `src/sources/pagewatch.py`: for each `[[sources.pagewatch.pages]]` (`url`, `name`, `kind`, optional `css_selector`), fetch HTML, extract main text (selector or `<main>`/`<body>`), normalize whitespace, sha256 -> compare with `page_snapshots`. First sight or changed hash -> one Posting (`external_id = url + ":" + hash[:12]`, title `"{name}: page updated"` on change / `"{name}"` on first sight, description = first 3000 chars of text). Unchanged -> nothing. Seed pages (verify robots per page): IMC Launchpad/internships, Optiver internships, Jane Street INSIGHT/internships, Citadel datathons/internships, CERN Summer Student, EPFL Summer@EPFL, ETH SSRF, OIST research internship.
 - Files: `src/sources/pagewatch.py`, `config.toml`, `tests/fixtures/page_v1.html`, `tests/fixtures/page_v2.html`, `tests/test_source_pagewatch.py`.
 - Acceptance: v1 first run -> 1 posting; v1 again -> 0; v2 (content change) -> 1 posting with "page updated"; change only in `<script>`/whitespace -> 0; selector applied when configured; 500 -> `[]`; registered.
