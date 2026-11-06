@@ -163,3 +163,42 @@ async def test_whitelist_blocks_callback(conn):
     await dp.feed_update(bot, Update(update_id=3, callback_query=other))
     assert counts(conn) == (0, 0)
     await bot.session.close()
+
+
+def cb_update(uid, pid, action, chat_id=42):
+    cb = CallbackQuery(
+        id=str(uid),
+        from_user=User(id=chat_id, is_bot=False, first_name="x"),
+        chat_instance="c",
+        data=f"fb:{action}:{pid}",
+        message=Message(message_id=1, date=NOW, chat=Chat(id=chat_id, type="private"), text="m"),
+    )
+    return Update(update_id=uid, callback_query=cb)
+
+
+async def test_all_reactions_survive_restart_through_dispatcher(tmp_path, monkeypatch):
+    """S4: Like/Dislike/Save/Applied via a real dispatcher persist across a 'restart'."""
+
+    async def fake_call(self, method, request_timeout=None):
+        return True  # no network: answerCallbackQuery / editMessageReplyMarkup
+
+    monkeypatch.setattr(Bot, "__call__", fake_call)
+    path = tmp_path / "o.db"
+    c1 = db.connect(path)
+    db.migrate(c1)
+    pid = add(c1)
+    bot = Bot("1:t")
+    dp1 = build_dispatcher(c1, SETTINGS, CFG, CLOCK)
+    for i, action in enumerate(["like", "save", "applied"], start=1):
+        await dp1.feed_update(bot, cb_update(i, pid, action))
+    await dp1.feed_update(bot, cb_update(4, pid, "dislike"))  # replaces like
+    c1.close()
+
+    c2 = db.connect(path)  # restart: new connection, new dispatcher, same file
+    dp2 = build_dispatcher(c2, SETTINGS, CFG, CLOCK)
+    got = db.active_reactions(c2, pid)
+    assert got["dislike"] is True and got["like"] is False
+    assert got["save"] is True and got["applied"] is True
+    await dp2.feed_update(bot, cb_update(5, pid, "save"))  # toggles off after restart
+    assert db.active_reactions(c2, pid)["save"] is False
+    await bot.session.close()

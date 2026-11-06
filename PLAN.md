@@ -917,7 +917,7 @@ Filed 2026-11-06 on branch `feature/outreach-and-weights`. One commit per task, 
 ### S3 [x] Single-instance lock for `run`
 - Acceptance: a PID lock file under `data/` (gitignored); a second `run` refuses to start with a clear message and non-zero exit; a stale lock (dead PID) is recovered; released on shutdown; tested.
 
-### S4 [ ] Feedback persistence and chat whitelist verified
+### S4 [x] Feedback persistence and chat whitelist verified
 - Acceptance: Like/Dislike/Save/Applied callbacks persist to SQLite and are still there after reopening the db file with a new connection and a new dispatcher; updates from chats other than `TELEGRAM_CHAT_ID` are silently ignored (test exists).
 
 ### S5 [ ] Full suite, lint, and live probe recorded
