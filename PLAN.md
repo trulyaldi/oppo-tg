@@ -648,7 +648,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Files: `evals/labeled.jsonl`, `src/evals/__init__.py`, `src/evals/run.py`, `tests/test_evals_runner.py`.
 - Acceptance: every JSONL line validates (Posting fields + range 0<=min<=max<=10); runner with a fake client returning fixed scores computes the right pass/fail counts and summary; runner refuses to run without `ANTHROPIC_API_KEY` (clear message, non-zero exit); no test calls the real API.
 
-### T29 [ ] README, env documentation, end-to-end smoke, DoD checklist
+### T29 [x] README, env documentation, end-to-end smoke, DoD checklist
 - Write `README.md` covering:
   - what it does;
   - requirements (Python 3.11+);
