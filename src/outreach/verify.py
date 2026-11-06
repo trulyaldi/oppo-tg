@@ -249,9 +249,34 @@ def is_past_claim(sentence: str, ents: list[str]) -> bool:
             sn,
         ):
             return True
-        if _present_or_copula_claim(sn, ep):
+        if _present_or_copula_claim(sn, ep) or _fronted_or_hired_claim(sn, ep):
             return True
     return False
+
+
+_HIRED = r"hired|employed|recruited|took\s+on|brought\s+on|onboarded"
+
+
+def _fronted_or_hired_claim(sn: str, ep: str) -> bool:
+    """ "At X, I built ...", "В X я работал ...", "X hired me as ..." (FIX-33, D-158)."""
+    m = re.search(
+        r"(?<!\w)(?:at|with|for|in)\s+(?:the\s+)?(?:\w+\s+){0,2}?"
+        + ep
+        + r"(?:\s+\w+){0,2}?[,]?\s+i(?:'ve|\s+have)?"
+        r"(?:\s+\w+){0,2}?\s+(?:" + _PAST + r")\b(?P<rest>[^.?!]{0,40})",
+        sn,
+    )
+    if m and not _INTENT.search(m.group("rest")):
+        return True
+    if re.search(
+        r"(?<!\w)(?:в|во|на|у|при)\s+(?:\w+\s+){0,2}?"
+        + ep
+        + r"(?:\s+\w+){0,2}?[,]?\s+я\s+(?:\w+\s+){0,2}?"
+        r"(?:" + _PAST_RU + r")",
+        sn,
+    ):
+        return True
+    return bool(re.search(r"(?<!\w)" + ep + r"(?:\s+\w+){0,2}?\s+(?:" + _HIRED + r")\s+me\b", sn))
 
 
 def _present_or_copula_claim(sn: str, ep: str) -> bool:
@@ -280,14 +305,22 @@ def _present_or_copula_claim(sn: str, ep: str) -> bool:
     )
 
 
+_NOUN_2P = _NOUN + r"|work|projects?"  # "your work at X" (FIX-33)
+_NOT_EXPERIENCE = re.compile(r"\b(?:candidate|applicant|fit|match|choice|prospect)\b")
+
+
 def is_second_person_claim(text: str, ents: list[str]) -> bool:
-    """ "your internship at X", "your X internship": experience the user is told they have."""
+    """Experience the user is told they have at a name that is not in the CV (D-152, D-158).
+
+    "your internship at X", "your X internship", "you interned at X", "you were an intern at
+    X", "X knows you from ...", "X hired you".
+    """
     sn = norm(text)
     for e in ents:
         ep = _ent_pat(e)
         if re.search(
             r"(?<!\w)your\s+(?:\w+\s+){0,3}?(?:"
-            + _NOUN
+            + _NOUN_2P
             + r"|"
             + _ROLE
             + r")s?\s+"
@@ -299,17 +332,42 @@ def is_second_person_claim(text: str, ents: list[str]) -> bool:
             r"(?<!\w)your\s+(?:\w+\s+){0,2}?"
             + ep
             + r"(?:\s+\w+){0,2}?\s+(?:"
-            + _NOUN
+            + _NOUN_2P
             + r"|"
             + _ROLE
             + r")",
             sn,
         ):
             return True
+        m = re.search(
+            r"(?<!\w)you(?:'ve|\s+have)?(?:\s+\w+){0,3}?\s+(?:"
+            + _PAST
+            + r")\b(?P<mid>[^.?!]{0,60}?)"
+            r"(?<!\w)" + _PREP + r"\s+(?:the\s+)?(?:\w+\s+){0,2}?" + ep,
+            sn,
+        )
+        if m and not _INTENT.search(m.group("mid")):
+            return True
+        m = re.search(
+            r"(?<!\w)you(?:'re|\s+are|\s+were)(?P<mid>(?:\s+\w+){0,4}?)\s+(?:at|with|for)\s+"
+            r"(?:the\s+)?(?:\w+\s+){0,2}?" + ep,
+            sn,
+        )
+        if (
+            m
+            and re.search(r"\b(?:" + _ROLE + r")\b", m.group("mid"))
+            and not _INTENT.search(m.group("mid"))
+            and not _NOT_EXPERIENCE.search(m.group("mid"))
+        ):
+            return True
+        if re.search(
+            r"(?<!\w)"
+            + ep
+            + r"(?:\s+\w+){0,3}?\s+(?:knows|knew|remembers|remembered|recognizes)\s+you\b",
+            sn,
+        ) or re.search(r"(?<!\w)" + ep + r"(?:\s+\w+){0,2}?\s+(?:" + _HIRED + r")\s+you\b", sn):
+            return True
     return False
-
-
-_CALL_LEN = re.compile(r"([^\W_]+)\s*-?\s*min(?:ute)?s?\b")
 
 
 _YEAR = re.compile(r"(?:19|20)\d\d")  # a date ("Summer 2026"), not a quantity of experience
@@ -338,6 +396,9 @@ def gap_claims_posting_number(how: str, cv_nums: set[str]) -> bool:
         if _SECOND.search(cn) and ungrounded_own_numbers(cn, cv_nums):
             return True
     return False
+
+
+_CALL_LEN = re.compile(r"([^\W_]+)\s*-?\s*min(?:ute)?s?\b")
 
 
 def call_length_numbers(ask: str) -> set[str]:
@@ -373,7 +434,7 @@ def claim_ok(
     if bad and posting_text:
         post = norm(posting_text)
         if all(has_word(e, post) for e in bad):
-            return not is_second_person_claim(text, bad)
+            return not (is_second_person_claim(text, bad) or is_past_claim(text, bad))
     return not bad
 
 
@@ -491,7 +552,7 @@ def verify_tailoring(
                     for e in entities(s_, skills)
                     if not has_word(e, cv_n)
                 ]
-                ok = not is_second_person_claim(how, only_post)
+                ok = not (is_second_person_claim(how, only_post) or is_past_claim(how, only_post))
         if ok:
             add_gap({"requirement": req, "posting_evidence": pe, "how_to_address": how})
         else:

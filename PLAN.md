@@ -2196,7 +2196,7 @@ Third review pass, 2026-11-06. The reviewer re-checked FIX-26..FIX-30 (commits 5
     - a draft sentence that names a posting number without a first-person marker ("The posting mentions 3 years of C++.");
     - the ask "Could we have a 15-minute call?".
 
-### FIX-33 [ ] Experience at a posting-only company passes in fit points (FIX-28 regression), gaps and fronted draft sentences
+### FIX-33 [x] Experience at a posting-only company passes in fit points (FIX-28 regression), gaps and fronted draft sentences
 - Severity: BLOCKING. The fit-point case is a regression from this round: at fd49926 all four fit points below were removed (0 of 4 kept); at HEAD all four are kept.
 - Problem (`cv_fake.txt`, the `entity_probes.json` posting and contact):
   - FIX-28(b) allows posting names in `fit.points` unless `is_second_person_claim` matches. That check only knows "your <noun/role> at X" and "your X <noun/role>", and "work" is not in `_NOUN`. These fit points are kept (evidence: the Sample Labs line):

@@ -313,3 +313,120 @@ def test_fix28_bare_domain_in_cv_kept_otherwise_dropped():
         "Contact me at evil@phish.example or https://phish.example/cv.", norm(cv)
     )
     assert has_contact_info("See evil.com", norm(cv))
+
+
+# ---- FIX-33: experience at a posting-only company (D-158) ----
+
+SL_LINE = "Sample Labs - Research Intern, Summer 2025"
+POST_GOOGLE = (
+    "Acme Fake is hiring a Quant Developer Intern in Almaty. Our founders are ex-Google and "
+    "Jane Street engineers. You will work with Python and C++ on our market data platform."
+)
+
+
+def _kept_sentence(sentence, posting=POST):
+    quote = P["hook_quote"] if posting is POST else "Acme Fake is hiring"
+    d = {
+        "body": f"{P['greeting']} {sentence} {P['legit']['intent']} {ASK}",
+        "hook": {"text": "h", "quote": quote, "from": "posting"},
+        "ask": ASK,
+        "claims": [],
+    }
+    v = verify_draft(d, CV, posting, CONTACT, ["Python"])
+    return v.ok and sentence in v.body
+
+
+def _fit_kept(text, posting=POST):
+    from src.outreach.verify import claim_ok
+
+    return claim_ok(text, SL_LINE, CV, ["Python", "C++"], posting)
+
+
+def _gap_kept(how):
+    res = {"gaps": [{"requirement": "x", "posting_evidence": "", "how_to_address": how}]}
+    v, _ = verify_tailoring(res, CV, POST, ["Python"])
+    return bool(v["gaps"])
+
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "You interned at Acme Fake, so you know the stack",
+        "You were a research intern at Acme Fake",
+        "Your work at Acme Fake on research tooling",
+        "Acme Fake already knows you from your internship",
+        "Acme Fake hired you last summer",
+        "You are a research intern at Acme Fake",
+    ],
+)
+def test_fit_point_experience_at_posting_company_dropped(text):
+    assert not _fit_kept(text)
+
+
+def test_fit_points_still_kept():
+    assert _fit_kept("Your Sample Labs work fits the Research Tooling Intern role at Acme Fake")
+    assert _fit_kept("Your Sample Labs internship matches Acme Fake's tooling focus")
+    assert _fit_kept("You are a strong research intern candidate for Acme Fake")
+    assert _fit_kept("You would be excited to work at Acme Fake")
+
+
+@pytest.mark.parametrize(
+    "how", ["Mention that you interned at Acme Fake", "Say you worked with Acme Fake before"]
+)
+def test_gap_experience_at_posting_company_removed(how):
+    assert not _gap_kept(how)
+
+
+def test_gap_naming_posting_company_without_claim_kept():
+    assert _gap_kept("Acme Fake values research tooling; show your harness")
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "At Acme Fake, I built a latency benchmark harness in Python.",
+        "Acme Fake hired me as an intern last summer.",
+        "At Acme Fake I interned on the research team.",
+        "В Acme Fake я работал стажёром.",
+    ],
+)
+def test_fronted_and_hired_claims_at_posting_company_dropped(sentence):
+    assert not _kept_sentence(sentence)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "At Google, I built a latency benchmark harness.",
+        "Google hired me as an intern.",
+        "At Jane Street I worked on C++ tooling.",
+    ],
+)
+def test_fronted_and_hired_claims_at_ex_company_dropped(sentence):
+    assert not _kept_sentence(sentence, POST_GOOGLE)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "At Sample Labs I built a latency benchmark harness in Python for order book replay.",
+        "I would love to join the research team at Acme Fake.",
+        "Could I learn more about internships at Acme Fake?",
+        "I was impressed by the work at Acme Fake.",
+        "I noticed Acme Fake is hiring a research tooling intern.",
+        "At Acme Fake, I would be excited to work on research tooling.",
+    ],
+)
+def test_honest_sentences_with_company_names_kept(sentence):
+    assert _kept_sentence(sentence)
+
+
+def test_draft_reply_ok_fixture_unchanged_and_passing():
+    d = json.loads((FX / "draft_reply_ok.json").read_text())
+    cv = (FX / "cv_bait_fake.txt").read_text()
+    posting = "Looking for Python and SQL for research tooling."
+    v = verify_draft(d, cv, posting, "Jane Roe, Hiring Lead", ["Python", "SQL"])
+    assert v.ok and v.body == d["body"]  # every body sentence survives (claims: FIX-34)
