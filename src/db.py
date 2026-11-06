@@ -15,7 +15,7 @@ from src.text import content_hash
 
 log = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 MAX_SCORE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
 _EXCLUSIVE = {"like": "dislike", "dislike": "like"}
@@ -187,6 +187,14 @@ CREATE TABLE board_candidates (
 )
 """
 
+SCHEMA_10 = """
+CREATE TABLE tg_channels (
+  handle TEXT PRIMARY KEY,
+  state TEXT NOT NULL CHECK (state IN ('added','removed')),
+  updated_at TEXT NOT NULL
+)
+"""
+
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
@@ -213,6 +221,7 @@ _MIGRATIONS = (
     SCHEMA_7,
     SCHEMA_8,
     SCHEMA_9,
+    SCHEMA_10,
 )
 
 
@@ -588,6 +597,20 @@ def recent_feedback_examples(
 
 
 # --- state ----------------------------------------------------------------
+
+
+def tg_channel_overlay(conn: sqlite3.Connection) -> dict[str, str]:
+    """Runtime Telegram channel edits as {handle: 'added'|'removed'} (D-193)."""
+    return {r["handle"]: r["state"] for r in conn.execute("SELECT handle, state FROM tg_channels")}
+
+
+def set_tg_channel(conn: sqlite3.Connection, handle: str, state: str, now: datetime) -> None:
+    conn.execute(
+        "INSERT INTO tg_channels (handle, state, updated_at) VALUES (?,?,?)"
+        " ON CONFLICT(handle) DO UPDATE SET state=excluded.state, updated_at=excluded.updated_at",
+        (handle, state, _iso(now)),
+    )
+    conn.commit()
 
 
 def get_state(conn: sqlite3.Connection, key: str, default: str | None = None) -> str | None:

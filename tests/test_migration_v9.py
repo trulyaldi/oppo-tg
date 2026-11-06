@@ -26,7 +26,7 @@ def test_v8_to_v9_adds_candidates_and_is_idempotent(tmp_path):
     _v8_file(path)
     conn = db.connect(path)
     db.migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 9
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION
     assert conn.execute("SELECT COUNT(*) FROM postings").fetchone()[0] == 1
     cols = [r["name"] for r in conn.execute("PRAGMA table_info(board_candidates)")]
     assert cols == ["source", "token", "status", "checked_at", "company", "discovered_from"]

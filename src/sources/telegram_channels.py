@@ -49,13 +49,31 @@ def normalize_channel(raw: Any) -> str | None:
     return name if CHANNEL_RE.match(name) else None
 
 
-def channels(cfg: AppConfig) -> list[str]:
+MAX_CHANNELS = 50
+
+
+def config_channels(cfg: AppConfig) -> list[str]:
     out: list[str] = []
     for raw in cfg.source("telegram_channels").get("channels") or []:
         name = normalize_channel(raw)
         if name and name not in out:
             out.append(name)
     return out
+
+
+def channels(cfg: AppConfig, conn: Any = None) -> list[str]:
+    """(config + runtime added) - runtime removed, normalized, deduped, at most 50 (D-193)."""
+    out = config_channels(cfg)
+    if conn is not None:
+        from src import db as dbm
+
+        overlay = dbm.tg_channel_overlay(conn)
+        for handle, state in overlay.items():
+            name = normalize_channel(handle)
+            if state == "added" and name and name not in out:
+                out.append(name)
+        out = [c for c in out if overlay.get(c) != "removed"]
+    return out[:MAX_CHANNELS]
 
 
 def session_exists(settings: Settings) -> bool:
@@ -138,22 +156,22 @@ class TelegramChannelsSource:
         self._pause_s = pause_s
         self._require_session = require_session_file
 
-    def disabled_reason(self, settings: Settings, cfg: AppConfig) -> str | None:
+    def disabled_reason(self, settings: Settings, cfg: AppConfig, conn: Any = None) -> str | None:
         if not cfg.source_enabled(self.name):
             return "disabled in config"
         if not settings.tg_api_id or not settings.tg_api_hash:
             return NEEDS_CREDS
         if self._require_session and not session_exists(settings):
             return NO_SESSION  # D-07
-        if not channels(cfg):
+        if not channels(cfg, conn):
             return NO_CHANNELS
         return None
 
-    def enabled(self, settings: Settings, cfg: AppConfig) -> bool:
-        return self.disabled_reason(settings, cfg) is None
+    def enabled(self, settings: Settings, cfg: AppConfig, conn: Any = None) -> bool:
+        return self.disabled_reason(settings, cfg, conn) is None
 
     async def fetch(self, ctx: SourceContext) -> list[Posting]:
-        if not self.enabled(ctx.settings, ctx.cfg):
+        if not self.enabled(ctx.settings, ctx.cfg, ctx.http.db):
             return []
         from telethon.errors import FloodWaitError
 
@@ -166,7 +184,7 @@ class TelegramChannelsSource:
             if not await client.is_user_authorized():
                 ctx.log.warning("telegram_channels: session not authorized, skipping")
                 return []
-            for i, channel in enumerate(channels(ctx.cfg)):
+            for i, channel in enumerate(channels(ctx.cfg, db)):
                 if i and self._pause_s:
                     await self._sleep(self._pause_s)
                 try:
@@ -192,9 +210,9 @@ class TelegramChannelsSource:
                     ctx.log.debug("telegram_channels: disconnect failed", exc_info=True)
 
     def targets(self, ctx: SourceContext) -> list[Target]:
-        if not self.enabled(ctx.settings, ctx.cfg):
+        if not self.enabled(ctx.settings, ctx.cfg, ctx.http.db):
             return []
-        return [Target("telegram_channels", c) for c in channels(ctx.cfg)]
+        return [Target("telegram_channels", c) for c in channels(ctx.cfg, ctx.http.db)]
 
     async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
         """One channel per call; raises on any failure so the target is marked failed."""

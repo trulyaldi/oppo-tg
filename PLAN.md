@@ -2808,7 +2808,7 @@ Each migration gets a test that starts from the previous version with sample row
 
 ### Part 4: Kazakhstan sources
 
-### FC-23 [ ] Runtime Telegram channels (schema v10) and /channels
+### FC-23 [x] Runtime Telegram channels (schema v10) and /channels
 - Build (D-193):
   - `SCHEMA_10` adds `tg_channels(handle PRIMARY KEY, state CHECK(state IN ('added','removed')), updated_at)`.
   - `channels(cfg, conn=None)` = (config ∪ added) − removed, normalized and deduped, at most 50.

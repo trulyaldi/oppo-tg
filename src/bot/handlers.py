@@ -80,6 +80,7 @@ START_TEXT = (
     "/applied - items marked applied\n"
     "/sources - source status\n"
     "/stats - delivery latency and pipeline counters\n"
+    "/channels - Telegram channels (/channels add &lt;@h|t.me/h&gt;, /channels remove &lt;h&gt;)\n"
     "/boards - discovered ATS boards (/boards remove &lt;n|source:token&gt;)\n"
     "/pause - pause the digest\n"
     "/resume - resume the digest\n"
@@ -370,6 +371,83 @@ async def cmd_boards(message: Any, cfg: AppConfig, args: str | None = None) -> N
         await _say(message, "The boards file is unreadable; nothing changed.")
         return
     await _say(message, f"Removed {_esc(target.source)}:{_esc(target.token)}.")
+
+
+CHANNELS_USAGE = (
+    "Usage: /channels, /channels add &lt;@handle|t.me/handle&gt;, "
+    "or /channels remove &lt;handle&gt;."
+)
+BAD_CHANNEL = "That is not a valid public channel handle (5-32 letters, digits or _)."
+
+
+def render_channels(conn: sqlite3.Connection, settings: Settings, cfg: AppConfig) -> list[str]:
+    from src.sources.telegram_channels import TelegramChannelsSource, channels, config_channels
+
+    in_config = set(config_channels(cfg))
+    reason = TelegramChannelsSource().disabled_reason(settings, cfg, conn)
+    polled = {
+        r["target"]: r["baselined_at"]
+        for r in conn.execute(
+            "SELECT target, baselined_at FROM target_state WHERE source='telegram_channels'"
+        )
+    }
+    lines = []
+    for i, c in enumerate(channels(cfg, conn), 1):
+        origin = "config" if c in in_config else "added"
+        if reason:
+            status = f"not polling ({reason})"
+        elif polled.get(c):
+            status = "polling, baselined"
+        else:
+            status = "polling, first poll pending"
+        lines.append(f"{i}. @{_esc(c)} [{origin}] {_esc(status)}")
+    return lines
+
+
+async def cmd_channels(
+    message: Any,
+    conn: sqlite3.Connection,
+    settings: Settings,
+    cfg: AppConfig,
+    clock: Clock,
+    args: str | None = None,
+) -> None:
+    """List, add or remove Telegram channels at runtime. Never edits config.toml (D-193)."""
+    from src.sources.telegram_channels import MAX_CHANNELS, channels, normalize_channel
+
+    parts = (args or "").split()
+    if not parts:
+        lines = render_channels(conn, settings, cfg)
+        if not lines:
+            await _say(message, "No Telegram channels. " + CHANNELS_USAGE)
+            return
+        for chunk in chunk_lines([f"Telegram channels ({len(lines)}):", *lines], CHUNK_LIMIT):
+            await _say(message, chunk)
+        return
+    if len(parts) != 2 or parts[0].lower() not in ("add", "remove"):
+        await _say(message, CHANNELS_USAGE)
+        return
+    handle = normalize_channel(parts[1])
+    if handle is None:
+        await _say(message, BAD_CHANNEL)
+        return
+    current = {c.casefold(): c for c in channels(cfg, conn)}
+    if parts[0].lower() == "add":
+        if handle.casefold() in current:
+            await _say(message, f"@{_esc(handle)} is already listed.")
+            return
+        if len(current) >= MAX_CHANNELS:
+            await _say(message, f"At most {MAX_CHANNELS} channels; remove one first.")
+            return
+        db.set_tg_channel(conn, handle, "added", clock.now())
+        await _say(message, f"Added @{_esc(handle)}. Its first poll is a baseline.")
+        return
+    existing = current.get(handle.casefold())
+    if existing is None:
+        await _say(message, f"@{_esc(handle)} is not in the list.")
+        return
+    db.set_tg_channel(conn, existing, "removed", clock.now())
+    await _say(message, f"Removed @{_esc(existing)}.")
 
 
 async def cmd_pause(message: Any, conn: sqlite3.Connection) -> None:

@@ -131,7 +131,15 @@ async def _collect_tier(
         http=http, settings=settings, cfg=cfg, clock=clock, revalidate=(tier == "tier1")
     )
     sources = [f() for f in base.REGISTRY.values()]
-    sources = [s for s in sources if s.enabled(settings, cfg)]
+    sources = [
+        s
+        for s in sources
+        if (
+            s.enabled(settings, cfg, conn)  # runtime channels count (D-193)
+            if s.name == "telegram_channels"
+            else s.enabled(settings, cfg)
+        )
+    ]
     plan = _plan_tier(conn, sources, ctx, cfg, clock, tier)
     sources = [s for s, _ in plan]
     run_ids = {s.name: db.start_source_run(conn, s.name, clock.now()) for s in sources}
