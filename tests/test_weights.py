@@ -66,7 +66,7 @@ def test_snapshot_config_points_at_fixtures():
     assert p.exists()
     real = AppConfig.load(ROOT / "config.toml")
     assert real.ranking["weights_file"] == "config/weights.yaml"
-    assert cfg.outreach == {}
+    assert cfg.outreach["cheap_model"] == "claude-haiku-4-5"
 
 
 def test_missing_adjustment_key(wdir):

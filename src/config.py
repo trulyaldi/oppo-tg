@@ -125,6 +125,29 @@ class Thresholds:
 
 
 @dataclass(frozen=True)
+class OutreachConfig:
+    cheap_model: str = "claude-haiku-4-5"
+    tailor_model: str = "claude-sonnet-4-6"
+    daily_llm_call_cap: int = 40
+    max_page_fetches_per_prepare: int = 2
+    max_page_fetches_per_day: int = 20
+    max_contacts_per_posting: int = 10
+    contact_ttl_days: int = 60
+    rediscover_after_days: int = 7
+    cv_max_bytes: int = 5_000_000
+    cv_max_pages: int = 20
+    cv_max_chars: int = 30000
+    pending_input_minutes: int = 15
+
+    @classmethod
+    def from_cfg(cls, cfg: AppConfig) -> OutreachConfig:
+        unknown = set(cfg.outreach) - set(cls.__dataclass_fields__)
+        if unknown:
+            raise ValueError(f"unknown outreach keys: {sorted(unknown)}")
+        return cls(**cfg.outreach)
+
+
+@dataclass(frozen=True)
 class AppConfig:
     sources: dict[str, dict[str, Any]] = field(default_factory=dict)
     filters: dict[str, Any] = field(default_factory=dict)

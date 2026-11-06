@@ -1412,7 +1412,7 @@ Per-type guidance in `draft.md`:
   - `/top` with a KZ startup base 6.0 (adjusted 7.0) and an intl_other base 6.5 lists the KZ item first.
   - Every rendered message is still <= 3500 chars.
 
-### C1 [ ] Shared LLM JSON helper, daily budget, untrusted-text wrapper
+### C1 [x] Shared LLM JSON helper, daily budget, untrusted-text wrapper
 - Depends on: W1 (`[outreach]` in AppConfig), W2 (migration order).
 - Build:
   - `src/llm/json_call.py`, `src/llm/budget.py` (with migration v3 `llm_usage`), `src/llm/untrusted.py` per 8.1.10.
