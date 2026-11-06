@@ -86,6 +86,7 @@ def _queries(cfg: AppConfig) -> list[dict[str, str]]:
 class JobicySource:
     name = "jobicy"
     description = "Jobicy remote jobs (jobicy.com)"
+    min_poll_minutes = 60  # ToS floor (D-58, D-186)
 
     def enabled(self, settings: Settings, cfg: AppConfig) -> bool:
         return cfg.source_enabled("jobicy") and bool(_queries(cfg))

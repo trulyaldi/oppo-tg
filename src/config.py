@@ -34,7 +34,7 @@ ENV_VARS: list[EnvVar] = [
     EnvVar("OPPO_CONFIG", False, "config.toml", "Path to the non-secret config file"),
     EnvVar("TIMEZONE", False, "Asia/Almaty", "IANA timezone for digest scheduling"),
     EnvVar("DIGEST_TIME", False, "09:00", "Daily digest time (HH:MM, in TIMEZONE)"),
-    EnvVar("COLLECT_CRON_HOURS", False, "3", "Collection interval in hours"),
+    EnvVar("COLLECT_CRON_HOURS", False, "3", "ignored; see [scheduler] in config.toml"),
     EnvVar("MAX_SCORES_PER_RUN", False, "150", "Maximum LLM scoring calls per run"),
     EnvVar("LOG_LEVEL", False, "INFO", "Python logging level"),
     EnvVar(
@@ -116,12 +116,36 @@ class Settings:
         )
 
 
+_FRESH_INTS = {"fresh_alert_max_per_day", "fresh_window_hours"}
+TIERS = ("tier1", "tier2", "tier3")
+
+
+def _check_number(label: str, value: Any, *, integer: bool = False) -> None:
+    ok = not isinstance(value, bool) and isinstance(value, int if integer else int | float)
+    if not ok or value <= 0:
+        kind = "integer" if integer else "number"
+        raise ValueError(f"{label} must be a positive {kind}")
+
+
 @dataclass(frozen=True)
 class Thresholds:
     digest_min_score: float = 5.0
     alert_score: float = 9.0
     alert_deadline_days: int = 7
     alert_deadline_min_score: float = 0.0
+    fresh_alert_score: float = 7.5
+    fresh_alert_max_per_day: int = 5
+    fresh_window_hours: int = 48
+    digest_score_band: float = 1.0
+
+    def __post_init__(self) -> None:
+        for name in (
+            "fresh_alert_score",
+            "fresh_alert_max_per_day",
+            "fresh_window_hours",
+            "digest_score_band",
+        ):
+            _check_number(f"[thresholds] {name}", getattr(self, name), integer=name in _FRESH_INTS)
 
 
 # Caps where 0 is a legitimate "off" switch (the cap-reached replies are tested with 0).
@@ -197,6 +221,60 @@ class ScoringConfig:
 
 
 @dataclass(frozen=True)
+class SchedulerConfig:
+    tier1_minutes: int = 15
+    tier2_minutes: int = 90
+    tier3_minutes: int = 60
+    tier1_jitter_s: int = 60
+    tier2_jitter_s: int = 300
+    tier3_jitter_s: int = 300
+    no_validator_min_minutes: int = 60
+
+    def __post_init__(self) -> None:
+        for name in self.__dataclass_fields__:
+            _check_number(f"[scheduler] {name}", getattr(self, name), integer=True)
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> SchedulerConfig:
+        unknown = set(data) - set(cls.__dataclass_fields__)
+        if unknown:
+            raise ValueError(f"unknown scheduler keys: {sorted(unknown)}")
+        return cls(**data)
+
+
+@dataclass(frozen=True)
+class PolitenessConfig:
+    default_min_interval_s: float = 2.0
+    jitter_fraction: float = 0.25
+    max_concurrent_requests: int = 4
+    backoff_base_s: int = 300
+    backoff_max_s: int = 21600
+    hosts: dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        _check_number("[politeness] default_min_interval_s", self.default_min_interval_s)
+        _check_number(
+            "[politeness] max_concurrent_requests", self.max_concurrent_requests, integer=True
+        )
+        _check_number("[politeness] backoff_base_s", self.backoff_base_s, integer=True)
+        _check_number("[politeness] backoff_max_s", self.backoff_max_s, integer=True)
+        _check_number("[politeness] jitter_fraction", self.jitter_fraction)
+        if self.jitter_fraction > 1:
+            raise ValueError("[politeness] jitter_fraction must be at most 1")
+        if not isinstance(self.hosts, dict):
+            raise ValueError("[politeness] hosts must be a table")
+        for host, secs in self.hosts.items():
+            _check_number(f"[politeness.hosts] {host}", secs)
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> PolitenessConfig:
+        unknown = set(data) - set(cls.__dataclass_fields__)
+        if unknown:
+            raise ValueError(f"unknown politeness keys: {sorted(unknown)}")
+        return cls(**data)
+
+
+@dataclass(frozen=True)
 class AppConfig:
     sources: dict[str, dict[str, Any]] = field(default_factory=dict)
     filters: dict[str, Any] = field(default_factory=dict)
@@ -204,6 +282,8 @@ class AppConfig:
     ranking: dict[str, Any] = field(default_factory=dict)
     outreach: dict[str, Any] = field(default_factory=dict)
     scoring: dict[str, Any] = field(default_factory=dict)
+    scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
+    politeness: PolitenessConfig = field(default_factory=PolitenessConfig)
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> AppConfig:
@@ -226,6 +306,8 @@ class AppConfig:
             ranking=dict(data.get("ranking", {})),
             outreach=outreach,
             scoring=scoring,
+            scheduler=SchedulerConfig.from_mapping(dict(data.get("scheduler", {}))),
+            politeness=PolitenessConfig.from_mapping(dict(data.get("politeness", {}))),
         )
 
     @classmethod
@@ -238,3 +320,9 @@ class AppConfig:
 
     def source_enabled(self, name: str) -> bool:
         return bool(self.source(name).get("enabled", False))
+
+    def source_tier(self, name: str, default: str) -> str:
+        tier = self.source(name).get("tier", default)
+        if tier not in TIERS:
+            raise ValueError(f"[sources.{name}] tier must be one of {', '.join(TIERS)}")
+        return tier

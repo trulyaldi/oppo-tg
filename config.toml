@@ -160,6 +160,29 @@ digest_min_score = 5.0
 alert_score = 9.0
 alert_deadline_days = 7
 alert_deadline_min_score = 0.0
+fresh_alert_score = 7.5     # base score needed for a fresh alert (D-189)
+fresh_alert_max_per_day = 5 # fresh alerts per Asia/Almaty day
+fresh_window_hours = 48     # an item is fresh for this long after first_seen_at
+digest_score_band = 1.0     # digest ranks by band = floor(score / this), then freshness
+
+[scheduler]
+tier1_minutes = 15          # watchlist boards
+tier2_minutes = 90          # discovered boards, aggregators, feeds, hh, channels
+tier3_minutes = 60          # pagewatch pages
+tier1_jitter_s = 60
+tier2_jitter_s = 300
+tier3_jitter_s = 300
+no_validator_min_minutes = 60  # tier1 hosts without ETag/Last-Modified
+
+[politeness]
+default_min_interval_s = 2.0
+jitter_fraction = 0.25      # added to the interval, never subtracted; at most 1
+max_concurrent_requests = 4
+backoff_base_s = 300
+backoff_max_s = 21600
+
+[politeness.hosts]
+# host suffix = minimum seconds between requests, e.g. "example.com" = 5.0
 
 [ranking]
 weights_file = "config/weights.yaml"

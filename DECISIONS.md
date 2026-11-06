@@ -912,3 +912,9 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **Where.** `collect_all` reads `target_state.baselined_at` before storing a target's postings (missing row or NULL means new), inserts with `baseline=1`, records the attempt, then `db.mark_baselined` sets `baselined_at` only if it is still NULL. Failed results never reach it, so a failed first fetch stays new. A first ok fetch with zero items still baselines the target.
   - **Alerts.** `select_alerts` skips `baseline=1` rows before any rule. `undelivered_scored` already returns `p.*`, so it carries `baseline`; the digest does not filter on it.
   - **Tests.** The HTTP cache is cleared between collects in `tests/test_baseline.py`, since fixtures would otherwise be served from cache. Scoring order is tested after resetting status, because the fixture dates are stale against the fixed clock.
+
+- **D-204 FC-06 config choices.**
+  - **Cut keys.** FC-09, FC-19, FC-21 and FC-22 are cut (D-202), so no light-polling, arbeitnow or web-search keys; only the jobicy `min_poll_minutes = 60` floor is added now. `remoteok`/new aggregators add theirs when they land.
+  - **Validation.** All new numbers must be positive (ints where a count or seconds, `default_min_interval_s` and `digest_score_band` may be floats); bools are rejected. Errors name the section and key. `[politeness.hosts]` values are validated as positive numbers, keyed by host suffix.
+  - **Thresholds.** `Thresholds.__post_init__` validates only the new fields, so existing zero-valued thresholds stay legal.
+  - **README.** The `COLLECT_CRON_HOURS` table row was updated to match the new `ENV_VARS` description.

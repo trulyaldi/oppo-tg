@@ -167,7 +167,7 @@ in `src/config.py`; this table is checked against it by a test.
 | `OPPO_CONFIG` | no | `config.toml` | Path to the non-secret config file |
 | `TIMEZONE` | no | `Asia/Almaty` | IANA timezone for digest scheduling |
 | `DIGEST_TIME` | no | `09:00` | Daily digest time (HH:MM, in TIMEZONE) |
-| `COLLECT_CRON_HOURS` | no | `3` | Collection interval in hours |
+| `COLLECT_CRON_HOURS` | no | `3` | ignored; see [scheduler] in config.toml |
 | `MAX_SCORES_PER_RUN` | no | `150` | Maximum LLM scoring calls per run |
 | `LOG_LEVEL` | no | `INFO` | Python logging level. App loggers follow it; the `anthropic`, `httpx`, `httpx2`, `httpcore`, `aiogram.event` and `telethon` loggers stay at WARNING even at DEBUG so request bodies (CV, postings, contacts) are never logged, even if `ANTHROPIC_LOG=debug` is set (the bot removes that variable at startup) |
 | `HTTP_CONTACT` | no | `https://github.com/trulyaldi/oppo-tg` | Contact (email or URL) placed in the HTTP User-Agent. Default is the project repo; set it to your own contact |

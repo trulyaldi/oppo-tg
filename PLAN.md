@@ -2544,7 +2544,7 @@ Each migration gets a test that starts from the previous version with sample row
   - Baseline items can appear in the digest.
   - Scoring picks non-baseline items before baseline ones.
 
-### FC-06 [ ] Config: scheduler tiers, politeness, fresh thresholds, per-source tier and floors
+### FC-06 [x] Config: scheduler tiers, politeness, fresh thresholds, per-source tier and floors
 - Build (D-186, D-187, D-189):
   - `AppConfig` gains:
     - `scheduler: SchedulerConfig`: `tier1_minutes=15`, `tier2_minutes=90`, `tier3_minutes=60`, `tier1_jitter_s=60`, `tier2_jitter_s=300`, `tier3_jitter_s=300`, `no_validator_min_minutes=60`;
