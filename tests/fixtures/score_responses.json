@@ -1,0 +1,16 @@
+{
+  "ok": [
+    {"name": "plain", "text": "{\"score\": 8.5, \"reason\": \"Strong quant match\", \"deadline\": \"2026-12-01\", \"red_flags\": [\"visa\"], \"tags\": [\"quant\"]}", "score": 8.5, "deadline": "2026-12-01"},
+    {"name": "fenced", "text": "```json\n{\"score\": 7, \"reason\": \"ok\", \"deadline\": null, \"red_flags\": [], \"tags\": []}\n```", "score": 7.0, "deadline": null},
+    {"name": "string_score", "text": "{\"score\": \"8.5\", \"reason\": \"ok\", \"deadline\": null, \"red_flags\": [], \"tags\": []}", "score": 8.5, "deadline": null},
+    {"name": "multiline_reason", "text": "{\"score\": 5, \"reason\": \"line one\\n  line two\", \"deadline\": null, \"red_flags\": [], \"tags\": []}", "score": 5.0, "deadline": null}
+  ],
+  "bad": [
+    {"name": "score_too_high", "text": "{\"score\": 12, \"reason\": \"x\", \"deadline\": null, \"red_flags\": [], \"tags\": []}"},
+    {"name": "missing_reason", "text": "{\"score\": 5, \"deadline\": null, \"red_flags\": [], \"tags\": []}"},
+    {"name": "bad_deadline", "text": "{\"score\": 5, \"reason\": \"x\", \"deadline\": \"next week\", \"red_flags\": [], \"tags\": []}"},
+    {"name": "trailing_prose", "text": "{\"score\": 5, \"reason\": \"x\", \"deadline\": null, \"red_flags\": [], \"tags\": []}\nHope this helps!"},
+    {"name": "not_json", "text": "I think it is a good fit."},
+    {"name": "array", "text": "[1, 2]"}
+  ]
+}

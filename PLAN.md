@@ -335,7 +335,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - Relevance prefilter (D-13): JOB/INTERNSHIP whose title matches none of the positive keywords (e.g. "Office Manager", "Account Executive") -> `irrelevant`; non-job kinds always pass relevance.
   - `apply_filters` sets status `filtered` + `filter_reason` and leaves passing rows `new`.
 
-### T08 [ ] Scoring prompt and response parser
+### T08 [x] Scoring prompt and response parser
 - Build `src/scoring/profile.md` (from SPEC user profile, goals, geography), `src/scoring/rubric.md` (weights, contract, untrusted-data rule), `src/scoring/prompt.py` (`build_system_blocks(examples) -> list[dict]`, `build_user_message(p, today) -> str`, `prompt_version()`), `src/scoring/parse.py` (`parse_score_response(text) -> ScoreResult`, raises `ScoreParseError`).
 - Files: those + `tests/test_scoring_prompt.py`, `tests/test_scoring_parse.py`, `tests/fixtures/score_responses.json`.
 - Acceptance:
