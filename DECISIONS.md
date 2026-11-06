@@ -230,3 +230,198 @@ Log every non-obvious choice: date, choice, reason. Newest last.
 - **D-86 S3 single-instance lock.** `src/lock.py` `InstanceLock`: the lock file is the DB path with a `.lock` suffix (`data/oppo.lock` by default; `data/*` is gitignored, and a custom `DB_PATH` gets its own lock). Created with `O_CREAT|O_EXCL`, holds the PID. If the file exists and its PID is alive (`os.kill(pid, 0)`), `run` prints "ERROR: another oppo-tg instance is already running (PID n, ...)" to stderr and exits 3; if the PID is dead or the file is garbage the lock is taken over. Release only deletes the file if it still holds our PID. Only `run` locks: `collect`/`digest`/`once` do not poll Telegram, so they cannot cause TelegramConflictError, and the user may run them beside a service. Known limit: PID reuse after a crash could make a stale lock look alive; the user removes the file by hand (the message names it). SIGKILL leaves a stale file, handled by the PID check.
 - **D-87 S4 feedback persistence and whitelist verified.** Code was already correct: `handle_feedback` writes `reactions` and `reaction_log` and commits; `WhitelistMiddleware` (outer middleware on updates) drops anything not from `TELEGRAM_CHAT_ID`, with existing tests `test_whitelist` (message, no-chat update) and `test_whitelist_blocks_callback`. Gap filled: the only restart test used `handle_feedback` directly with one action. New `test_all_reactions_survive_restart_through_dispatcher` sends like, save, applied and dislike callbacks through a real aiogram dispatcher (Bot API calls stubbed by patching `Bot.__call__`, no network), closes the connection, reopens the same db file with a new connection and new dispatcher, checks all state (dislike replaces like) and that a Save toggle still works.
 - **D-88 S5 final check and live probe (2026-11-06).** `python -m pytest -q` and `ruff check . && ruff format --check .` clean. `python -m src.main probe` (README command, separate `data/probe.db`, exit status printed table "Counted families with items: 6 (need 6)"). Working (ok, items): ashby 425, greenhouse 3169, lever 407, hn 201, jobicy 200, mlh 24, pagewatch 7, rss 24. Not working, by design and not fixed: hh (needs HH_ACCESS_TOKEN), telegram_channels (needs TG_API_ID, TG_API_HASH), devpost (disabled in config.toml). Many ATS fetches answered 304 from the cache, which is expected. No secrets were printed or read.
+
+## 2026-11-06 — Outreach and weights design (planner, PLAN section 8)
+
+- **D-89 SPEC edits for the outreach-and-weights features. Extends D-23 and D-55.**
+  - The orchestrator's brief explicitly asked for SPEC.md to describe the new features. So this time the planner appended new sections: "Employer-region weighting", "CV", "Contacts", "Prepare and draft" and "Privacy". It also appended two bullets under Delivery.
+  - No existing SPEC line was reworded.
+  - The new definition-of-done items go in a separate section, `## Definition of done: outreach and weights`, not into the original list. Reason: `tests/test_readme.py::test_dod_status_lists_all_spec_items` splits SPEC at the first `## Definition of done` and asserts exactly 8 bullets. A separate `##` section keeps that test green on this branch with no code change. F1 adds a README check for the new section.
+  - D-23 stays the rule for every other change. Requirements are changed only when the user (or a brief relaying the user) asks.
+- **D-90 New dependencies: PyYAML and pypdf. Amends D-06 and D-21.**
+  - D-06 chose TOML to avoid an extra dependency. The brief explicitly asks for `config/weights.yaml`, so we add `pyyaml>=6,<7` and load it only with `yaml.safe_load`, which never builds arbitrary objects. A W1 test greps for `yaml.load(`.
+  - PDF CVs need a text extractor. `pypdf>=5,<7` is pure Python and BSD-licensed, and it reads from memory (no temp files).
+  - Both are added and installed in W1 BEFORE any `.py` file imports them. The PostToolUse hook runs pytest on every `.py` write, as D-28 learned. Neither package is installed in the venv today (checked 2026-11-06).
+  - `config.toml` stays the main config. The only new key that points at YAML is `[ranking] weights_file`.
+- **D-91 Weights file location, validation and fallback.** (The once-per-day invalid-weights notice is built in W6.)
+  - `config/weights.yaml` holds the adjustments, `region_min_confidence`, `digest_quotas`, flags and watchlist paths. The watchlists are `config/watchlists/intl_top_tier.yaml` and `config/watchlists/kz_employers.yaml`. All are committed, because they contain no secrets.
+  - The file is validated with pydantic (`extra="forbid"`), so a typo fails loudly instead of being ignored.
+  - At selection time an invalid or missing file never stops the bot. The code logs the validation error, uses `BUILTIN_WEIGHTS` (the shipped defaults, empty watchlists) and sends at most one Telegram notice per day. Reason: a YAML typo must not silently skip the 09:00 digest.
+  - Tests read a committed copy in `tests/fixtures/weights_snapshot/` (FIX-06 lesson). The snapshot config `tests/fixtures/config_repo_snapshot.toml` points `[ranking] weights_file` at that copy; this is its one intended difference from `config.toml`. So every test that loads the snapshot, e2e included, is immune to the user's YAML edits. The only test on the real file checks that it validates, not its values.
+  - `Weights.version` is a hash of the YAML and both watchlists. It drives recomputation (D-94).
+  - No env var was added, so `.env.example` (which agents cannot edit, D-03) needs no change.
+- **D-92 "Region-blind" LLM score and new scoring fields.**
+  - **Definition.** The LLM score must not credit or penalise the employer's home country. The job-location accessibility criterion (10%) stays, because it measures whether the candidate can actually work there. Without this split, the code-side KZ bonus would double-count.
+  - **Rubric change.** `rubric.md` gains a section "Employer region (not part of the score)" and four optional output fields:
+    - `employer_region`: kz, intl or unknown, by HQ/legal entity, not job location;
+    - `region_confidence`: 0-1;
+    - `employer_is_startup`;
+    - `visa_barrier`.
+  - The fields are optional with safe defaults, so old fixtures and old replies still parse. `MAX_TOKENS` goes from 300 to 400 to fit them.
+  - The rubric change bumps `prompt_version`. The scoring-prompt skill requires an eval re-run, which needs the real API key, so it is a user action (PLAN section 3, added in F1). Old score rows keep `employer_region = 'unknown'`, meaning no adjustment unless a watchlist matches.
+- **D-93 Employer classification: watchlist first, exact normalized match, LLM fallback with a confidence floor.**
+  - Order:
+    1. top-tier watchlist;
+    2. KZ watchlist (`startup: true|false` per entry);
+    3. LLM `kz` with confidence >= `region_min_confidence` (0.7): `kz_startup` if `employer_is_startup` is true or the kind is STARTUP, else `kz_employer`;
+    4. LLM `intl` with confidence >= 0.7: `intl_other`;
+    5. otherwise `unknown`, with adjustment 0.
+  - Names match only after normalization (NFKC, casefold, ё->е, punctuation and legal forms such as LLC/LLP/ТОО/АО removed). There is no fuzzy matching, because a false top-tier match would push noise to the top of the digest. Aliases cover the variants instead.
+  - Classification uses the posting's company field, never its location, so a remote role at a KZ company is KZ and an Almaty office of Citadel is top-tier international.
+  - Only the watchlist can make an employer top-tier. The LLM never can.
+  - pagewatch postings used the page name as company ("IMC Careers"), which exact matching would never map to IMC. `[[sources.pagewatch.pages]]` therefore gains an optional `company` key (W4), set for IMC, Optiver, Jane Street, CERN, EPFL, ETH Zurich and OIST. Without it the page name is used, as before. Posting ids are unaffected.
+  - The KZ seed list is a starting point. Freedom Holding is listed as KZ because it is run from Almaty, although its listed parent is US-incorporated. The user can move it.
+- **D-94 Adjustment formula, persistence and recomputation.**
+  - Formula: `adjusted = clamp(base + adjustments[category] + visa, 0, 10)`, rounded to 2 decimals.
+  - `visa` = `intl_onsite_visa_barrier` (-0.5) only when all of these hold:
+    - the category is intl_top_tier or intl_other (it stacks with both: an on-site top-tier role with a visa barrier gets +0.5 net);
+    - `visa_barrier` is true;
+    - `remote` is not true.
+    It never applies to KZ or unknown employers.
+  - **DB.** `scores.score` is renamed `base_score` (SQLite 3.45.1 supports RENAME COLUMN). New columns: `adjusted_score`, the four LLM inputs, `employer_category`, `adjustment`, `adjustment_detail` and `weights_version`. Migration v2 backfills `adjusted_score = base_score` and leaves `weights_version` NULL, so the first recompute classifies old rows by watchlist.
+  - **Why the inputs are stored, not just the result.** `recompute_adjusted` runs after scoring and before every digest, alert and `/top`. It re-classifies only rows whose `weights_version` differs from the current file. So editing the YAML re-ranks existing items with no code change and no LLM call. If `adjusted_score` were frozen at scoring time, YAML edits would only affect new items.
+- **D-95 Digest selection with quotas.**
+  1. Eligibility gates on `base_score >= digest_min_score`, not the adjusted score, so a bonus cannot lift a weak posting into the digest. Example: a KZ startup with base 4.5 stays out at the 5.0 floor.
+  2. Within the eligible set, picks and display order use `adjusted_score`.
+  3. Quotas (kz 4, intl 4, best_remaining 2) are the single source of truth for digest size. `thresholds.digest_max_items` is removed, and `from_dict` drops it silently as D-79 did for `digest_min_items`, so old configs load. Reason: two overlapping size knobs would conflict.
+  4. Fall-through: kz and intl slots that cannot be filled go to the best remaining items.
+  5. Unknown-region items have no bucket and no flag. They compete only for best-remaining and fall-through slots. Reason: the KZ quota is reserved for confirmed KZ employers, and the international quota for confirmed international ones.
+  6. Display order is adjusted desc over the whole digest, not grouped by region. So with the defaults a clearly bad KZ item (base <= 5.5, adjusted <= 6.5) always sits below a clearly good international item (base >= 7.5, adjusted >= 7.0). W6 tests every combination.
+- **D-96 Flag emoji in item headers. A narrow exception to D-18.**
+  - The brief explicitly asks for flag emoji tags, KZ `🇰🇿` and world `🌍`. They are the only emoji the bot emits. Both are set in `weights.yaml` `flags`, and `""` turns one off.
+  - The existing unflagged layout stays byte-for-byte the same, so `render_item_expected.txt` is unchanged and a new fixture covers flagged items.
+  - When the adjustment is non-zero, the score line shows `adjusted/10 (base X, detail)`, so the user always sees why an item moved.
+- **D-97 Alerts use the base score.**
+  - An item alerts when `base_score >= alert_score` (9.0), as the brief asks, or when its deadline is within 7 days and `base_score >= alert_deadline_min_score`.
+  - A region bonus never triggers an alert. Example: a top-tier item at base 8.6 (adjusted 9.6) waits for the digest.
+- **D-98 Outreach LLM calls: one shared helper, models in config.toml, daily cap.**
+  - **Helper.** `src/llm/json_call.py` follows the proven scorer pattern (D-11, D-83, D-84):
+    - it sends only `model`, `max_tokens`, `system`, `messages`;
+    - it never sends `tools`, `tool_choice` or `temperature`;
+    - it validates with pydantic and retries once;
+    - it never raises and never logs content.
+  - **Tests** use the S1 fake bound to `inspect.signature(AsyncMessages.create)`.
+  - **Models** (both present in the installed SDK `Model` literal, checked 2026-11-06; C1 re-checks):
+    - `claude-haiku-4-5` (cheap) for CV parsing and pasted-contact extraction;
+    - `claude-sonnet-4-6` for `/prepare` and `/draft`, where judgement and writing quality matter.
+  - `max_tokens` is generous (2000/800/2000/400), because a model may think by default (D-39), and only text blocks are read.
+  - **Config.** Models and caps live in `config.toml` `[outreach]`, not env vars. They are not secrets, and new env vars would need `.env.example` lines that agents cannot write (D-03).
+  - **Cap.** `daily_llm_call_cap = 40` covers all outreach calls per Asia/Almaty day, retries included. It is counted in `llm_usage`, which stores counts only, no content. Scoring keeps its own `MAX_SCORES_PER_RUN`.
+- **D-99 Untrusted text in prompts.**
+  - Posting, page, pasted-profile and contact text, and the CV too, go into the user message inside `<posting>`, `<page>`, `<profile>`, `<contact>` and `<cv>` tags.
+  - `wrap_untrusted` neutralizes any `<`/`</` followed by a reserved tag name (case-insensitive, whitespace allowed) to `‹`, so data cannot close a delimiter and pose as instructions.
+  - The static system block says this text is data, never instructions, and that the model cannot contact anyone.
+  - Outputs are schema-validated, and every claim is re-checked in code (D-107), so a successful injection can at worst produce text that the verifier then strips.
+  - The scorer's existing `<posting>` block is left unchanged, so the scoring prompt_version does not move twice.
+- **D-100 CV storage and handling.**
+  - **Where.** The CV is stored in the SQLite DB (`data/oppo.db`, under `data/*`, which is gitignored). The original upload is never written to disk: the bot downloads the PDF into `io.BytesIO`, pypdf reads it in memory, and the bytes are dropped.
+  - **Only the current version is kept.** Older rows are deleted on upload, which minimises stored personal data. `version` is an AUTOINCREMENT integer, so numbers stay monotonic.
+  - **Identity.** `sha` = sha256 of the normalized text (16 hex). Identical text does not bump the version and makes no LLM call.
+  - **Limits.** PDF or pasted text only, no DOCX; at most 5 MB, 20 pages and 30000 characters.
+  - **Scanned PDFs.** A PDF with no text layer is refused with "paste the text instead". There is no OCR: it would mean another dependency, and its accuracy cannot be trusted for claim verification.
+  - **Anthropic notice.** It appears twice: in the `/cv` prompt (before anything is sent) and in the confirmation.
+  - **Fixtures.** Every CV, contact and profile fixture is fictional and carries `FAKE FIXTURE`, which P7 checks.
+- **D-101 CV section parsing is grounded.**
+  - The cheap model extracts education, experience, projects and skills.
+  - Code then keeps only strings that appear in the CV text after normalization. For bullets, the whole bullet must be a substring.
+  - Invented skills or jobs are dropped and counted.
+  - A parse with neither education nor experience is rejected and nothing is stored.
+  - Reason: the parsed `skills` feed the verifier's skill lexicon (D-107), so an invented skill would otherwise become "evidence".
+- **D-102 Generic pending-input state.**
+  - `state.pending_input` holds JSON `{kind: cv|contact, posting_id, expires_at}`, with a 15-minute expiry (`[outreach] pending_input_minutes`).
+  - A plain text or document message is consumed only while a matching pending state is live. All other non-command messages are ignored with no LLM call.
+  - `/cancel` clears the state.
+  - It is stored in SQLite rather than aiogram FSM memory, so it survives a restart and follows the existing `state` pattern.
+- **D-103 Contacts: on demand, minimal fields, short retention.**
+  - **When.** Discovery runs only when the user runs `/prepare` or `/contacts` for one posting. It never runs in collect, the scheduler or alerts; an N6 test greps for this. That is the "no bulk collection" guarantee.
+  - **Order.**
+    1. posting text (no network);
+    2. for `hn` items, the single Algolia comment item (author handle + contact lines);
+    3. the employer's own domain `/team`, then `/about` (domain from the watchlist, else the posting URL host unless it is an ATS/aggregator);
+    4. for hackathons and competitions, the event page itself (organizers).
+  - **Limits.** At most 2 page fetches per `/prepare` and 20 per day, at most 10 contacts per posting, rediscovery at most every 7 days.
+  - **Stored fields.** Name, role, company, source URL, a note of at most 200 characters and the expiry, plus type, confidence, source kind and posting id.
+  - **No emails or phones.** They are redacted from every field even when published, because the brief's allowed fields do not include them and the user can open the source URL. A posting that lists an address gets the note "posting lists a direct contact address; see the posting".
+  - **Expiry.** `min(created + 60 days, deadline + 1 day)`. The daily prune deletes expired contacts, and their drafts go with them by FK cascade.
+- **D-104 Blocked hosts. LinkedIn and YC are human-assisted only.**
+  - `PoliteClient` refuses, with no request and no robots fetch, these hosts and their subdomains, including on redirect hops:
+    - LinkedIn (`linkedin.com`, `lnkd.in`);
+    - `ycombinator.com` (its terms forbid scraping, D-54);
+    - `devpost.com` (D-50);
+    - job aggregators whose terms forbid scraping (glassdoor, indeed, wellfound, angel.co, crunchbase);
+    - paid contact finders (hunter.io, apollo.io, rocketreach.co, zoominfo.com, lusha.com, contactout.com, signalhire.com).
+  - **Why in the client.** A future code path cannot fetch them by accident.
+  - **LinkedIn.** The bot builds two people-search URLs per posting (company + "recruiter", company + team term) as URL buttons the user opens in their own browser. The user may paste profile text or a profile URL. The URL is stored as `source_url` and never fetched.
+  - **YC.** The brief listed YC company pages as a source, but D-54 forbids fetching them. So for HN/HN-Jobs postings the bot shows a `ycombinator.com/companies?query=<company>` link for the user, and pasted text is accepted the same way.
+- **D-105 Terms stance for on-demand team and organizer pages.**
+  - The D-31/D-53 new-source rule (read the terms before writing fetching code) governs collection sources that poll a fixed site repeatedly.
+  - Contact pages are different. They are arbitrary employer or event sites, fetched once, when the user asks, for one posting, at most 2 pages: the same access a person opening the page would make.
+  - Reading every employer's terms is impossible at that scale. Instead:
+    - robots.txt is always obeyed;
+    - the UA is honest;
+    - responses are cached for 7 days;
+    - fetching stops on 403/429 and never evades them;
+    - the blocked-host list (D-104) covers known no-scraping sites.
+  - These fetches are not a "source" and do not count toward D-52.
+- **D-106 Contact type classifier is deterministic.**
+  - `classify_role` matches English and Russian stems on the role string, in this order of precedence:
+    1. recruiter (recruit, talent, sourcer, people partner, HR, рекрутер, подбор): 0.9;
+    2. founder (whole-word founder/co-founder, основатель): 0.9; bare CEO 0.6;
+    3. hiring_manager (head of, director, VP, CTO, lead, team lead, руководитель, тимлид): 0.8; bare "manager" 0.6;
+    4. engineer (engineer, developer, researcher, scientist, quant, trader, инженер, разработчик, исследователь): 0.8; analyst 0.6;
+    5. other: 0.3.
+  - "Founding Engineer" is an engineer, and "Engineering Manager" is a hiring manager.
+  - The type is always computed by code from the role, never taken from a model reply, so pasted or injected text cannot relabel a contact.
+  - Reasons: it is testable, free, and good enough for choosing a draft tone.
+- **D-107 Tailoring output is structured, and the verifier is deterministic.**
+  - **No free prose about the candidate.** Fit points, emphasize/cut/reorder items and keywords each carry a verbatim `cv_evidence` quote; gaps carry `posting_evidence`.
+  - **Checks in code:**
+    - V1: the evidence is a normalized substring of the CV;
+    - V2: every number or year in a claim appears in its evidence;
+    - V3: inflation words (led, managed, founded, expert, winner, grandmaster, PhD and similar, plus Russian stems) appear in the evidence;
+    - V4: skill-lexicon terms appear in the CV;
+    - K: keywords must appear in BOTH the CV and the posting;
+    - G: gap advice must not state invented numbers or skills.
+  - **On failure.** Failing items are removed and only counted ("Removed N unsupported statements."); their text is not echoed. A keyword that the posting asks for but the CV lacks becomes a gap.
+  - **Evidence format.** The CV goes to the model as stored text without line numbers, because evidence must be a verbatim quote and copied line markers would fail V1.
+  - **No second-model verifier.** An LLM judge can itself hallucinate, costs a call and cannot be tested deterministically. Evidence quotes plus number, inflation and skill checks catch the realistic failure modes: invented credentials, inflated scope, wrong numbers and borrowed keywords.
+  - **Known limit.** A claim can paraphrase real evidence slightly too strongly with no flagged word. The structured schema and the per-claim quote shown to the model reduce this.
+  - **Fabrication test.** P1/P2 use a bait posting (C++, kdb+, years of trading, Kaggle Grandmaster) and a canned fabricated reply.
+- **D-108 Caching: never regenerate.**
+  - Tailoring is cached per (posting, CV version) and drafts per (contact, CV version). A cached result is returned even after a prompt change, as the brief asks (prompt_version is stored for reference).
+  - Failed or unverifiable results are never cached, so a later try can succeed.
+  - A new CV version deletes stale cache and draft rows through `on_new_cv_version` hooks in the same transaction, and `/forgetcv` deletes them through `on_forget_cv` hooks. P2 and P5 register these hooks, because their tables do not exist when C3 builds the CV store. So no code ever deletes from a table that has not been migrated yet.
+  - A per-key `asyncio.Lock` makes a double press produce one LLM call.
+- **D-109 Drafts.**
+  - **Shape.** 3-5 sentences, one hook with a verbatim quote from the posting or the contact's role/note, one ask that appears in the body, and claims with CV evidence.
+  - **Guidance by contact type.** Recruiter: fit + process. Hiring manager: technical hook + 15-minute call. Founder: product hook + short call. Engineer: question + advice or referral.
+  - **Sentence-level checks.** Numbers must be in the CV, posting or contact. Inflation words must be in the CV. Skill terms must be in the CV or the hook quote.
+  - **On failure.** Offending sentences are dropped. If fewer than 3 remain, or the ask is lost, the draft is regenerated once; the correction lists the unsupported terms only. A second failure gives an honest "could not write a draft" message.
+  - **Display.** Drafts are shown in `<pre>` under "Not sent: copy it yourself."
+  - **No sending path.** No code sends email or Telegram messages to anyone but `TELEGRAM_CHAT_ID`, and the model gets no tools. P6 and P7 test this.
+- **D-110 Telegram UX details.**
+  - Posting ids (16 hex) cannot be typed comfortably, so:
+    - `/saved` lines and `/prepare` output carry tappable command links `/prepare_<id>`, `/contacts_<id>` and `/draft_<id>` (Telegram commands allow `[a-z0-9_]`, up to 32 characters);
+    - typed refs accept any unique hex prefix of at least 6 characters.
+  - **Callback prefixes:** `pr:` prepare, `dr:` draft, `ac:` add contact. Each is at most 19 bytes, well under the 64-byte limit, which is asserted.
+  - **Prepare button.** A second keyboard row `[Prepare]` appears once Like or Save is active, so the first row stays exactly as before.
+  - **Responsiveness.** LLM work happens after `cb.answer`, so Telegram's callback spinner never times out.
+  - **Long output** is split at line boundaries into chunks of at most 4000 characters, with no tag spanning lines (digest-format skill).
+- **D-111 Privacy logging rule.**
+  - Outreach code logs only ids, counts, versions, `purpose`, `model` and `error_kind`. It never logs CV text, contact names or roles, pasted text, posting text, model output or drafts. Exception messages that could echo content are reduced to their type.
+  - Canary tests (C1, C4, N1, N7, P2, P7) run flows at DEBUG and assert that no canary string reaches the logs.
+  - Nothing outreach-related is written outside the DB.
+- **D-112 Smoke test.**
+  - F2 adds `--max-scores N` to `collect` and `once`. The effective cap is `min(MAX_SCORES_PER_RUN, N)`, tested offline.
+  - The implementer runs `once --max-scores 20` once. `load_dotenv` runs with `override=False` (checked in the installed python-dotenv), but the cap comes from the CLI flag, so `.env` cannot raise it. The program reads `.env`; the agent never does.
+  - The run makes no outreach calls, because outreach is user-initiated in Telegram only.
+  - Only counts and the KZ/intl/unknown split of the digest are recorded.
+  - Exit clause: if secrets are missing or the permission system refuses, the smoke run becomes a user action (D-30) with the exact command, and the task is marked done.
+- **D-113 Task order and migration numbering.**
+  1. W1-W7 come first. They are independent of outreach and improve every digest.
+  2. Then C1-C5: the shared LLM helper, then text CV before PDF, so the CV path works before the pypdf parts.
+  3. Then P1-P4, a thin `/prepare` slice from posting text with the verifier and cache.
+  4. Then N1-N7, contacts wired into `/prepare`.
+  5. Then P5-P7: drafts need contacts. P7 is a cross-cutting privacy sweep.
+  6. Then F1 (README/DoD) and F2 (capped smoke run).
+  - Migrations take the next free `user_version` in task order: v2 W2, v3 C1, v4 C3, v5 P2, v6 N1, v7 P5. If a re-plan reorders tasks, the next free number is used, and each migration test upgrades a DB at the previous version that already holds rows. The user's real `data/oppo.db` must survive every step.
