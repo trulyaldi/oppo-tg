@@ -63,6 +63,7 @@ def parse_jobs(data: Any) -> list[Posting]:
                         str(job.get("jobDescription") or job.get("jobExcerpt") or "")
                     ),
                     posted_at=_dt(job.get("pubDate")),
+                    published_at=_dt(job.get("pubDate")),
                     kind=Kind.INTERNSHIP if is_intern else Kind.JOB,
                     raw_tags=tuple(tags),
                 )

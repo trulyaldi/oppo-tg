@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
@@ -67,6 +68,12 @@ async def test_fixture_parses():
         assert p.company == "Jump Trading"
         assert p.external_id.startswith("jumptrading:")
         assert p.posted_at is not None and p.posted_at.tzinfo is not None
+        assert p.published_at is not None and p.published_at.tzinfo is not None
+    raw = {str(j["id"]): j for j in json.loads(FIXTURE)["jobs"]}
+    for p in items:
+        raw_job = raw[p.external_id.split(":", 1)[1]]
+        assert p.published_at == datetime.fromisoformat(raw_job["first_published"])
+        assert p.posted_at == datetime.fromisoformat(raw_job["updated_at"])
     interns = [p for p in items if "intern" in p.title.lower()]
     assert interns and all(p.kind == Kind.INTERNSHIP for p in interns)
     assert any(p.kind == Kind.JOB for p in items)
@@ -136,6 +143,7 @@ def test_parse_edge_cases():
     p = items[0]
     assert p.kind == Kind.INTERNSHIP and p.remote is True and p.description == "Hi"
     assert p.posted_at == datetime(2026, 5, 1, 14, 0, tzinfo=UTC)
+    assert p.published_at == p.posted_at  # no first_published: falls back to updated_at
     assert p.deadline.isoformat() == "2026-06-01"
     assert parse_jobs([], "t", "T") == [] and parse_jobs({"jobs": "x"}, "t", "T") == []
 

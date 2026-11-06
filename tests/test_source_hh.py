@@ -57,6 +57,7 @@ async def test_fixture_parses_and_request_shape():
     assert first.kind == Kind.INTERNSHIP
     assert first.url == "https://hh.kz/vacancy/100000001"
     assert first.posted_at is not None and first.posted_at.tzinfo is not None
+    assert first.published_at == first.posted_at
     assert "highlighttext" not in first.description and "Python" in first.description
     assert [p.remote for p in res.items][:2] == [False, True]
     assert res.items[1].kind == Kind.JOB

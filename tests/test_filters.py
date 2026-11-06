@@ -193,3 +193,15 @@ def test_apprentice_irrelevant_scientist_relevant():
     assert all(v == ("filtered", "irrelevant") for v in got.values())
     for t in ["Учёный-физик", "Ученый по данным", "Ученые данных"]:
         assert relevance_ok(_p(t), CFG)
+
+
+def test_published_at_never_affects_stale_filter():
+    """Stale depends on posted_at only (D-185): a fresh published_at cannot rescue an old one."""
+    old = datetime(2026, 1, 1, tzinfo=UTC)
+    fresh = datetime(2026, 11, 5, tzinfo=UTC)
+    base = dict(source="t", external_id="1", title="Data Intern", company="A", kind=Kind.INTERNSHIP)
+    p = Posting(url="https://e.com/1", posted_at=old, published_at=fresh, **base)
+    q = Posting(url="https://e.com/1", posted_at=old, **base)
+    assert hard_filter(p, CFG, TODAY) == hard_filter(q, CFG, TODAY) == "stale"
+    r = Posting(url="https://e.com/1", posted_at=fresh, published_at=old, **base)
+    assert hard_filter(r, CFG, TODAY) is None

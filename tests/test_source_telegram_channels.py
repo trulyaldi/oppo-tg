@@ -94,6 +94,7 @@ async def test_fixture_parses_cyrillic_and_urls():
     assert p.url == "https://t.me/jobkz_example/101"
     assert p.kind == Kind.INTERNSHIP
     assert p.posted_at == datetime(2026, 11, 1, 8, 30, tzinfo=UTC)
+    assert p.published_at == p.posted_at
     assert "Оплачиваемая стажировка" in p.description
     assert by_id["jobkz_example:102"].company == "Example LLC"
     assert by_id["jobkz_example:105"].company == ""

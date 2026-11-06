@@ -57,6 +57,7 @@ def parse_vacancies(data: Any) -> list[Posting]:
                     remote=True if schedule == "remote" else (False if schedule else None),
                     description=_snippet(item),
                     posted_at=_dt(item.get("published_at")),
+                    published_at=_dt(item.get("published_at")),
                     kind=Kind.INTERNSHIP if is_intern else Kind.JOB,
                 )
             )

@@ -40,7 +40,7 @@ async def collect_all(
     for res in results:
         n_new = 0
         for p in res.items:
-            if db.upsert_posting(conn, p, fingerprint(p), clock.now()):
+            if db.upsert_posting(conn, p, fingerprint(p), clock.now()) is db.Upsert.INSERTED:
                 n_new += 1
         db.finish_source_run(
             conn,

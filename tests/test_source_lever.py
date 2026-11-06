@@ -66,6 +66,7 @@ async def test_fixture_parses():
     assert first.url.startswith("https://jobs.lever.co/palantir/")
     assert first.external_id.startswith("palantir:")
     assert first.posted_at == datetime.fromtimestamp(1778517108152 / 1000, tz=UTC)
+    assert first.published_at == first.posted_at
     assert first.posted_at.tzinfo is not None
     assert first.kind == Kind.INTERNSHIP
     assert items[2].kind == Kind.JOB

@@ -102,6 +102,7 @@ def parse_item(data: Any) -> list[Posting]:
                     remote=True if "remote" in header.lower() else None,
                     description=text,
                     posted_at=_parse_dt(c.get("created_at")),
+                    published_at=_parse_dt(c.get("created_at")),
                     kind=Kind.INTERNSHIP if INTERN_RE.search(header) else Kind.JOB,
                 )
             )

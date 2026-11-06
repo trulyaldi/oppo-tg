@@ -37,6 +37,7 @@ class Posting:
     remote: bool | None = None
     description: str = ""
     posted_at: datetime | None = None
+    published_at: datetime | None = None  # API publish time; extra data only (D-185)
     deadline: date | None = None
     kind: Kind = Kind.OTHER
     raw_tags: tuple[str, ...] = ()

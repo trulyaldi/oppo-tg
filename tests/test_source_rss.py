@@ -59,6 +59,7 @@ def test_rss_fixture_parses():
     assert first.title == "Bild AI (YC W25) Is Hiring Founding Product Engineers"
     assert first.url == "https://www.ycombinator.com/companies/bild-ai/jobs"
     assert first.posted_at == datetime(2026, 11, 5, 17, 1, 23, tzinfo=UTC)
+    assert first.published_at == first.posted_at
     assert first.company == "HN Jobs"
     assert first.kind == Kind.JOB
     assert first.external_id.startswith("HN Jobs:")

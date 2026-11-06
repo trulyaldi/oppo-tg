@@ -65,6 +65,7 @@ async def test_fixture_parses():
     assert first.kind == Kind.INTERNSHIP
     assert first.remote is True
     assert first.posted_at == datetime(2026, 5, 1, 20, 26, 46, 572000, tzinfo=UTC)
+    assert first.published_at == first.posted_at
     assert first.description
     assert items[2].kind == Kind.JOB
     assert items[3].remote is False

@@ -65,6 +65,8 @@ def parse_jobs(data: Any, token: str, company: str) -> list[Posting]:
                     remote=True if REMOTE_RE.search(location) else None,
                     description=html_to_text(html.unescape(job.get("content") or "")),
                     posted_at=_parse_dt(job.get("updated_at")),
+                    published_at=_parse_dt(job.get("first_published"))
+                    or _parse_dt(job.get("updated_at")),
                     deadline=_parse_date(job.get("application_deadline")),
                     kind=Kind.INTERNSHIP if is_intern else Kind.JOB,
                     raw_tags=tags,

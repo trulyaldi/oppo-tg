@@ -74,6 +74,7 @@ def parse_feed(text: str, name: str, kind: str) -> list[Posting]:
                     url=link,
                     description=description,
                     posted_at=_dt(entry),
+                    published_at=_dt(entry),
                     deadline=_deadline(description),
                     kind=Kind.INTERNSHIP if is_intern else base_kind,
                     raw_tags=tags,

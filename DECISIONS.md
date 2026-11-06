@@ -889,3 +889,12 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **Run-limit skips.** Items skipped by the per-run `max_calls` stay `skipped` and are no longer a failure either.
   - **Ordering.** `pending_for_scoring` now orders `baseline ASC` first, then newest first, so a baseline backlog inside the SQL `LIMIT` window cannot crowd out new postings.
   - **Warning.** `cap_warned:score:<Almaty day>` state key, sent from `report_scoring_outcome` (only when a bot is given), independent of the failure throttle. It is sent for the sub-cap too, because those items are also counted as capped.
+
+## 2026-11-07 — FC-03 implementation (implementer)
+
+- **D-200 Publish timestamps and content hash details.**
+  - **Hash location.** `content_hash` lives in `src/text.py` (not `dedupe.py`) because `db.py` needs it and `dedupe.py` imports `db`. Fields are NFKC-normalized, whitespace-collapsed and joined with a unit separator before sha256.
+  - **Return type.** `Upsert` is a `StrEnum` in `db.py`. Callers compare with `is Upsert.INSERTED`; `collect_all` counts only INSERTED as new. The three existing `test_db.py` bool assertions were updated.
+  - **CHANGED scope.** A changed hash updates title, location, description, content_hash and `source_published_at`, but not company, fingerprint, kind, url or deadline (only the fields listed in the plan).
+  - **Target/baseline.** `collect_all` still calls with defaults (`target=""`, `baseline=False`); FC-04/FC-05 pass the real values.
+

@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 from src.models import Posting, ScoreResult
+from src.text import content_hash
 
 SCHEMA_VERSION = 8
 MAX_SCORE_ATTEMPTS = 3
@@ -235,13 +237,30 @@ def migrate(conn: sqlite3.Connection) -> None:
 # --- postings -------------------------------------------------------------
 
 
-def upsert_posting(conn: sqlite3.Connection, p: Posting, fingerprint: str, now: datetime) -> bool:
-    """Insert a posting (True) or only bump last_seen_at if it exists (False)."""
+class Upsert(StrEnum):
+    INSERTED = "inserted"
+    CHANGED = "changed"
+    UNCHANGED = "unchanged"
+
+
+def upsert_posting(
+    conn: sqlite3.Connection,
+    p: Posting,
+    fingerprint: str,
+    now: datetime,
+    *,
+    target: str = "",
+    baseline: bool = False,
+) -> Upsert:
+    """Insert, update changed content, or only bump last_seen_at (D-185)."""
     ts = _iso(now)
+    chash = content_hash(p)
+    published = _iso(p.published_at) if p.published_at else None
     cur = conn.execute(
         "INSERT OR IGNORE INTO postings (id, source, external_id, title, company, url, location,"
         " remote, description, posted_at, deadline, kind, raw_tags, fingerprint,"
-        " first_seen_at, last_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        " first_seen_at, last_seen_at, target, source_published_at, content_hash, baseline)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (
             p.id,
             p.source,
@@ -259,14 +278,34 @@ def upsert_posting(conn: sqlite3.Connection, p: Posting, fingerprint: str, now: 
             fingerprint,
             ts,
             ts,
+            target,
+            published,
+            chash,
+            int(baseline),
         ),
     )
     if cur.rowcount == 1:
         conn.commit()
-        return True
-    conn.execute("UPDATE postings SET last_seen_at=? WHERE id=?", (ts, p.id))
+        return Upsert.INSERTED
+    stored = conn.execute("SELECT content_hash FROM postings WHERE id=?", (p.id,)).fetchone()
+    old_hash = stored["content_hash"] if stored else ""
+    if old_hash == "":
+        conn.execute(
+            "UPDATE postings SET last_seen_at=?, content_hash=? WHERE id=?", (ts, chash, p.id)
+        )
+        outcome = Upsert.UNCHANGED
+    elif old_hash != chash:
+        conn.execute(
+            "UPDATE postings SET last_seen_at=?, title=?, location=?, description=?,"
+            " content_hash=?, source_published_at=? WHERE id=?",
+            (ts, p.title, p.location, p.description, chash, published, p.id),
+        )
+        outcome = Upsert.CHANGED
+    else:
+        conn.execute("UPDATE postings SET last_seen_at=? WHERE id=?", (ts, p.id))
+        outcome = Upsert.UNCHANGED
     conn.commit()
-    return False
+    return outcome
 
 
 def get_posting(conn: sqlite3.Connection, posting_id: str) -> sqlite3.Row | None:

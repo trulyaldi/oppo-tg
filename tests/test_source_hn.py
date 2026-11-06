@@ -64,6 +64,7 @@ async def test_fixture_parses():
     assert first.remote is True
     assert first.url == "https://news.ycombinator.com/item?id=50338732"
     assert first.posted_at is not None and first.posted_at.date().isoformat() == "2026-11-02"
+    assert first.published_at == first.posted_at
     assert first.description.startswith("Simple Analytics | DevOps Engineer")
     by_id = {p.external_id: p for p in items}
     assert "50339999" not in by_id  # deleted comment skipped

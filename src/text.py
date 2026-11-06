@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
+import unicodedata
 
 from bs4 import BeautifulSoup
+
+from src.models import Posting
 
 # Whole-word intern match: "Intern", "Internship", "Interns", never "Internal"/"International".
 INTERN_RE = re.compile(r"\bintern(?:ship)?s?\b", re.IGNORECASE)
@@ -25,6 +29,15 @@ def html_to_text(html: str) -> str:
         tag.append("\n")
     lines = (" ".join(line.split()) for line in soup.get_text().splitlines())
     return "\n".join(line for line in lines if line)
+
+
+def content_hash(p: Posting) -> str:
+    """sha256 over NFKC-normalized, whitespace-collapsed title, company, location, description."""
+    parts = (
+        " ".join(unicodedata.normalize("NFKC", v).split())
+        for v in (p.title, p.company, p.location, p.description)
+    )
+    return hashlib.sha256("\x1f".join(parts).encode()).hexdigest()
 
 
 def truncate(text: str, limit: int, suffix: str = "…") -> str:

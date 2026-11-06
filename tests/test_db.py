@@ -4,6 +4,7 @@ import pytest
 
 from src import db
 from src.models import Kind, Posting, ScoreResult
+from src.text import content_hash
 
 T0 = datetime(2026, 11, 6, 9, 0, tzinfo=UTC)
 TABLES = {
@@ -53,10 +54,10 @@ def test_migrate_idempotent(tmp_path):
 
 def test_upsert_new_then_existing(conn):
     p = mk()
-    assert db.upsert_posting(conn, p, "fp", T0) is True
+    assert db.upsert_posting(conn, p, "fp", T0) is db.Upsert.INSERTED
     before = dict(db.get_posting(conn, p.id))
     later = T0 + timedelta(hours=3)
-    assert db.upsert_posting(conn, p, "other-fp", later) is False
+    assert db.upsert_posting(conn, p, "other-fp", later) is db.Upsert.UNCHANGED
     after = dict(db.get_posting(conn, p.id))
     assert after["last_seen_at"] == later.isoformat()
     before.pop("last_seen_at")
@@ -163,8 +164,8 @@ def test_connect_creates_missing_parent_dirs(tmp_path):
 
 def test_reupsert_keeps_first_seen_at(conn):
     p = mk(1)
-    assert db.upsert_posting(conn, p, "fp", T0) is True
-    assert db.upsert_posting(conn, p, "fp", T0 + timedelta(days=3)) is False
+    assert db.upsert_posting(conn, p, "fp", T0) is db.Upsert.INSERTED
+    assert db.upsert_posting(conn, p, "fp", T0 + timedelta(days=3)) is db.Upsert.UNCHANGED
     row = conn.execute("SELECT first_seen_at, last_seen_at FROM postings").fetchone()
     assert row["first_seen_at"] == T0.isoformat()
     assert row["last_seen_at"] == (T0 + timedelta(days=3)).isoformat()
@@ -185,3 +186,38 @@ def test_prune_uses_last_seen_at(conn):
     assert db.prune(conn, now)["postings"] == 1
     left = [r["external_id"] for r in conn.execute("SELECT external_id FROM postings")]
     assert left == ["1"]
+
+
+def test_content_hash_ignores_whitespace_only_changes():
+    a = mk(1, description="Build  models\n\nwith   Python")
+    b = mk(1, description="Build models with Python ")
+    assert content_hash(a) == content_hash(b)
+    assert content_hash(a) != content_hash(mk(1, description="Build models with Rust"))
+    assert content_hash(mk(1, location="Almaty")) != content_hash(mk(1, location="Astana"))
+
+
+def test_upsert_changed_updates_content_not_status(conn):
+    p = mk(1, description="old text")
+    assert db.upsert_posting(conn, p, "fp", T0, target="t1", baseline=True) is db.Upsert.INSERTED
+    db.set_status(conn, p.id, "scored")
+    row = db.get_posting(conn, p.id)
+    assert row["target"] == "t1" and row["baseline"] == 1 and row["content_hash"]
+    later = T0 + timedelta(days=2)
+    changed = mk(1, description="new text", location="Astana", published_at=later)
+    assert db.upsert_posting(conn, changed, "fp", later) is db.Upsert.CHANGED
+    row = db.get_posting(conn, p.id)
+    assert row["description"] == "new text" and row["location"] == "Astana"
+    assert row["content_hash"] == content_hash(changed)
+    assert row["source_published_at"] == later.isoformat()
+    assert row["first_seen_at"] == T0.isoformat() and row["last_seen_at"] == later.isoformat()
+    assert row["status"] == "scored" and row["baseline"] == 1 and row["target"] == "t1"
+    assert db.upsert_posting(conn, changed, "fp", later) is db.Upsert.UNCHANGED
+
+
+def test_upsert_empty_stored_hash_filled_silently(conn):
+    p = mk(1, description="text")
+    db.upsert_posting(conn, p, "fp", T0)
+    conn.execute("UPDATE postings SET content_hash='', description='legacy' WHERE id=?", (p.id,))
+    assert db.upsert_posting(conn, p, "fp", T0 + timedelta(hours=1)) is db.Upsert.UNCHANGED
+    row = db.get_posting(conn, p.id)
+    assert row["content_hash"] == content_hash(p) and row["description"] == "legacy"

@@ -55,6 +55,7 @@ def parse_board(data: Any, board: str, company: str) -> list[Posting]:
                     description=str(job.get("descriptionPlain") or "")
                     or html_to_text(str(job.get("descriptionHtml") or "")),
                     posted_at=_parse_dt(job.get("publishedAt")),
+                    published_at=_parse_dt(job.get("publishedAt")),
                     kind=Kind.INTERNSHIP if is_intern else Kind.JOB,
                     raw_tags=tags,
                 )

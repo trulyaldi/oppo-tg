@@ -2478,7 +2478,7 @@ Each migration gets a test that starts from the previous version with sample row
   - A run with errors and 0 scored still sends the notice and returns 1.
   - Outreach cap tests are unchanged and green.
 
-### FC-03 [ ] Source publish timestamps and content hash on upsert
+### FC-03 [x] Source publish timestamps and content hash on upsert
 - Build (D-185):
   - `Posting` gains `published_at: datetime | None = None`. It is the API publish time and extra data only.
   - Parsers fill it:

@@ -59,6 +59,7 @@ def parse_postings(data: Any, company_slug: str, company: str) -> list[Posting]:
                     description=str(job.get("descriptionPlain") or "")
                     or html_to_text(str(job.get("description") or "")),
                     posted_at=_ms_to_dt(job.get("createdAt")),
+                    published_at=_ms_to_dt(job.get("createdAt")),
                     kind=Kind.INTERNSHIP if is_intern else Kind.JOB,
                     raw_tags=tags,
                 )

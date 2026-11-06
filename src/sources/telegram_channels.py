@@ -95,6 +95,7 @@ def parse_message(channel: str, msg: Any) -> Posting | None:
             url=f"https://t.me/{channel}/{msg_id}",
             description=text,
             posted_at=date,
+            published_at=date,
             kind=Kind.INTERNSHIP if INTERN_RE.search(text[:300]) else Kind.JOB,
             raw_tags=(channel,),
         )

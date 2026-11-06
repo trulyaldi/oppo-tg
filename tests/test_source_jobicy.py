@@ -53,6 +53,7 @@ def test_fixture_parses():
     assert first.company == "Doximity" and first.location == "USA"
     assert first.kind is Kind.JOB
     assert first.posted_at == datetime(2026, 11, 6, 3, 20, 12, tzinfo=UTC)
+    assert first.published_at == first.posted_at
     assert "Data Science & Analytics" in first.raw_tags and "Full-Time" in first.raw_tags
 
 
