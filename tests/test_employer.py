@@ -54,3 +54,33 @@ def test_normalize():
     assert normalize_company("Ёлка, ООО") == "елка"
     assert normalize_company("Inc.") == ""
     assert normalize_company("The Foo Co.") == "foo co"
+
+
+def hint_cls(company, region="unknown", conf=0.0, startup=None, kind=Kind.JOB, hint="kz"):
+    c = classify_employer(company, kind, region, conf, startup, W, hint)
+    return c.category, c.source
+
+
+def test_hint_unknown_company_is_kz():
+    assert hint_cls("Nobody Ltd") == ("kz_employer", "hint")
+
+
+def test_hint_low_confidence_llm_is_overridden():
+    assert hint_cls("Nobody Ltd", "intl", 0.3) == ("kz_employer", "hint")
+
+
+def test_hint_loses_to_confident_intl():
+    assert hint_cls("Nobody Ltd", "intl", 0.9) == ("intl_other", "llm")
+
+
+def test_hint_loses_to_watchlist():
+    assert hint_cls("Citadel") == ("intl_top_tier", "watchlist")
+
+
+def test_hint_startup():
+    assert hint_cls("Nobody Ltd", kind=Kind.STARTUP) == ("kz_startup", "hint")
+    assert hint_cls("Nobody Ltd", startup=True) == ("kz_startup", "hint")
+
+
+def test_no_hint_stays_unknown():
+    assert hint_cls("Nobody Ltd", hint=None) == ("unknown", "none")

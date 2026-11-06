@@ -15,7 +15,7 @@ from src import db
 from src.clock import Clock, SystemClock
 from src.config import AppConfig, Settings
 from src.delivery.format import Item, feedback_keyboard, render_digest_header, render_item
-from src.ranking.adjust import recompute_adjusted
+from src.ranking.adjust import recompute_adjusted, region_hints
 from src.ranking.quotas import pick_with_quotas
 from src.ranking.weights import BUILTIN_WEIGHTS, Weights, bucket, load_weights
 
@@ -60,7 +60,7 @@ def select_digest(
     """
     if weights is None:
         weights = load_weights_checked(cfg)[0]
-    recompute_adjusted(conn, weights)
+    recompute_adjusted(conn, weights, region_hints(cfg))
     th = cfg.thresholds
     cutoff = (clock or SystemClock()).now() - timedelta(hours=th.fresh_window_hours)
     band = th.digest_score_band if th.digest_score_band > 0 else 1.0

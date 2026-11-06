@@ -1013,3 +1013,8 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **Mechanism.** `hh.fetch` uses `PoliteClient.fetch()` and on status 400/401/403 raises `SourceUnavailable` with the exact D-182 text at once (every query would fail the same way). `source_runs.error` therefore reads `SourceUnavailable: hh ...`.
   - **User-Agent.** `HH-User-Agent: oppo-tg/0.1 (<HTTP_CONTACT>)` from `Settings.http_contact` (not the generic client UA).
   - **Notice.** The collector has no bot, so the source stores the message in `state` (`hh_auth_error_pending`); `score_pending` (which already has bot and chat id) calls `notify_auth_error_once`, which sends at most one message per Asia/Almaty day (`hh_auth_notice_day`) and clears the pending flag. The notice can lag the failing run by one scoring step.
+
+- **D-220 FC-26 hint plumbing.**
+  - `recompute_adjusted(conn, weights, hints=None)` takes a source -> hint map built by `region_hints(cfg)` from `[sources.*] region_hint`. Digest, alerts and /top pass it.
+  - A changed hint must trigger a recompute, but `weights.version` is a file hash. When hints are set, the stored `weights_version` is `version+src=hint,...`; with no hints it is unchanged.
+  - Only the hint value "kz" is acted on; other values are ignored.

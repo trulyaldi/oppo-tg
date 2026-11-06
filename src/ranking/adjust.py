@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from typing import Any
 
 from src.ranking.employer import classify_employer
 from src.ranking.weights import Weights
@@ -14,6 +15,16 @@ _LABELS = {
     "kz_startup": "KZ startup",
 }
 _INTL = ("intl_top_tier", "intl_other")
+
+
+def region_hints(cfg: Any) -> dict[str, str]:
+    """Source name -> region_hint from [sources.*] config (D-194)."""
+    out: dict[str, str] = {}
+    for name, sec in (getattr(cfg, "sources", None) or {}).items():
+        hint = sec.get("region_hint") if isinstance(sec, dict) else None
+        if isinstance(hint, str) and hint.strip():
+            out[name] = hint.strip().lower()
+    return out
 
 
 def _signed(x: float) -> str:
@@ -46,14 +57,20 @@ def _opt_bool(v: int | None) -> bool | None:
     return None if v is None else bool(v)
 
 
-def recompute_adjusted(conn: sqlite3.Connection, weights: Weights) -> int:
+def recompute_adjusted(
+    conn: sqlite3.Connection, weights: Weights, hints: dict[str, str] | None = None
+) -> int:
     """Re-classify and re-adjust rows whose weights_version differs. Returns rows updated."""
+    hints = hints or {}
+    version = weights.version
+    if hints:  # a changed hint must trigger a recompute too
+        version += "+" + ",".join(f"{k}={v}" for k, v in sorted(hints.items()))
     rows = conn.execute(
         "SELECT s.posting_id, s.base_score, s.employer_region, s.region_confidence,"
-        " s.employer_is_startup, s.visa_barrier, p.company, p.kind, p.remote"
+        " s.employer_is_startup, s.visa_barrier, p.company, p.kind, p.remote, p.source"
         " FROM scores s JOIN postings p ON p.id = s.posting_id"
         " WHERE s.weights_version IS NULL OR s.weights_version != ?",
-        (weights.version,),
+        (version,),
     ).fetchall()
     with conn:
         for r in rows:
@@ -64,6 +81,7 @@ def recompute_adjusted(conn: sqlite3.Connection, weights: Weights) -> int:
                 r["region_confidence"],
                 _opt_bool(r["employer_is_startup"]),
                 weights,
+                hints.get(r["source"]),
             ).category
             adjusted, adj, detail = adjust(
                 r["base_score"], cat, _opt_bool(r["visa_barrier"]), _opt_bool(r["remote"]), weights

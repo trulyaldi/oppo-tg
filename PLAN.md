@@ -2864,7 +2864,7 @@ Each migration gets a test that starts from the previous version with sample row
   - Without a token, the disabled reason is unchanged.
   - The README test pins "application token" and "HTTP_CONTACT".
 
-### FC-26 [ ] Kazakhstan employer-region hint for hh and Telegram postings
+### FC-26 [x] Kazakhstan employer-region hint for hh and Telegram postings
 - Build (D-194):
   - `[sources.hh] region_hint = "kz"` and `[sources.telegram_channels] region_hint = "kz"`.
   - `classify_employer(..., hint=None)` applies the hint only after the watchlist, and only when the LLM region is unknown or below `region_min_confidence`. The classification source is "hint".

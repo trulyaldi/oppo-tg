@@ -13,7 +13,7 @@ from src.clock import Clock
 from src.config import AppConfig, Settings
 from src.delivery.digest import is_paused, item_from_row, load_weights_checked
 from src.delivery.format import Item, feedback_keyboard, render_item
-from src.ranking.adjust import recompute_adjusted
+from src.ranking.adjust import recompute_adjusted, region_hints
 from src.ranking.weights import Weights
 
 log = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def select_alerts(
     """Undelivered scored items to alert, as (item, kind): base score rules (D-97), then fresh."""
     if weights is None:
         weights = load_weights_checked(cfg)[0]
-    recompute_adjusted(conn, weights)
+    recompute_adjusted(conn, weights, region_hints(cfg))
     th = cfg.thresholds
     now = clock.now()
     today = now.astimezone(ZoneInfo(tz)).date()

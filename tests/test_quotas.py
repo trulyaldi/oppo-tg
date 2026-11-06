@@ -200,3 +200,52 @@ async def test_invalid_weights_empty_still_sends(conn, tmp_path):
     await send_digest(bot, conn, SETTINGS, cfg, FixedClock(NOW))
     assert bot.sent[-1] == "No new opportunities today."
     assert bot.sent[0].startswith("weights.yaml invalid")
+
+
+def _add_src(conn, source, pid, company, region, conf, base=7.0):
+    conn.execute(
+        "INSERT INTO postings (id, source, external_id, title, company, url, fingerprint,"
+        " status, first_seen_at, last_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (pid, source, pid, f"T {pid}", company, "https://x.example", "fp" + pid, "scored", TS, TS),
+    )
+    conn.execute(
+        "INSERT INTO scores (posting_id, base_score, adjusted_score, reason, model,"
+        " prompt_version, scored_at, employer_region, region_confidence)"
+        " VALUES (?,?,?,?,?,?,?,?,?)",
+        (pid, base, base, "r", "m", "v", TS, region, conf),
+    )
+
+
+def test_region_hint_by_source_fills_kz_quota(conn):
+    cfg = AppConfig.from_dict({"sources": {"hh": {"region_hint": "kz"}}})
+    _add_src(conn, "hh", "h1", "Unknown Co", "unknown", 0.0)
+    _add_src(conn, "hh", "h2", "Foreign Co", "intl", 0.9)
+    _add_src(conn, "hh", "h3", "Citadel", "unknown", 0.0)
+    _add_src(conn, "other", "o1", "Unknown Co", "unknown", 0.0)
+    conn.commit()
+    items = {i.posting_id: i.employer_category for i in select_digest(conn, cfg, W)}
+    assert items["h1"] == "kz_employer"
+    assert items["h2"] == "intl_other"
+    assert items["h3"] == "intl_top_tier"
+    assert items.get("o1", "unknown") == "unknown"
+
+
+def test_region_hint_telegram_startup(conn):
+    cfg = AppConfig.from_dict({"sources": {"telegram_channels": {"region_hint": "kz"}}})
+    _add_src(conn, "telegram_channels", "t1", "Some Startup", "unknown", 0.0)
+    conn.execute("UPDATE scores SET employer_is_startup=1 WHERE posting_id='t1'")
+    conn.commit()
+    items = {i.posting_id: i.employer_category for i in select_digest(conn, cfg, W)}
+    assert items["t1"] == "kz_startup"
+
+
+def test_kz_quota_fills_from_hint_items(conn):
+    cfg = AppConfig.from_dict({"sources": {"hh": {"region_hint": "kz"}}})
+    for n in range(6):
+        _add_src(conn, "hh", f"hk{n}", f"Unknown {n}", "unknown", 0.0, base=6.0 + n / 10)
+        _add_src(conn, "other", f"oi{n}", f"Foreign {n}", "intl", 0.9, base=8.0 + n / 10)
+    conn.commit()
+    items = select_digest(conn, cfg, W)
+    kz = [i for i in items if i.employer_category == "kz_employer"]
+    assert len(kz) >= W.digest_quotas.kz
+    assert all(i.posting_id.startswith("hk") for i in kz)

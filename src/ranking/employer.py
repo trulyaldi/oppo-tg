@@ -35,7 +35,7 @@ _DOT = re.compile(r"(?<!\w)\.|\.(?!\w)")
 @dataclass(frozen=True)
 class Classification:
     category: str  # intl_top_tier|intl_other|kz_employer|kz_startup|unknown
-    source: str  # watchlist|llm|none
+    source: str  # watchlist|llm|hint|none
 
 
 def normalize_company(name: str | None) -> str:
@@ -59,6 +59,7 @@ def classify_employer(
     confidence: float,
     is_startup: bool | None,
     weights: Weights,
+    hint: str | None = None,
 ) -> Classification:
     norm = normalize_company(company)
     if norm:
@@ -74,4 +75,7 @@ def classify_employer(
             return Classification("kz_startup" if startup else "kz_employer", "llm")
         if region == "intl":
             return Classification("intl_other", "llm")
+    if hint == "kz":  # D-194: only after the watchlist, and only for unknown/low-confidence
+        startup = is_startup is True or str(kind) == Kind.STARTUP.value
+        return Classification("kz_startup" if startup else "kz_employer", "hint")
     return Classification("unknown", "none")
