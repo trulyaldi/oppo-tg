@@ -7,14 +7,18 @@ import json
 import logging
 import time
 from collections.abc import Awaitable, Callable
+from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import urlsplit
+from urllib.robotparser import RobotFileParser
 
 import httpx
 
 log = logging.getLogger(__name__)
 
 RETRY_AFTER_CAP_S = 60.0
+ROBOTS_TTL = timedelta(hours=24)
+ROBOTS_AGENT = "oppo-tg"
 RETRY_STATUSES = frozenset({429}) | frozenset(range(500, 600))
 
 SleepFn = Callable[[float], Awaitable[None]]
@@ -65,6 +69,7 @@ class PoliteClient:
         url: str,
         params: dict[str, Any] | None,
         headers: dict[str, str] | None,
+        raw: bool = False,
     ) -> httpx.Response | None:
         """GET with rate limiting and retries. None on failure; never raises."""
         host = urlsplit(url).netloc.lower()
@@ -82,7 +87,7 @@ class PoliteClient:
                     self._last_request[host] = self._monotonic()
             if resp is not None:
                 if resp.status_code not in RETRY_STATUSES:
-                    if resp.status_code >= 400:
+                    if resp.status_code >= 400 and not raw:
                         log.info("HTTP %s for %s", resp.status_code, url)
                         return None
                     return resp
@@ -98,15 +103,91 @@ class PoliteClient:
         log.warning("giving up on %s after %d retries", url, self.max_retries)
         return None
 
+    async def _robots_allowed(self, url: str) -> bool:
+        """robots.txt check, cached 24h per host. 4xx -> allowed; 5xx/failure -> denied."""
+        parts = urlsplit(url)
+        host = parts.netloc.lower()
+        now = self.clock.now()
+        row = self.db.execute("SELECT * FROM robots_cache WHERE host=?", (host,)).fetchone()
+        if row is not None and now - datetime.fromisoformat(row["fetched_at"]) < ROBOTS_TTL:
+            body, allowed_all = row["body"], bool(row["allowed_all"])
+        else:
+            resp = await self._fetch(f"{parts.scheme}://{host}/robots.txt", None, None, raw=True)
+            if resp is None or resp.status_code >= 500:
+                log.warning("robots.txt unavailable for %s; skipping", host)
+                return False
+            if resp.status_code >= 400:
+                body, allowed_all = "", True
+            else:
+                body, allowed_all = resp.text, False
+            with self.db:
+                self.db.execute(
+                    "INSERT OR REPLACE INTO robots_cache(host, body, allowed_all, fetched_at)"
+                    " VALUES (?,?,?,?)",
+                    (host, body, int(allowed_all), now.isoformat()),
+                )
+        if allowed_all:
+            return True
+        rp = RobotFileParser()
+        rp.parse(body.splitlines())
+        target = parts.path or "/"
+        if parts.query:
+            target += "?" + parts.query
+        return rp.can_fetch(ROBOTS_AGENT, target)
+
     async def get_text(
         self,
         url: str,
         *,
         params: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
+        ttl_s: float | None = None,
+        check_robots: bool = True,
     ) -> str | None:
-        resp = await self._fetch(url, params, headers)
-        return None if resp is None else resp.text
+        # Without a db (and clock) there is no robots/response cache (see D-34).
+        if self.db is None or self.clock is None:
+            resp = await self._fetch(url, params, headers)
+            return None if resp is None else resp.text
+        cache_key = str(httpx.URL(url, params=params))
+        now = self.clock.now()
+        cached = None
+        if ttl_s is not None:
+            cached = self.db.execute(
+                "SELECT * FROM http_cache WHERE url=?", (cache_key,)
+            ).fetchone()
+            if (
+                cached is not None
+                and cached["status"] == 200
+                and (now - datetime.fromisoformat(cached["fetched_at"])).total_seconds() < ttl_s
+            ):
+                return cached["body"]
+        if check_robots and not await self._robots_allowed(url):
+            log.info("robots.txt disallows %s", url)
+            return None
+        req_headers = dict(headers or {})
+        if cached is not None and cached["status"] == 200:
+            if cached["etag"]:
+                req_headers["If-None-Match"] = cached["etag"]
+            if cached["last_modified"]:
+                req_headers["If-Modified-Since"] = cached["last_modified"]
+        resp = await self._fetch(url, params, req_headers or None)
+        if resp is None:
+            return None
+        if ttl_s is None:
+            return resp.text
+        if resp.status_code == 304 and cached is not None:
+            body = cached["body"]
+            etag, lm = cached["etag"], cached["last_modified"]
+        else:
+            body = resp.text
+            etag, lm = resp.headers.get("ETag"), resp.headers.get("Last-Modified")
+        with self.db:
+            self.db.execute(
+                "INSERT OR REPLACE INTO http_cache(url, status, etag, last_modified, body,"
+                " fetched_at) VALUES (?,?,?,?,?,?)",
+                (cache_key, 200, etag, lm, body, now.isoformat()),
+            )
+        return body
 
     async def get_json(
         self,
@@ -114,8 +195,12 @@ class PoliteClient:
         *,
         params: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
+        ttl_s: float | None = None,
+        check_robots: bool = True,
     ) -> Any | None:
-        text = await self.get_text(url, params=params, headers=headers)
+        text = await self.get_text(
+            url, params=params, headers=headers, ttl_s=ttl_s, check_robots=check_robots
+        )
         if text is None:
             return None
         try:

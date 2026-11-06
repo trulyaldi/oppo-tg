@@ -308,7 +308,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - 4 consecutive 500s -> returns None after `max_retries` retries, no exception.
   - Two requests to the same host record a rate-limit sleep >= `min_interval_s` (FixedClock/fake monotonic).
 
-### T05 [ ] HTTP client: robots.txt and response cache
+### T05 [x] HTTP client: robots.txt and response cache
 - Extend `PoliteClient` with robots.txt checking (per host, cached 24h in `robots_cache`) and `http_cache` with TTL + ETag/Last-Modified conditional requests.
 - Files: `src/http.py`, `tests/test_http_robots_cache.py`, `tests/fixtures/robots_disallow_jobs.txt`.
 - Acceptance:
