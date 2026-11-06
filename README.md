@@ -265,7 +265,7 @@ Only you can do these.
    `https://api.telegram.org/bot<TOKEN>/getUpdates` and read `message.chat.id` (or message
    @userinfobot). The bot answers only that chat.
 3. Optional credentials (they unlock extra sources and are not needed for the 6-family minimum):
-   - `HH_ACCESS_TOKEN` (recommended for Kazakhstan jobs): register an application at https://dev.hh.ru.
+   - `HH_ACCESS_TOKEN` (recommended for Kazakhstan jobs): see the "hh.kz" section below.
    - `TG_API_ID` and `TG_API_HASH` from https://my.telegram.org, then do the one-time Telethon login
      (it reads the environment, not `.env`, so export the variables first):
 
@@ -363,3 +363,19 @@ These evals have never been run yet. Re-run them after any prompt, profile or ru
   fails by design when fewer than 6 credential-free families are enabled. Re-enable a source.
   Other tests use `tests/fixtures/config_repo_snapshot.toml`, so channel or board edits are safe.
 - Tests never use the network or `.env`; a failing test is not a credentials problem.
+
+## hh.kz
+
+hh.kz vacancies need an hh application token (D-182).
+
+1. Register an application at https://dev.hh.ru (hh may moderate new apps).
+2. Request the application token once with `grant_type=client_credentials` at
+   `https://api.hh.ru/token`. Requesting it again revokes the old one, and it has no expiry.
+   User tokens expire after 14 days and are not supported.
+3. Put it in `HH_ACCESS_TOKEN` and set `HTTP_CONTACT` to your email. hh requires a User-Agent
+   naming the app and a contact; the bot sends `oppo-tg/0.1 (<HTTP_CONTACT>)`.
+
+On HTTP 400 or 401/403 the source stops with a plain message (shown in `/sources`) and you get
+one Telegram notice per day. D-47 correction: the "terms" link `hh.ru/article/1175` is the
+search query-language page; the real terms are at `dev.hh.ru/admin/developer_agreement` (login
+needed, not read).

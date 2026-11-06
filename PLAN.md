@@ -2847,7 +2847,7 @@ Each migration gets a test that starts from the previous version with sample row
   - An unauthorized fake session, or all channels raising, gives a `source_runs` row with `ok=0` and an error.
   - `test_gitignore.py` also asserts `data/other.session` is ignored.
 
-### FC-25 [ ] hh: documented token type and User-Agent, clear failures
+### FC-25 [x] hh: documented token type and User-Agent, clear failures
 - Build (D-182):
   - `HH-User-Agent: oppo-tg/0.1 (<HTTP_CONTACT>)`, in the documented format.
   - Use `fetch()` (FC-08) so status codes are visible:

@@ -117,3 +117,9 @@ def test_readme_says_claims_check_is_heuristic():
     assert "deterministic heuristic" in text
     assert "D-161" in text
     assert "Read every draft and tailoring tip before you use it" in text
+
+
+def test_readme_has_hh_section():
+    sec = _section("hh.kz")
+    for needle in ("dev.hh.ru", "client_credentials", "HH_ACCESS_TOKEN", "HTTP_CONTACT", "1175"):
+        assert needle in sec

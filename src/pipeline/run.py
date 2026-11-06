@@ -301,4 +301,7 @@ async def score_pending(
         await report_scoring_outcome(
             bot, chat_id, conn, clock, stats, scorer.last_error, model, sc.daily_call_cap
         )
+        from src.sources.hh import notify_auth_error_once
+
+        await notify_auth_error_once(bot, chat_id, conn, clock)  # FC-25, D-219
     return stats

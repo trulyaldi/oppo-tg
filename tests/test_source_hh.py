@@ -124,3 +124,50 @@ def test_registered_and_disabled_without_token():
     assert src.disabled_reason(no_tok, _cfg()) == "needs HH_ACCESS_TOKEN"
     assert src.enabled(tok, _cfg())
     assert not src.enabled(tok, _cfg([]))
+
+
+async def test_auth_and_user_agent_errors_exact_text_and_header():
+    from src.sources.hh import UA_ERROR, token_error
+
+    for status, text in ((400, UA_ERROR), (401, token_error(401)), (403, token_error(403))):
+        ctx, requests = _ctx(httpx.Response(status, json={}), _cfg(["a", "b"]), token="tok")
+        res = await run_source(HHSource(), ctx)
+        assert not res.ok and res.error == f"SourceUnavailable: {text}"
+        assert len([r for r in requests if r.url.path == "/vacancies"]) == 1
+    assert "set HTTP_CONTACT to your email" in UA_ERROR
+    assert "user tokens expire after 14 days" in token_error(401)
+
+
+async def test_user_agent_uses_contact():
+    ctx, requests = _ctx(httpx.Response(200, text=FIXTURE), _cfg(), token="tok")
+    ctx.settings = Settings.from_env(
+        dict(ENV, HH_ACCESS_TOKEN="tok", HTTP_CONTACT="me@example.com")
+    )
+    await run_source(HHSource(), ctx)
+    api = [r for r in requests if r.url.path == "/vacancies"]
+    assert api[0].headers["HH-User-Agent"] == "oppo-tg/0.1 (me@example.com)"
+
+
+async def test_one_notice_per_day():
+    from datetime import timedelta
+
+    from src.sources.hh import notify_auth_error_once
+
+    class Bot:
+        def __init__(self):
+            self.sent = []
+
+        async def send_message(self, chat, text, **kw):
+            self.sent.append(text)
+
+    ctx, _ = _ctx(httpx.Response(401, json={}), _cfg(), token="tok")
+    conn = ctx.http.db
+    bot = Bot()
+    assert not await notify_auth_error_once(bot, 1, conn, ctx.clock)  # nothing pending
+    await run_source(HHSource(), ctx)
+    assert await notify_auth_error_once(bot, 1, conn, ctx.clock)
+    await run_source(HHSource(), ctx)
+    assert not await notify_auth_error_once(bot, 1, conn, ctx.clock)  # same day
+    later = FixedClock(ctx.clock.now() + timedelta(days=1))
+    assert await notify_auth_error_once(bot, 1, conn, later)
+    assert len(bot.sent) == 2 and "HH_ACCESS_TOKEN" in bot.sent[0]
