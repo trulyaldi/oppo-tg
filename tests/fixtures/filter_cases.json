@@ -1,0 +1,12 @@
+[
+  {"name": "senior quant", "title": "Senior Quant Researcher", "kind": "job", "expect": "senior_only"},
+  {"name": "senior intern passes", "title": "Senior Software Engineer Intern", "kind": "internship", "expect": null},
+  {"name": "unpaid internship", "title": "Unpaid marketing internship", "kind": "internship", "expect": "unpaid"},
+  {"name": "unpaid hackathon passes", "title": "Hack Night", "kind": "hackathon", "description": "Unpaid, volunteer only judges; prizes for teams", "expect": null},
+  {"name": "spam", "title": "Crypto signals, earn $500/day", "kind": "job", "expect": "spam"},
+  {"name": "deadline yesterday", "title": "ML Intern", "kind": "internship", "deadline": "2026-11-05", "expect": "stale"},
+  {"name": "deadline today ok", "title": "ML Intern", "kind": "internship", "deadline": "2026-11-06", "expect": null},
+  {"name": "posted 61 days ago", "title": "Data Engineer", "kind": "job", "posted_at": "2026-09-06T00:00:00+00:00", "expect": "stale"},
+  {"name": "posted 60 days ago ok", "title": "Data Engineer", "kind": "job", "posted_at": "2026-09-07T00:00:00+00:00", "expect": null},
+  {"name": "plain job", "title": "Quantitative Trader", "kind": "job", "expect": null}
+]

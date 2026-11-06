@@ -326,7 +326,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - Empty `{"jobs": []}` -> `[]`; malformed JSON -> `[]`; HTTP 500 -> `[]`; one bad board does not prevent the other board's items.
   - `tests/test_sources_base.py`: a source whose `fetch` raises returns `SourceResult(ok=False, items=[])` from `run_source` with the error string; `REGISTRY["greenhouse"]` exists.
 
-### T07 [ ] Dedupe and hard filters
+### T07 [x] Dedupe and hard filters
 - Build `src/pipeline/dedupe.py` (`fingerprint(p)`, `mark_duplicates(conn)`) and `src/pipeline/filters.py` (`hard_filter(p, cfg, today) -> str | None` reason, `relevance_ok(p, cfg) -> bool`, `apply_filters(conn, cfg, clock)`), with keyword lists from `config.toml [filters]`.
 - Files: `src/pipeline/__init__.py`, `src/pipeline/dedupe.py`, `src/pipeline/filters.py`, `config.toml`, `tests/test_dedupe.py`, `tests/test_filters.py`, `tests/fixtures/filter_cases.json`.
 - Acceptance:
