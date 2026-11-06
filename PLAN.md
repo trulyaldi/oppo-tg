@@ -1837,7 +1837,7 @@ Verified with evidence, no FIX needed:
 - Every new handler and callback (`pr:`, `dr:`, `ac:`, text, document) sits behind the outer `WhitelistMiddleware`. The model gets no `tools`. Blocked hosts are refused before any robots fetch.
 - The README claim "the Hacker News comment for `hn` items" is accurate. The hn source's `external_id` is the comment id (`src/sources/hn.py:97`), and `fetch_hn_contacts` fetches `hn.algolia.com/api/v1/items/<external_id>`.
 
-### FIX-15 [ ] Verifier lets invented employers, schools, degrees and ask numbers through (no-fabrication guarantee broken)
+### FIX-15 [x] Verifier lets invented employers, schools, degrees and ask numbers through (no-fabrication guarantee broken)
 - Severity: BLOCKING (SPEC "Prepare and draft" hard rule: "Every factual claim about the user must trace to the CV text").
 - Problem:
   - The deterministic verifier only checks numbers, inflation stems and skill terms. A sentence that invents an employer, institution or degree and has none of those passes untouched.

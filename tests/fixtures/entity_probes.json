@@ -1,0 +1,34 @@
+{
+ "_note": "FAKE FIXTURE - fictional posting and contact for entity-grounding tests (FIX-15). Fabricated sentences contain no number, inflation word or skill term on purpose.",
+ "posting": "Acme Fake is hiring a research tooling intern. We build research tooling for analysts and care about clean data pipelines.",
+ "contact": "Sam Doe, Engineering Manager at Acme Fake",
+ "hook_quote": "We build research tooling for analysts",
+ "greeting": "Hi Sam, I am excited about Acme Fake's work on research tooling.",
+ "legit": {
+  "was_intern": "I was a research intern at Sample Labs.",
+  "intent": "I would love to join the research team at Acme Fake.",
+  "ask_question": "Could I learn more about internships at Acme Fake?",
+  "ask_call": "Could we have a 15-minute call?"
+ },
+ "fabricated_draft_sentences": [
+  "I interned at Citadel Securities last summer building trading systems.",
+  "I also studied at MIT.",
+  "During my previous internship at Acme Fake I built a latency benchmark harness in Python.",
+  "I hold an MSc from Stanford University.",
+  "Я стажировался в Яндексе."
+ ],
+ "tailoring": {
+  "fit": [{"text": "Your internship at Jane Street is directly relevant", "cv_evidence": "Sample Labs - Research Intern, Summer 2025"}],
+  "emphasize": [{"text": "Highlight your Optiver trading internship", "cv_evidence": "Sample Labs - Research Intern, Summer 2025"}],
+  "gap": "Mention your MIT coursework in operating systems",
+  "honest": {"text": "Highlight your Sample Labs research internship", "cv_evidence": "Sample Labs - Research Intern, Summer 2025"}
+ },
+ "parse_reply": {
+  "education": [{"institution": "Example University of Technology", "degree": "BSc Computer Science", "field": "", "start": "", "end": "", "details": []},
+                {"institution": "MIT", "degree": "", "field": "", "start": "", "end": "", "details": []}],
+  "experience": [],
+  "projects": [],
+  "skills": ["Python", "Go"],
+  "other": []
+ }
+}

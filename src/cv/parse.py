@@ -14,6 +14,7 @@ from src.cv.extract import norm
 from src.llm.budget import LlmBudget
 from src.llm.json_call import call_json
 from src.llm.untrusted import wrap_untrusted
+from src.outreach.verify import has_term
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "parse_cv.md"
 MAX_TOKENS = 2000
@@ -68,8 +69,8 @@ class _Grounder:
         self.dropped = 0
 
     def ok(self, s: str) -> bool:
-        n = norm(s)
-        return bool(n) and n in self.cv
+        n = norm(s)  # whole-word: "MIT" is not grounded by "submitted", "Go" by "algorithms"
+        return bool(n) and has_term(n, self.cv)
 
     def quote_ok(self, s: str) -> bool:  # V1: non-empty, >= 8 chars, substring
         n = norm(s)

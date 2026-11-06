@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.cv.extract import norm
-from src.outreach.lexicon import INFLATION_STEMS, SKILL_TERMS
+from src.outreach.lexicon import ENTITY_STOP, INFLATION_STEMS, SKILL_TERMS
 
 MAX_TEXT = 200
 MIN_EVIDENCE = 8
@@ -73,6 +73,122 @@ def v1(evidence: Any, source_text: str) -> bool:
     return len(n) >= MIN_EVIDENCE and n in norm(source_text)
 
 
+# ---- entity grounding (FIX-15, D-140) ----
+
+_WORD = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)*")
+_CYR = re.compile(r"[Ѐ-ӿ]")
+
+
+def _base(token: str) -> str:
+    return re.split(r"['’]", token)[0]
+
+
+def _word_re(word: str) -> re.Pattern[str]:
+    w = norm(word)
+    if _CYR.search(w) and len(w) >= 5:  # Russian inflection: "Яндексе" vs "Яндекс"
+        return re.compile(r"(?<!\w)" + re.escape(w[: max(4, len(w) - 2)]))
+    return re.compile(r"(?<!\w)" + re.escape(w) + r"(?!\w)")
+
+
+def has_word(word: str, text_norm: str) -> bool:
+    """Whole-word match (Cyrillic words by stem) of a name token in normalized text."""
+    return bool(norm(word)) and bool(_word_re(word).search(text_norm))
+
+
+def _is_cap(token: str) -> bool:
+    b = _base(token)
+    return len(b) >= 2 and b[0].isupper()
+
+
+def entities(sentence: str, extra_skills: list[str] | None = None) -> list[str]:
+    """Name-like tokens of one sentence: capitalized words, acronyms, CamelCase.
+
+    Skipped: stop words, skill terms, and a lone sentence-initial capital (an ordinary
+    word). Residual risk: a lone sentence-initial invented name is not seen.
+    """
+    toks = _WORD.findall(sentence)
+    out: list[str] = []
+    for i, tok in enumerate(toks):
+        b = _base(tok)
+        if not _is_cap(tok) or b.casefold() in ENTITY_STOP:
+            continue
+        if skill_terms(norm(b), extra_skills):
+            continue
+        shouty = b.isupper() or any(c.isupper() for c in b[1:])  # MIT, OpenAI
+        if i == 0 and not shouty and not (len(toks) > 1 and _is_cap(toks[1])):
+            continue
+        out.append(b)
+    return out
+
+
+def ungrounded_entities(
+    text: str, corpus_n: str, extra_skills: list[str] | None = None
+) -> list[str]:
+    bad: list[str] = []
+    for s in split_sentences(text) or [text]:
+        for e in entities(s, extra_skills):
+            if not has_word(e, corpus_n) and e not in bad:
+                bad.append(e)
+    return bad
+
+
+_PAST = (
+    r"interned|worked|studied|served|volunteered|graduated|trained|completed|spent|did|"
+    r"joined|researched|taught|participated|built|developed|helped|contributed|was|were"
+)
+_PAST_RU = r"стажировал\w*|работал\w*|учил\w*|окончил\w*|служил\w*|занимал\w*"
+_PREP = r"(?:at|with|for|from|in|under|@)"
+_NOUN = (
+    r"internship|intern|degree|msc|bsc|masters?|bachelors?|phd|job|role|position|studies|"
+    r"coursework|experience|employment|tenure|thesis|education"
+)
+_INTENT = re.compile(r"\b(?:to|excited|eager|thrilled|glad|happy|keen|hoping|would|could)\b")
+
+
+def _ent_pat(e: str) -> str:
+    w = norm(e)
+    if _CYR.search(w) and len(w) >= 5:
+        return re.escape(w[: max(4, len(w) - 2)])
+    return re.escape(w) + r"(?!\w)"
+
+
+def is_past_claim(sentence: str, ents: list[str]) -> bool:
+    """First-person completed-experience claim naming one of ents (not intent, not a question)."""
+    sn = norm(sentence)
+    if sn.endswith("?"):
+        return False
+    for e in ents:
+        ep = _ent_pat(e)
+        m = re.search(
+            r"(?<!\w)i(?:'ve| have)?(?:\s+\w+){0,3}?\s+(?:" + _PAST + r")\b(?P<mid>[^.?!]{0,60}?)"
+            r"(?<!\w)" + _PREP + r"\s+(?:the\s+)?(?:\w+\s+){0,2}?" + ep,
+            sn,
+        )
+        if m and not _INTENT.search(m.group("mid")):
+            return True
+        if re.search(
+            r"(?<!\w)я\s+(?:\w+\s+){0,2}?(?:" + _PAST_RU + r")[^.?!]{0,40}?"
+            r"(?<!\w)(?:в|во|на|у|при)\s+" + ep,
+            sn,
+        ):
+            return True
+        if re.search(
+            r"(?<!\w)(?:my|i\s+(?:hold|have|earned|received|got))\s+(?:\w+\s+){0,3}?"
+            r"(?:" + _NOUN + r")\s+" + _PREP + r"\s+(?:the\s+)?" + ep,
+            sn,
+        ):
+            return True
+    return False
+
+
+_CALL_LEN = re.compile(r"(\d+)\s*-?\s*min(?:ute)?s?\b")
+
+
+def call_length_numbers(ask: str) -> set[str]:
+    """Numbers an ask may introduce: call length only ("15 minutes")."""
+    return set(_CALL_LEN.findall(norm(ask)))
+
+
 def claim_ok(text: Any, evidence: Any, cv_text: str, cv_skills: list[str]) -> bool:
     """V1-V4 for one statement about the candidate."""
     if not isinstance(text, str) or not text.strip() or len(text) > MAX_TEXT:
@@ -84,7 +200,9 @@ def claim_ok(text: Any, evidence: Any, cv_text: str, cv_skills: list[str]) -> bo
         return False
     if not inflation_stems(t) <= inflation_stems(ev):  # V3
         return False
-    return skill_terms(t, cv_skills) <= skill_terms(cv, cv_skills)  # V4
+    if not skill_terms(t, cv_skills) <= skill_terms(cv, cv_skills):  # V4
+        return False
+    return not ungrounded_entities(text, cv, cv_skills)  # V5: names appear in the CV
 
 
 def _skills_in(text_norm: str, cv_skills: list[str]) -> set[str]:
@@ -189,6 +307,7 @@ def verify_tailoring(
                 numbers(h) <= numbers(corpus)  # G: V2 against CV + posting
                 and inflation_stems(h) <= inflation_stems(corpus)
                 and _skills_in(h, skills) <= _skills_in(corpus, skills)  # G: V4
+                and not ungrounded_entities(how, corpus, skills)  # G: V5 against CV + posting
             )
         if ok:
             add_gap({"requirement": req, "posting_evidence": pe, "how_to_address": how})
@@ -261,9 +380,9 @@ def verify_draft(
     cv_n = norm(cv_text)
     facts = norm(" ".join([cv_text, posting_text, contact_text]))
     quote_n = norm(quote)
-    allowed_nums = numbers(facts) | numbers(
-        ask
-    )  # the ask is a proposal ("15 minutes"), not a claim
+    # the ask is a proposal: only its call length ("15 minutes") is exempt, never "5 years"
+    allowed_nums = numbers(facts) | call_length_numbers(ask)
+    non_cv = norm(" ".join([posting_text, contact_text]))
     claims = draft.get("claims") if isinstance(draft.get("claims"), list) else []
     removed = sum(
         1
@@ -284,6 +403,12 @@ def verify_draft(
             for t in _skills_in(sn, skills)
             if t not in _skills_in(cv_n, skills) and not has_term(t, quote_n)
         }
+        ents = entities(s, skills)
+        miss |= {e for e in ents if not has_word(e, facts)}  # invented names
+        if not miss:
+            only_ext = [e for e in ents if not has_word(e, cv_n) and has_word(e, non_cv)]
+            if only_ext and is_past_claim(s, only_ext):  # "my internship at <posting company>"
+                miss |= set(only_ext)
         if miss:
             removed += 1
             bad |= miss
