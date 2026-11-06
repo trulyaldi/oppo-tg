@@ -518,7 +518,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - A page with no cards gives `[]` plus a warning log; HTTP 500 gives `[]`.
   - Registered.
 
-### T19c [ ] Conditional fallback: Himalayas remote jobs API
+### T19c [x] Conditional fallback: Himalayas remote jobs API
 - **Trigger check first:** compute the D-52 family count after T19a/T19b (by hand or with a scratch script; `count_report` itself arrives in T19d).
   - If at least 6 credential-free families are already implemented, write the DECISIONS line "T19c not needed: count = N", leave the code untouched and mark the task done.
 - Only if the count is below 6: probe `https://himalayas.app/robots.txt` (planner: `Allow: /`, only apply/pagination paths disallowed) and re-read `https://himalayas.app/terms`.
