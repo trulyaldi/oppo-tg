@@ -972,3 +972,8 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **Eligibility.** A ref is validated only if its source is registered, has `validate`, and is `enabled` in config; others are skipped and not cached.
   - **Lock.** Requests run outside `PIPELINE_LOCK`; the store write and candidate row are written inside it. A corrupt boards file means nothing is added and the candidate is not recorded.
   - **Scheduler and CLI.** `SchedulerDeps.discover` (optional) runs daily at `[discovery] run_time`; `python -m src.main discover` runs once and needs no Telegram/Claude secrets.
+
+- **D-214 FC-17 /boards choices.**
+  - **Owner check.** No new check: the `WhitelistMiddleware` drops every update from another chat before any handler runs, so `/boards` is owner-only like all commands (tested through the dispatcher).
+  - **Numbering.** Numbers are positions among active boards in file order; they shift after a removal, so the list is re-read on every command. `remove` accepts a number or `source:token` (source lowercased, token case-insensitive) and only matches active boards. Anything else (bad or out-of-range index, unknown key, extra words) gets the usage line. Origin is always `discovered` because only discovered boards live in the file.
+  - **Escaping.** Source, token and company are HTML-escaped and clipped, so each line is far below the chunk limit.

@@ -80,6 +80,7 @@ START_TEXT = (
     "/applied - items marked applied\n"
     "/sources - source status\n"
     "/stats - delivery latency and pipeline counters\n"
+    "/boards - discovered ATS boards (/boards remove &lt;n|source:token&gt;)\n"
     "/pause - pause the digest\n"
     "/resume - resume the digest\n"
     "/prepare &lt;id&gt; - tailoring advice for a posting\n"
@@ -309,6 +310,66 @@ async def cmd_stats(
     message: Any, conn: sqlite3.Connection, settings: Settings, cfg: AppConfig, clock: Clock
 ) -> None:
     await _say(message, render_stats(conn, settings, cfg, clock))
+
+
+BOARDS_USAGE = "Usage: /boards, or /boards remove &lt;n|source:token&gt; (n is the list number)."
+NO_BOARDS = "No discovered boards yet."
+
+
+def render_boards(boards: list[Any]) -> list[str]:
+    """Numbered lines, one per active board (company and token escaped, D-214)."""
+    lines = []
+    for i, b in enumerate(boards, 1):
+        day = b.added_at[:10] if b.added_at else "unknown date"
+        company = f" - {_esc(_clip(b.company, 120))}" if b.company else ""
+        line = f"{i}. {_esc(_clip(b.source, 40))}:{_esc(_clip(b.token, 120))}{company}"
+        lines.append(f"{line} ({_esc(day)}, discovered)")
+    return lines
+
+
+async def cmd_boards(message: Any, cfg: AppConfig, args: str | None = None) -> None:
+    """List discovered boards or tombstone one. Owner-only via the whitelist middleware."""
+    from src.discovery import store
+
+    path = cfg.discovery.boards_file
+    parts = (args or "").split()
+    boards = [b for b in store.load(path) if b.status == store.ACTIVE]
+    if not parts:
+        if not boards:
+            await _say(message, NO_BOARDS)
+            return
+        lines = [f"Discovered boards ({len(boards)}):", *render_boards(boards)]
+        for chunk in chunk_lines(lines, CHUNK_LIMIT):
+            await _say(message, chunk)
+        return
+    if len(parts) != 2 or parts[0].lower() != "remove":
+        await _say(message, BOARDS_USAGE)
+        return
+    ref = parts[1]
+    target = None
+    if ref.isdecimal() and ref.isascii():
+        n = int(ref)
+        if 1 <= n <= len(boards):
+            target = boards[n - 1]
+    elif ":" in ref:
+        source, _, token = ref.partition(":")
+        target = next(
+            (
+                b
+                for b in boards
+                if b.source == source.lower() and b.token.casefold() == token.casefold()
+            ),
+            None,
+        )
+    if target is None:
+        await _say(message, BOARDS_USAGE)
+        return
+    try:
+        store.tombstone(path, target.source, target.token)
+    except store.StoreCorrupt:
+        await _say(message, "The boards file is unreadable; nothing changed.")
+        return
+    await _say(message, f"Removed {_esc(target.source)}:{_esc(target.token)}.")
 
 
 async def cmd_pause(message: Any, conn: sqlite3.Connection) -> None:

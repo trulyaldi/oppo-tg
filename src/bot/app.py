@@ -165,6 +165,10 @@ def build_dispatcher(
     ) -> None:
         await handlers.cmd_stats(m, conn, settings, cfg, clock)
 
+    @dp.message(Command("boards"))
+    async def _boards(m: Message, command: CommandObject, cfg: AppConfig) -> None:
+        await handlers.cmd_boards(m, cfg, command.args)
+
     @dp.message(Command("pause"))
     async def _pause(m: Message, conn: sqlite3.Connection) -> None:
         await handlers.cmd_pause(m, conn)

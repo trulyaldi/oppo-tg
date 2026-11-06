@@ -2743,7 +2743,7 @@ Each migration gets a test that starts from the previous version with sample row
   - The MockTransport sees only canonical API hosts. A posting URL on an unsafe or blocked host (`linkedin.com`, `127.0.0.1`) is never requested.
   - The v8→v9 migration test passes.
 
-### FC-17 [ ] /boards command
+### FC-17 [x] /boards command
 - Build:
   - `/boards` lists active discovered boards, numbered: source, token, company (escaped), discovered date and origin. Output is chunked under 4096 chars.
   - `/boards remove <n|source:token>` tombstones a board.
