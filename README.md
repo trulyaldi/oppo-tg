@@ -18,6 +18,13 @@ Read this first. Be honest about what has and has not been checked.
   thresholds in `config.toml` are untested guesses. `hh` and `telegram_channels` have never been
   run against live services (no credentials were available). The systemd unit below is an
   example that has not been tested.
+- NOT verified, coverage and freshness (FC-01..FC-30, branch feature/coverage-and-freshness): the
+  tiered scheduler, politeness limiter, fresh alerts, board discovery, Telethon live listener,
+  triage and hard blockers were built and tested offline only (fakes and fixtures). The Workable
+  and Remote OK fixtures are hand-written from each API's documented shape, not captured from a
+  real response (D-215, D-216); a check against a real response is still pending (the final smoke
+  test, FC-33, or you). The triage eval (`--triage`) and the live smoke run have not been run.
+  Nothing in this section has run against the real Telegram, Anthropic or hh.kz services.
 - NOT verified, outreach and weights: the CV, `/prepare`, `/contacts` and `/draft` features and the
   LLM region fields (`employer_region` and friends) were built and tested offline only (fakes and
   fixtures). They have never been run against the real Anthropic or Telegram APIs, and the scoring
@@ -212,6 +219,11 @@ in `src/config.py`; this table is checked against it by a test.
 | remoteok | remoteok | counted (no credentials) | Remote OK public API, one GET per run and at most hourly, items say "via Remote OK" and link to the Remote OK page (D-178, D-216). Hand-written fixture pending real-response check |
 | hh | hh | unlocks with HH_ACCESS_TOKEN | hh.kz, the only Kazakhstan job source: anonymous access gets 403 (D-47, D-57). Register an app at https://dev.hh.ru. Never run live yet |
 | telegram_channels | telegram_channels | unlocks with TG_API_ID, TG_API_HASH | Public Kazakh job channels via Telethon with your own account; needs the one-time login and channels in config.toml (D-69). Never run live yet |
+| smartrecruiters | - | dropped (D-174) | API host's robots.txt disallows every crawler except LinkedInBot; no module |
+| recruitee | - | dropped (D-175) | Careers API needs a per-company token (unauthenticated access is against the documented contract); no module |
+| personio | - | dropped (D-176) | Terms could not be read (HTTP 429); no module. Re-check later (user action) |
+| remotive | - | dropped (D-177) | robots.txt has `Disallow: /api/*`; no module |
+| weworkremotely | - | dropped (D-180) | API terms prohibit storing the data and the terms page returned 403; no module |
 | devpost | devpost | dropped (D-50) | Terms forbid automated access; module kept disabled |
 | euraxess | euraxess | dropped (D-59) | WAF returns 403 for every query-string request; no module |
 | kaggle | kaggle | dropped (D-68) | Terms page unreadable, so no fetching code was written |
@@ -289,8 +301,125 @@ Only you can do these.
    - upload your real CV with `/cv` and try `/prepare` on a saved item (the CV text goes to the
      Anthropic API, see "CV, prepare and drafts");
    - optional: set `SCORING_MODEL` in `.env` to choose the scoring model (empty uses `claude-haiku-4-5`).
-8. Capped live smoke run: `once` with `MAX_SCORES_PER_RUN=20` (at most 20 scoring calls), check the
+8. Coverage and freshness: see "User actions" in PLAN.md section 10 (hh token and contact email,
+   join Telegram channels, Personio terms, triage eval, Workable and Remote OK real-response check).
+9. Capped live smoke run: `once` with `MAX_SCORES_PER_RUN=20` (at most 20 scoring calls), check the
    digest and flags, and record the result in DECISIONS.md.
+
+## Coverage and freshness
+
+Everything here is in `config.toml` and was tested offline only (see Verification status).
+
+### Tiers, politeness and floors
+
+`run` no longer collects everything every few hours. Each source target belongs to a tier, and each
+tier has its own job (`[scheduler]`, D-186, D-207):
+
+- tier1, every 15 min (`tier1_minutes`, jitter up to `tier1_jitter_s` = 60 s): the Greenhouse, Lever
+  and Ashby boards you list in `config.toml`.
+- tier2, every 90 min (`tier2_minutes`, jitter 300 s): discovered boards, Workable, Remote OK,
+  Jobicy, RSS, HN, MLH, hh and Telegram channel polling.
+- tier3, every 60 min (`tier3_minutes`, jitter 300 s): pagewatch pages.
+- A `[sources.x] tier` value overrides the default. Remote OK has an hourly floor
+  (`min_poll_minutes = 60`): it is not fetched twice within 60 minutes. Jobicy responses are cached
+  for an hour (D-58).
+- Revalidation: if a cached copy exists, requests send `If-None-Match` / `If-Modified-Since`, so an
+  unchanged board answers 304. A tier1 target whose host sends no ETag or Last-Modified is polled
+  at most every `no_validator_min_minutes` (60).
+- `[politeness]`: at least `default_min_interval_s` (2 s) between requests to a host, plus random
+  jitter of up to `jitter_fraction` (25%) that is only ever added; `max_concurrent_requests` (4);
+  per-host minimums in `[politeness.hosts]` (`remoteok.com` = 5 s).
+- Backoff: after a 429, 5xx or 403 the host is skipped for `backoff_base_s` (300 s), doubling per
+  consecutive failure up to `backoff_max_s` (6 h); `Retry-After` is honored within that cap. The
+  state is stored in SQLite, so it survives a restart. robots.txt stays on for every fetch.
+- A newly seen target (a new board or channel) is "baselined" on its first successful fetch: its
+  existing postings may appear in the digest, but are never sent as instant or fresh alerts and
+  may use at most half of each daily LLM cap (D-188).
+
+### Fresh alerts and digest order
+
+- Existing alert rules are unchanged: base score >= `alert_score` (9.0), or a deadline within
+  `alert_deadline_days` (7).
+- Fresh alert (header NEW): the item was first seen within `fresh_window_hours` (48), is not a
+  baseline item, has a base score >= `fresh_alert_score` (7.5), and at most `fresh_alert_max_per_day`
+  (5) are sent per Asia/Almaty day, best base score first. An item that meets an existing rule is
+  sent as a normal alert and does not use that cap (D-189, D-208).
+- Digest order: items are grouped in score bands of `digest_score_band` (1.0) on the adjusted
+  score, higher band first, fresh items first within a band. Quotas apply after sorting.
+
+### Commands added
+
+- `/stats`: median and p90 delivery latency over 7 days (alerts and digest, overall and per
+  source), fresh alerts today against the cap, scoring and triage calls today against their caps,
+  new postings in the last 24 hours per tier, and median source lag (D-210).
+- `/boards`: lists discovered boards (numbered); `/boards remove <n|source:token>` removes one for
+  good (it is never rediscovered).
+- `/channels`: lists Telegram channels with their status (live, polling, or why not);
+  `/channels add <handle>` and `/channels remove <handle>` change the list at runtime without
+  editing `config.toml`; at most 50 channels.
+- `/sources` now also shows each source's tier.
+
+### Board discovery
+
+- Only already-collected postings are scanned: their URL and the URLs in their descriptions. The bot
+  recognizes Greenhouse, Lever, Ashby and Workable board links, rebuilds the public API URL from the
+  validated token, and never fetches the extracted URL itself (D-190).
+- Each candidate gets one polite validation request. `[discovery]` caps: `max_validations_per_day`
+  (40) and `max_new_boards_per_day` (20); invalid candidates are not retried for
+  `negative_cache_days` (30). It runs daily at `run_time` (05:30 Asia/Almaty) inside `run`, or on
+  demand with `.venv/bin/python -m src.main discover` (needs no Telegram or Claude secrets).
+- Valid boards are written to `data/discovered_boards.toml` (runtime data, gitignored, one per
+  install) and polled in tier2. Remove one with `/boards remove`. Set `[discovery] enabled = false`
+  to turn it off.
+- A source is only active when its config list has at least one board, so discovered Workable
+  boards need one account in `[sources.workable] accounts` first (D-212).
+
+### Telethon live listening
+
+With `TG_API_ID`, `TG_API_HASH` and the one-time Telethon login done, `run` listens live: new
+messages from channels your account has joined arrive within about `live_flush_s` (30 s) and go
+through scoring and alerts. You must join the channels yourself in Telegram: `auto_join` is false
+by default and the bot will not join for you. Channels that are not joined stay on tier2 polling,
+which is also the fallback while the listener is disconnected. Without credentials or a session
+the listener does not start (logged once; `/channels` shows why). In `run` mode, polling reuses the
+listener's client (D-193, D-218). hh and Telegram postings with an unknown employer region count as
+Kazakhstan employers (`region_hint = "kz"`, D-194).
+
+### Triage and daily caps
+
+- Before full scoring, each new posting gets one cheap relevance call (`[triage]`: `model`,
+  `max_desc_chars` 500). A "no" is filtered (`triage_no`) and never reaches the scorer; pagewatch
+  is exempt (`exempt_sources`). Verdicts are cached; after 3 failed attempts a posting is marked
+  `triage_error` (D-196, D-223).
+- Daily caps per Asia/Almaty day, retries included: `[scoring] daily_call_cap` (200),
+  `[triage] daily_call_cap` (600), and outreach keeps its own 40. Baseline postings may use at most
+  `baseline_max_share` (0.5) of the scoring or triage cap. Reaching a cap sends one warning that
+  day and is not an error.
+- If every triage (or every scoring) call in a run fails, you get one throttled error notice naming
+  the stage (D-224). Set `[triage] enabled = false` to skip triage.
+- `python -m src.evals.run --triage` measures triage recall on the labeled set (see Evals).
+
+### Hard blockers
+
+`[filters] hard_blocker_keywords` (citizens only, security clearance, polygraph, ...) are searched
+in the title and description. By default (`hard_blocker_action = "lower"`) the posting stays in
+the digest and /top with a "Hard blocker" flag, its adjusted score is reduced by
+`hard_blocker_penalty` (2.0), and it is never sent as an alert (SPEC says to flag, not filter,
+work-authorization requirements). `"filter"` drops it before triage instead (D-195, D-222).
+Also new in `[filters]`: `negative_title_keywords` (with `protect_title_keywords` as exceptions)
+and `sr` as a seniority keyword.
+
+### Sources left out of this round
+
+Dropped sources are in the Sources table with their D-refs (SmartRecruiters D-174, Recruitee D-175,
+Personio D-176, Remotive D-177, We Work Remotely D-180). Arbeitnow (D-179) and web-search board
+discovery (D-181, D-192) were left out of this round (D-202): there is no Arbeitnow module and no
+web-search discovery code, so no web-search cost exists. The earlier verdicts stay on record.
+
+### hh and attribution
+
+hh needs an application token and a contact email (see "hh.kz"). Postings from Remote OK and Jobicy
+render "via Remote OK" or "via Jobicy" and link to the aggregator's own page (D-191, D-216).
 
 ## Running
 
@@ -302,9 +431,9 @@ Only you can do these.
 .venv/bin/python -m src.main probe     # live source check (see Sources)
 ```
 
-`run` collects every `COLLECT_CRON_HOURS` hours, sends the daily digest at `DIGEST_TIME`
+`run` collects per tier (see "Coverage and freshness"; `COLLECT_CRON_HOURS` is ignored), sends the daily digest at `DIGEST_TIME`
 (`TIMEZONE`), sends instant alerts and prunes old cache rows at 04:00. Bot commands: `/top`,
-`/saved`, `/applied`, `/sources`, `/pause`, `/resume`, plus `/cv`, `/forgetcv`, `/cancel`,
+`/saved`, `/applied`, `/sources`, `/stats`, `/boards`, `/channels`, `/pause`, `/resume`, plus `/cv`, `/forgetcv`, `/cancel`,
 `/prepare`, `/contacts`, `/addcontact` and `/draft` (see "CV, prepare and drafts"). Each item has
 feedback buttons.
 
@@ -342,6 +471,10 @@ Manual only: this calls the real Claude API and costs a little. `evals/labeled.j
 set -a; . ./.env; set +a
 .venv/bin/python -m src.evals.run
 ```
+
+`.venv/bin/python -m src.evals.run --triage` checks the triage model instead: recall on labeled
+items with `expected_min >= 5` (default threshold 0.9, saved to `evals/last_triage_run.json`). It has
+never been run live (D-183, D-223).
 
 Options: `--threshold 0.8` (default pass rate) and `--limit N`. Exit code 0 on pass, 1 below the
 threshold, 2 without `ANTHROPIC_API_KEY`. Output is also saved to `evals/last_run.json` (gitignored).

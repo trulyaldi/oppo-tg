@@ -123,3 +123,27 @@ def test_readme_has_hh_section():
     sec = _section("hh.kz")
     for needle in ("dev.hh.ru", "client_credentials", "HH_ACCESS_TOKEN", "HTTP_CONTACT", "1175"):
         assert needle in sec
+
+
+def test_coverage_and_freshness_readme():
+    for needle in (
+        "/stats",
+        "/boards",
+        "/channels",
+        "src.evals.run --triage",
+        "src.main discover",
+        "data/discovered_boards.toml",
+        "[scheduler]",
+        "[politeness]",
+        "[discovery]",
+        "[triage]",
+        "[scoring]",
+        "hard_blocker_keywords",
+        "COLLECT_CRON_HOURS` is ignored",
+        "hand-written",
+        "join the channels yourself",
+    ):
+        assert needle in " ".join(README.split()) or needle in README, needle
+    for ref in ("D-174", "D-175", "D-176", "D-177", "D-180", "D-179", "D-202"):
+        assert ref in README, ref
+    assert "User actions (coverage and freshness)" in PLAN

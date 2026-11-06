@@ -2959,7 +2959,7 @@ Each migration gets a test that starts from the previous version with sample row
 
 ### Part 6: docs, review, smoke
 
-### FC-31 [ ] README and docs for coverage and freshness
+### FC-31 [x] README and docs for coverage and freshness
 - Also (from cut FC-19): add one README note listing the dropped sources (SmartRecruiters, Recruitee, Personio, Remotive, We Work Remotely) with their D-refs, plus a note that Arbeitnow and web-search discovery were left out of this round.
 - Build: update the README for:
   - tiers and politeness (intervals, ETag revalidation, jitter, backoff, floors);
@@ -3023,3 +3023,14 @@ Each migration gets a test that starts from the previous version with sample row
   - `llm_usage` confirms at most 20 triage plus score calls.
   - The DECISIONS entry exists with the figures above.
   - The README verification status matches it.
+
+### User actions (coverage and freshness)
+
+Only you can do these:
+
+- Register an hh application at https://dev.hh.ru, request the application token, put it in `HH_ACCESS_TOKEN`, and set `HTTP_CONTACT` to your email (D-182).
+- Join the Kazakh Telegram job channels yourself in Telegram, then add them in `config.toml` or with `/channels add <handle>`. The bot never joins for you (D-193).
+- Re-check Personio's terms later; they could not be read (D-176).
+- Run `python -m src.evals.run --triage` and record the recall in DECISIONS.md (D-183, D-223).
+- Optionally try `claude-haiku-5-5` as the `[triage] model` and compare with the triage eval (D-183).
+- Confirm the Workable and Remote OK parsers against a real response: their fixtures are hand-written (D-215, D-216). The final smoke test (FC-33) may cover this.
