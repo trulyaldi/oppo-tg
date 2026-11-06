@@ -1877,7 +1877,7 @@ Verified with evidence, no FIX needed:
   - C2: a canned parse reply with skill "Go" and institution "MIT" against `cv_fake.txt` drops both.
   - All existing P1/P2/P5/P7 tests stay green.
 
-### FIX-16 [ ] `LOG_LEVEL=DEBUG` makes the Anthropic SDK log the full request: CV, posting and contact text
+### FIX-16 [x] `LOG_LEVEL=DEBUG` makes the Anthropic SDK log the full request: CV, posting and contact text
 - Severity: BLOCKING (SPEC Privacy: "CV text, contacts, pasted profiles and drafts are never logged"; README documents `LOG_LEVEL` as a user knob, and the systemd and nohup examples write logs to the journal or `data/run.log`).
 - Problem:
   - `src/main.py:216` calls `logging.basicConfig(level=settings.log_level)`.

@@ -165,7 +165,7 @@ in `src/config.py`; this table is checked against it by a test.
 | `DIGEST_TIME` | no | `09:00` | Daily digest time (HH:MM, in TIMEZONE) |
 | `COLLECT_CRON_HOURS` | no | `3` | Collection interval in hours |
 | `MAX_SCORES_PER_RUN` | no | `150` | Maximum LLM scoring calls per run |
-| `LOG_LEVEL` | no | `INFO` | Python logging level |
+| `LOG_LEVEL` | no | `INFO` | Python logging level. App loggers follow it; the `anthropic`, `httpx`, `httpx2`, `httpcore`, `aiogram.event` and `telethon` loggers stay at WARNING even at DEBUG so request bodies (CV, postings, contacts) are never logged |
 | `HTTP_CONTACT` | no | `https://github.com/trulyaldi/oppo-tg` | Contact (email or URL) placed in the HTTP User-Agent. Default is the project repo; set it to your own contact |
 | `HH_ACCESS_TOKEN` | no | - | hh.kz API token, if required (unlocks the hh source) |
 | `TG_API_ID` | no | - | Telegram API id for Telethon channel reading |

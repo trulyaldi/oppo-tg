@@ -20,6 +20,7 @@ from src.config import AppConfig, Settings
 from src.delivery.digest import send_digest
 from src.http import build_client
 from src.lock import AlreadyRunning, InstanceLock
+from src.logging_setup import configure_logging
 from src.pipeline.run import collect_all, score_pending
 from src.pipeline.scoring_alert import is_total_failure
 
@@ -213,7 +214,7 @@ def main(argv: Sequence[str] | None = None, environ: Mapping[str, str] | None = 
     except config_mod.MissingConfig as exc:
         print(f"Missing required environment variables: {', '.join(exc.missing)}", file=sys.stderr)
         return 2
-    logging.basicConfig(level=settings.log_level)
+    configure_logging(settings.log_level)
     if is_probe:
         return asyncio.run(_probe(settings, args.db))
     if args.command == "run":
