@@ -316,8 +316,8 @@ Everything here is in `config.toml` and was tested offline only (see Verificatio
 tier has its own job (`[scheduler]`, D-186, D-207):
 
 - tier1, every 15 min (`tier1_minutes`, jitter up to `tier1_jitter_s` = 60 s): the Greenhouse, Lever
-  and Ashby boards you list in `config.toml`.
-- tier2, every 90 min (`tier2_minutes`, jitter 300 s): discovered boards, Workable, Remote OK,
+  and Ashby boards and the Workable accounts you list in `config.toml`.
+- tier2, every 90 min (`tier2_minutes`, jitter 300 s): discovered boards, Remote OK,
   Jobicy, RSS, HN, MLH, hh and Telegram channel polling.
 - tier3, every 60 min (`tier3_minutes`, jitter 300 s): pagewatch pages.
 - A `[sources.x] tier` value overrides the default. Remote OK has an hourly floor
@@ -371,8 +371,9 @@ tier has its own job (`[scheduler]`, D-186, D-207):
 - Valid boards are written to `data/discovered_boards.toml` (runtime data, gitignored, one per
   install) and polled in tier2. Remove one with `/boards remove`. Set `[discovery] enabled = false`
   to turn it off.
-- A source is only active when its config list has at least one board, so discovered Workable
-  boards need one account in `[sources.workable] accounts` first (D-212).
+- Greenhouse, Lever and Ashby are only active when their config list has at least one board, so
+  discovered boards for them need one config board first (D-212). Workable is different: discovered
+  Workable boards are polled without any account in `[sources.workable] accounts` (D-215).
 
 ### Telethon live listening
 
@@ -395,6 +396,11 @@ Kazakhstan employers (`region_hint = "kz"`, D-194).
   `[triage] daily_call_cap` (600), and outreach keeps its own 40. Baseline postings may use at most
   `baseline_max_share` (0.5) of the scoring or triage cap. Reaching a cap sends one warning that
   day and is not an error.
+- `[triage] daily_call_cap = 0` does not mean "no triage". With triage enabled it makes every
+  posting `capped` all day, so nothing reaches scoring (except exempt sources). To skip triage, set
+  `[triage] enabled = false` instead (FIX-45 is open).
+- `/stats` "Triage today" shows yes and no for today, but its `errors` figure counts every
+  `triage_error` posting ever, so it is labeled "errors (all time)".
 - If every triage (or every scoring) call in a run fails, you get one throttled error notice naming
   the stage (D-224). Set `[triage] enabled = false` to skip triage.
 - `python -m src.evals.run --triage` measures triage recall on the labeled set (see Evals).

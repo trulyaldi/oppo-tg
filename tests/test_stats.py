@@ -129,4 +129,4 @@ def test_stats_triage_line_counts_today(conn):
     )
     conn.commit()
     out = render_stats(conn, SETTINGS, CFG, CLOCK)
-    assert "Triage today: yes 1, no 1, errors 1, calls 5/600" in out
+    assert "Triage today: yes 1, no 1, errors (all time) 1, calls 5/600" in out

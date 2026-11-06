@@ -290,7 +290,7 @@ def render_stats(conn: sqlite3.Connection, settings: Settings, cfg: AppConfig, c
     ]
     t_used = LlmBudget(conn, clock, tcfg.daily_call_cap, ("triage", "triage_baseline")).used()
     lines.append(
-        f"Triage today: yes {yes}, no {no}, errors {t_errors}, "
+        f"Triage today: yes {yes}, no {no}, errors (all time) {t_errors}, "
         f"calls {t_used}/{tcfg.daily_call_cap}" + ("" if tcfg.enabled else " (off)")
     )
 

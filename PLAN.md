@@ -3162,7 +3162,7 @@ Verified with evidence, no FIX needed:
   - A 429 with `Retry-After: <HTTP-date 2 h ahead>` sets `backoff_until` about 2 h ahead with no retry sleeps.
   - With `max_concurrent_requests=1`, a request to host B is not delayed by host A's spacing sleep (fake monotonic and sleep).
 
-### FIX-47 [ ] README claims that do not match the code
+### FIX-47 [x] README claims that do not match the code
 - Severity: non-blocking.
 - Problem (README "Coverage and freshness"):
   - "tier2 ...: discovered boards, Workable, ..." is wrong for config accounts: `WorkableSource.default_tier = "tier1"`, so `[sources.workable] accounts` are tier1 like the other watchlist boards.

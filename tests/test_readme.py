@@ -147,3 +147,14 @@ def test_coverage_and_freshness_readme():
     for ref in ("D-174", "D-175", "D-176", "D-177", "D-180", "D-179", "D-202"):
         assert ref in README, ref
     assert "User actions (coverage and freshness)" in PLAN
+
+
+def test_fix47_corrected_sentences():
+    text = " ".join(README.split())
+    assert "and the Workable accounts you list in `config.toml`" in text
+    assert "discovered boards, Remote OK," in text
+    assert "discovered Workable boards are polled without any account" in text
+    assert "Greenhouse, Lever and Ashby are only active when their config list" in text
+    assert '`[triage] daily_call_cap = 0` does not mean "no triage"' in text
+    assert "makes every posting `capped` all day" in text
+    assert 'labeled "errors (all time)"' in text
