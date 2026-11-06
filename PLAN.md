@@ -449,7 +449,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
 - Acceptance (if implemented): fixture yields N>=3 events with dates; Digital -> remote True; season URL for 2026-11-06 and 2027-03-01 both correct; changed markup (no cards) -> `[]` with a warning log; registered.
 - Source-count checkpoint (always, implemented or dropped): count the sources that are registered and fixture-tested after T06 and T12-T19, and write the count to DECISIONS.md. If fewer than 6 remain with Greenhouse/Lever/Ashby counted as one (i.e. hh.kz and both Devpost and MLH were dropped), report a blocker so the planner re-plans with replacement credential-free sources before T20 (D-26).
 
-### T19a [ ] Source: Jobicy remote jobs API (credential-free, probe + terms gated)
+### T19a [x] Source: Jobicy remote jobs API (credential-free, probe + terms gated)
 - Re-plan after the T19 blocker (D-51, D-53). Covers remote ML/data roles (SPEC goals 1 and 3: remote is a top-scoring geography).
 - **Probe first** (one request each, 2s apart, honest UA). The planner's findings from 2026-11-06 are listed below; re-confirm them:
   - `https://jobicy.com/robots.txt`: 200, `/api/` not disallowed, `Content-Signal: ai-train=yes, search=yes, ai-input=yes`.

@@ -49,6 +49,7 @@ Hard filters (applied before the LLM): obvious spam, unpaid "exposure" roles, se
 - Selected Kazakh Telegram job channels via Telethon.
 - Hackathon/competition feeds (Devpost, MLH, Kaggle). (implemented: mlh in src/sources/mlh.py; devpost in src/sources/devpost.py but dropped: see D-50, disabled in config)
 - Fellowship and research-program pages. (implemented: rss in src/sources/rss.py for RSS/Atom feeds; pagewatch in src/sources/pagewatch.py for page change watching)
+- Remote job board API: Jobicy. (implemented: jobicy in src/sources/jobicy.py; added by agent, D-55)
 
 **[EDIT: add companies for the ATS watchlist and Telegram channels]**
 

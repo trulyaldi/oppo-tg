@@ -6,6 +6,7 @@ from src.sources import (
     greenhouse,  # noqa: F401  (registers "greenhouse")
     hh,  # noqa: F401  (registers "hh")
     hn,  # noqa: F401  (registers "hn")
+    jobicy,  # noqa: F401  (registers "jobicy")
     lever,  # noqa: F401  (registers "lever")
     mlh,  # noqa: F401  (registers "mlh")
     pagewatch,  # noqa: F401  (registers "pagewatch")

@@ -108,6 +108,12 @@ enabled = false
 [sources.mlh]
 enabled = true
 
+[sources.jobicy]
+enabled = true
+# industry slugs from /api/jobs?get=industries; optional extra `tags` queries
+industries = ["data-science", "engineering"]
+tags = []
+
 [sources.kaggle]
 enabled = true
 categories = ["featured", "research"]
