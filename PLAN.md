@@ -297,7 +297,7 @@ Hard filters (case-insensitive, keyword lists in config.toml, all unit-tested):
   - `record_delivery` twice for the same posting raises/ignores without duplicating (exactly one row).
   - `recent_feedback_examples("like", 20)` returns at most 20, newest first, only active.
 
-### T04 [ ] Polite HTTP client: UA, timeout, rate limit, retries
+### T04 [x] Polite HTTP client: UA, timeout, rate limit, retries
 - Build `src/http.py` `PoliteClient` (no robots/cache yet): honest UA, per-host min interval, retries with backoff on 429/5xx/timeout honouring `Retry-After`, injectable `transport` and `sleep`.
 - Files: `src/http.py`, `tests/test_http.py`.
 - Acceptance (all via `httpx.MockTransport`, fake sleep recording durations):
