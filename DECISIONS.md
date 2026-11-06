@@ -1056,3 +1056,8 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **One client.** `run_targets` opens the listener's shared client (never disconnected) or one owned client, checks authorization once, and closes the owned client once per run. `fetch_target` reuses that client while `run_targets` is active and still opens its own when called standalone (probe, `fetch_all_targets`).
   - **Pause and stop.** `pause_s` (default 1 s) is awaited between channels. A `FloodWaitError` in `fetch_target` records the seconds; the remaining channels get `ok=False, error="skipped: telegram flood wait Ns"` with no request and no `on_stored` hook, so their cursors stay. An open or authorization failure fails every target without a request.
   - **Not done.** Persisting a Telegram backoff across runs is optional in the task and skipped; the next tier2 run polls again from the stored cursors.
+
+- **D-228 FIX-41 scoring prompt uses the untrusted wrapper.**
+  - **Choice.** `build_user_message` now uses `wrap_untrusted("posting", body)`. The feedback examples stay in the second system block (keeps the cached static block and the block layout), but each section's lines go through `wrap_untrusted("examples", ...)`, a new reserved tag in `RESERVED_TAGS`, so a title containing `</posting>` or `</examples>` is defused. Title, company and tags are collapsed to one line so they cannot forge headings. `rubric.md` says the examples are untrusted data.
+  - **Reason.** A dedicated tag means no extra `</posting>` appears in any system or user block, and no scorer change is needed.
+  - **User action.** The prompt version changed (rubric.md edited). Re-run the scoring eval live before trusting the thresholds; not run here.

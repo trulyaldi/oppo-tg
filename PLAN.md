@@ -3079,7 +3079,7 @@ Verified with evidence, no FIX needed:
   - A `FloodWaitError` on channel 2 of 3 means channel 3 is not requested in that run. Channels 2 and 3 keep their `last_id`, and their `target_state` is not ok.
   - A later run after the wait polls normally.
 
-### FIX-41 [ ] Scoring prompt does not use the untrusted wrapper; feedback examples go unwrapped into the system prompt
+### FIX-41 [x] Scoring prompt does not use the untrusted wrapper; feedback examples go unwrapped into the system prompt
 - Severity: BLOCKING. Prompt-injection safety (FC-32 item 4) requires the untrusted wrapper. This branch adds attacker-writable inputs to the scorer: public Telegram channel text, live listener messages, Remote OK, Workable, and company names from discovered boards. A forged base score >= 9 is sent as an uncapped `alert`. The gap predates the branch; D-226 explains why it blocks now.
 - Problem:
   - `src/scoring/prompt.py:59` `build_user_message` builds `<posting>\n{body}\n</posting>` by hand.

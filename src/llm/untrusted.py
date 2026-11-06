@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-RESERVED_TAGS = ("cv", "posting", "page", "profile", "contact")
+RESERVED_TAGS = ("cv", "posting", "page", "profile", "contact", "examples")
 
 _OPEN = re.compile(r"<(?=\s*/?\s*(?:" + "|".join(RESERVED_TAGS) + r")(?![A-Za-z0-9_]))", re.I)
 
