@@ -1376,7 +1376,7 @@ Per-type guidance in `draft.md`:
   - `recompute_adjusted` updates only rows whose `weights_version` differs. A second call updates 0 rows.
   - YAML edit test: copy the snapshot to `tmp_path`, score two rows, recompute; change `kz_startup: 1.0` to `3.0` in the tmp YAML (no code change), load and recompute again; the KZ startup row's `adjusted_score` rises by 2.0 and `weights_version` changes.
 
-### W6 [ ] Digest quotas with fall-through, base-score quality floor, adjusted order
+### W6 [x] Digest quotas with fall-through, base-score quality floor, adjusted order
 - Depends on: W5.
 - Build:
   - `src/ranking/quotas.py` `pick_with_quotas(items, quotas)`, and `select_digest` per 8.1.5 (recompute first, gate on `base_score`, quotas, display order).

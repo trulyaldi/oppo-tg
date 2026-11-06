@@ -98,7 +98,7 @@ in `src/config.py`; this table is checked against it by a test.
 - `[sources.telegram_channels] channels`: public channel handles, for example `["some_channel"]`.
   Empty by default: you must fill it in, and it only works after the Telethon login below.
 - `[filters]`: title keywords, spam, unpaid and senior-only keywords, `max_age_days`.
-- `[thresholds]`: `digest_min_score`, `digest_max_items`, `alert_score`,
+- `[thresholds]`: `digest_min_score`, `alert_score`,
   `alert_deadline_days`, `alert_deadline_min_score`.
 
 ## Sources

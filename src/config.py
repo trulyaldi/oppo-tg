@@ -119,7 +119,6 @@ class Settings:
 @dataclass(frozen=True)
 class Thresholds:
     digest_min_score: float = 5.0
-    digest_max_items: int = 10
     alert_score: float = 9.0
     alert_deadline_days: int = 7
     alert_deadline_min_score: float = 0.0
@@ -136,7 +135,8 @@ class AppConfig:
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> AppConfig:
         th = dict(data.get("thresholds", {}))
-        th.pop("digest_min_items", None)  # removed in FIX-09 (D-79); old configs still load
+        for gone in ("digest_min_items", "digest_max_items"):  # D-79, D-118: old configs still load
+            th.pop(gone, None)
         known = Thresholds.__dataclass_fields__
         unknown = set(th) - set(known)
         if unknown:

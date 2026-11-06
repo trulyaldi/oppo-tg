@@ -54,7 +54,8 @@ def test_app_config_fixture():
 
 def test_repo_config_loads():
     cfg = AppConfig.load(Path(__file__).parent.parent / "config.toml")
-    assert cfg.thresholds.digest_max_items == 10
+    assert cfg.thresholds.digest_min_score == 5.0
+    assert AppConfig.from_dict({"thresholds": {"digest_max_items": 10}})
     assert "positive_title_keywords" in cfg.filters
 
 

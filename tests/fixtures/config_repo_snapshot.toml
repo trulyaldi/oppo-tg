@@ -157,7 +157,6 @@ max_age_days = 60
 
 [thresholds]
 digest_min_score = 5.0
-digest_max_items = 10
 alert_score = 9.0
 alert_deadline_days = 7
 alert_deadline_min_score = 0.0
