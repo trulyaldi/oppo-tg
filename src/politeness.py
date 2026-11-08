@@ -61,19 +61,22 @@ class HostLimiter:
 
     @asynccontextmanager
     async def slot(self, host: str) -> AsyncIterator[None]:
-        """Hold the host lock and a global slot; sleep first to honour the host's spacing."""
+        """Hold the host lock, sleep for the host's spacing, then take a global slot."""
         lock = self._locks.setdefault(host, asyncio.Lock())
-        async with lock, self._sem:
+        async with lock:
             last = self._last.get(host)
             if last is not None:
                 gap = self.interval_for(host) * (1 + self._rand() * self.config.jitter_fraction)
                 wait = gap - (self._monotonic() - last)
                 if wait > 0:
                     await self._sleep(wait)
-            try:
-                yield
-            finally:
-                self._last[host] = self._monotonic()
+            # The global slot is taken after the spacing sleep (D-271), so a host waiting out
+            # its spacing does not block other hosts.
+            async with self._sem:
+                try:
+                    yield
+                finally:
+                    self._last[host] = self._monotonic()
 
     def _read(self, host: str) -> tuple[int, datetime | None]:
         if self.db is None:

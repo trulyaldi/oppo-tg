@@ -3353,7 +3353,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - A channel subscribed live has a baselined `target_state` row.
   - All existing `test_baseline.py` cases pass unchanged.
 
-### KF-03 [ ] Retry-After HTTP-date; the global slot is taken after the host-spacing sleep (closes FIX-46)
+### KF-03 [x] Retry-After HTTP-date; the global slot is taken after the host-spacing sleep (closes FIX-46)
 - Build:
   - `_parse_retry_after` accepts an HTTP-date (`email.utils.parsedate_to_datetime`), measured relative to the injected clock.
   - `HostLimiter.slot` acquires the global semaphore only after the spacing sleep, while still holding the host lock.

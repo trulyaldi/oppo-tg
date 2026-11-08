@@ -174,3 +174,49 @@ async def test_404_is_neutral():
     await e.client.get_text("https://x.test/a", check_robots=False)
     assert not e.client.limiter.in_backoff("x.test")
     assert e.until("x.test")["failures"] == 0
+
+
+async def test_http_date_retry_after_sets_backoff_without_sleeping():
+    from email.utils import format_datetime
+
+    hdr = format_datetime(T0 + timedelta(hours=2), usegmt=True)
+    e = Env(lambda r: httpx.Response(429, headers={"Retry-After": hdr}), max_retries=3)
+    assert await e.client.get_text("https://x.test/a", check_robots=False) is None
+    assert e.sleeps == [] and e.calls == 1
+    until = datetime.fromisoformat(e.until("x.test")["backoff_until"])
+    assert (until - T0).total_seconds() == 7200
+
+
+async def test_spacing_sleep_does_not_hold_global_slot():
+    t = {"v": 0.0}
+    sleeping = asyncio.Event()
+    release = asyncio.Event()
+
+    async def sleep(d):
+        sleeping.set()
+        await release.wait()
+
+    lim = HostLimiter(
+        PolitenessConfig(max_concurrent_requests=1, jitter_fraction=0.1),
+        monotonic=lambda: t["v"],
+        sleep=sleep,
+        default_interval_s=5.0,
+    )
+    async with lim.slot("a.test"):
+        pass
+    done_b = []
+
+    async def a():
+        async with lim.slot("a.test"):  # must sleep for spacing
+            pass
+
+    async def b():
+        async with lim.slot("b.test"):
+            done_b.append(1)
+
+    ta = asyncio.create_task(a())
+    await sleeping.wait()
+    await asyncio.wait_for(b(), timeout=1)  # not blocked by A's sleep
+    assert done_b == [1]
+    release.set()
+    await ta

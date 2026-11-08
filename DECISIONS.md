@@ -1526,3 +1526,7 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - **Sources.** hh, jobicy and rss (per shared name) set it from their tally. Pagewatch sets it for "no text" (a page that returned HTML but no extractable text).
   - **Live listener.** `_subscribe` writes an ok `target_state` row and sets `baselined_at` (only if NULL) for each channel it is live on. Channels not joined stay on polling and get no row until polled. Tier is left to the collector.
   - **Test note.** The hh partial test fails one query with a 200 non-JSON body, because a 5xx makes the host back off and also fails the second query.
+
+- **D-271 KF-03 implementation (Retry-After HTTP-date, global slot order; closes FIX-46).**
+  - `_parse_retry_after(value, now)` takes delta-seconds first, then an HTTP-date via `email.utils.parsedate_to_datetime`, measured from the injected clock (system time only when the client has no clock). A past date gives 0, an unparseable value gives None. A naive date is treated as UTC.
+  - `HostLimiter.slot` takes the host lock, sleeps for spacing, then takes the global semaphore. Lock order stays host then global, so there is no deadlock.

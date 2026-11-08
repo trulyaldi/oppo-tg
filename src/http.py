@@ -9,7 +9,8 @@ import random
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
+from email.utils import parsedate_to_datetime
 from typing import Any
 from urllib.parse import urlsplit
 from urllib.robotparser import RobotFileParser
@@ -237,7 +238,8 @@ class PoliteClient:
                         log.info("HTTP %s for %s", resp.status_code, url)
                         return None
                     return resp
-                retry_after = _parse_retry_after(resp.headers.get("Retry-After"))
+                now = self.clock.now() if self.clock is not None else datetime.now(UTC)
+                retry_after = _parse_retry_after(resp.headers.get("Retry-After"), now)
                 if retry_after is not None and retry_after > RETRY_AFTER_CAP_S:
                     # Too long to wait here: persist a backoff instead of sleeping.
                     self.limiter.record(host, resp.status_code, retry_after)
@@ -429,13 +431,24 @@ def build_client(
     return PoliteClient(db=db, clock=clock, contact=contact, transport=transport, **kwargs)
 
 
-def _parse_retry_after(value: str | None) -> float | None:
+def _parse_retry_after(value: str | None, now: datetime | None = None) -> float | None:
+    """Seconds from a delta-seconds or HTTP-date Retry-After, the date measured from `now`."""
     if value is None:
         return None
+    value = value.strip()
     try:
-        return max(0.0, float(value.strip()))
+        return max(0.0, float(value))
     except ValueError:
+        pass
+    if now is None:
         return None
+    try:
+        when = parsedate_to_datetime(value)
+    except (TypeError, ValueError, IndexError):
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=UTC)
+    return max(0.0, (when - now).total_seconds())
 
 
 def _is_redirect(resp: httpx.Response) -> bool:

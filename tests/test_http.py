@@ -95,3 +95,17 @@ async def test_rate_limit_same_host():
 async def test_get_json():
     e = Env([httpx.Response(200, json={"a": 1})])
     assert await e.client.get_json("https://x.test/a") == {"a": 1}
+
+
+def test_parse_retry_after_forms():
+    from datetime import UTC, datetime, timedelta
+    from email.utils import format_datetime
+
+    from src.http import _parse_retry_after
+
+    now = datetime(2026, 11, 7, 12, 0, tzinfo=UTC)
+    assert _parse_retry_after("7", now) == 7.0
+    assert _parse_retry_after(format_datetime(now + timedelta(hours=2), usegmt=True), now) == 7200
+    assert _parse_retry_after(format_datetime(now - timedelta(hours=1), usegmt=True), now) == 0.0
+    assert _parse_retry_after("garbage", now) is None
+    assert _parse_retry_after(None, now) is None
