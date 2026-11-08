@@ -122,7 +122,8 @@ async def cmd_top(
         "SELECT p.*, s.base_score AS base_score, s.adjusted_score AS adjusted_score,"
         " s.adjusted_score AS score, s.employer_category AS employer_category,"
         " s.adjustment_detail AS adjustment_detail, s.reason AS reason,"
-        " s.deadline AS llm_deadline, s.red_flags AS red_flags"
+        " s.deadline AS llm_deadline, s.red_flags AS red_flags,"
+        " s.visa_barrier AS visa_barrier, s.contract AS contract"
         " FROM postings p JOIN scores s ON s.posting_id=p.id"
         " WHERE scored_at >= ? ORDER BY s.adjusted_score DESC, p.rowid LIMIT ?",
         (since, TOP_LIMIT),

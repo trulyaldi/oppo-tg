@@ -94,7 +94,7 @@ async def test_end_to_end_slice():
     assert len(delivered) == n
     for m in bot.sent[1:]:
         assert m["parse_mode"] == "HTML"
-        assert "8.0/10 · Strong &lt;fit&gt; &amp; more" in m["text"]
+        assert "Relevance 8/10: Strong &lt;fit&gt; &amp; more" in m["text"]
         assert "— Jump Trading" in m["text"]
         kb = m["reply_markup"]
         pid = kb.inline_keyboard[0][0].callback_data.split(":")[2]

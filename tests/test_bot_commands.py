@@ -83,7 +83,7 @@ async def test_top_ten_recent_highest_first(conn):
     m = FakeMessage()
     await cmd_top(m, conn, CLOCK)
     assert len(m.sent) == 10
-    scores = [float(t.split("\n")[1].split("/")[0]) for t in m.texts]
+    scores = [float(t.split("\n")[1].split("/")[0].removeprefix("Relevance ")) for t in m.texts]
     assert scores == sorted(scores, reverse=True)
     assert scores[0] == 6.4 and scores[-1] == 5.5
     assert not any("Job 100" in t or "Job 101" in t for t in m.texts)
@@ -165,7 +165,7 @@ async def test_top_reranked_by_adjusted_with_flags(conn):
     m = FakeMessage()
     await cmd_top(m, conn, CLOCK, CFG)
     assert m.texts[0].startswith("\U0001f1f0\U0001f1ff <b>Job 2</b>")
-    assert "7.5/10 (base 6.0, +1.5 KZ startup)" in m.texts[0]
+    assert "Relevance 6/10: " in m.texts[0]
     assert m.texts[1].startswith("\U0001f30d <b>Job 1</b>") and intl
     assert all(len(t) <= 3500 for t in m.texts)
 
@@ -181,7 +181,7 @@ async def test_top_flag_disabled_in_yaml(conn, tmp_path):
     m = FakeMessage()
     await cmd_top(m, conn, CLOCK, cfg)
     assert m.texts[0].startswith("<b>Job 2</b>")
-    assert "7.5/10 (base 6.0" in m.texts[0]
+    assert "Relevance 6/10: " in m.texts[0]
 
 
 async def test_saved_lines_carry_prepare_links(conn):

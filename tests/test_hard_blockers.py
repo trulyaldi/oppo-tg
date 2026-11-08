@@ -66,7 +66,7 @@ def test_lower_mode_no_alert_penalty_and_flag(conn):
     assert "hard blocker" in row["adjustment_detail"]
     items = select_digest(conn, c, clock=CLOCK)
     assert [i.posting_id for i in items] == [pid]
-    assert "Hard blocker: citizens only" in render_item(items[0])
+    assert "⚠ hard blocker" in render_item(items[0]).splitlines()[0]
 
 
 def test_clean_posting_still_alerts(conn):

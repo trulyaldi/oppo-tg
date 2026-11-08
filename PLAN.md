@@ -3632,7 +3632,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - The `prompt_version()` change is asserted.
   - No posting with `contract=1` is re-selected for scoring.
 
-### KF-15 [ ] New item format for digest, alerts and /top; Prepare on every item (D-260)
+### KF-15 [x] New item format for digest, alerts and /top; Prepare on every item (D-260)
 - Build:
   - In `src/delivery/format.py`, `render_item(item, alert=False, fresh=False)` renders the D-260 layout. `Item` gains `city`, `opportunity_type`, `marker` and `contract`. `Item.from_row` fills `city` from `location`, or `ex_location` for free-text sources.
     - Marker priority: hard blocker > scam or personal contact (`postings.scam`) > visa barrier > first red flag, clipped to 24 characters.

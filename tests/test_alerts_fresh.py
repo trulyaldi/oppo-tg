@@ -134,6 +134,6 @@ def test_deadline_alert_unchanged(conn):
 
 def test_render_fresh_header():
     item = Item("x", "T", "C", "https://e.com", 7.6, "r")
-    assert render_item(item, alert=True, fresh=True).startswith("<b>NEW</b>\n")
-    assert render_item(item, alert=True).startswith("<b>ALERT</b>\n")
+    assert render_item(item, alert=True, fresh=True).startswith("<b>NEW</b> · <b>T</b>")
+    assert render_item(item, alert=True).startswith("<b>ALERT</b> · ")
     assert render_item(item).startswith("<b>T</b>")

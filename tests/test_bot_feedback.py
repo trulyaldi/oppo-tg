@@ -75,7 +75,7 @@ async def test_like(conn):
     await handle_feedback(cb, conn, CLOCK)
     assert db.active_reactions(conn, pid)["like"] is True
     assert len(cb.answers) == 1
-    assert labels(cb) == ["✓ Like", "Dislike", "Save", "Applied"]
+    assert labels(cb) == ["✓ Like", "Dislike", "Save", "Applied", "Prepare"]
 
 
 async def test_like_then_dislike(conn):
@@ -85,7 +85,7 @@ async def test_like_then_dislike(conn):
     await handle_feedback(cb, conn, CLOCK)
     act = db.active_reactions(conn, pid)
     assert act["dislike"] and not act["like"]
-    assert labels(cb) == ["Like", "✓ Dislike", "Save", "Applied"]
+    assert labels(cb) == ["Like", "✓ Dislike", "Save", "Applied", "Prepare"]
 
 
 async def test_save_twice(conn):
@@ -95,7 +95,7 @@ async def test_save_twice(conn):
     await handle_feedback(cb, conn, CLOCK)
     assert db.active_reactions(conn, pid)["save"] is False
     assert conn.execute("SELECT COUNT(*) FROM reaction_log").fetchone()[0] == 2
-    assert labels(cb) == ["Like", "Dislike", "Save", "Applied"]
+    assert labels(cb) == ["Like", "Dislike", "Save", "Applied", "Prepare"]
 
 
 @pytest.mark.parametrize("data", ["fb:nope:{pid}", "fb:like:", "fb:like:missing", "junk", None])
@@ -208,16 +208,16 @@ def rows(cb):
     return [[b.callback_data for b in r] for r in cb.message.markups[-1].inline_keyboard]
 
 
-async def test_prepare_row_appears_for_like_and_save_and_disappears(conn):
+async def test_prepare_button_always_present(conn):
     pid = add(conn)
     cb = FakeCb(f"fb:like:{pid}")
     await handle_feedback(cb, conn, CLOCK)
-    assert len(cb.message.markups[-1].inline_keyboard) == 2
-    assert rows(cb)[1] == [f"pr:{pid}"]
-    assert labels(cb) == ["✓ Like", "Dislike", "Save", "Applied"]  # first row unchanged
+    assert len(cb.message.markups[-1].inline_keyboard) == 1
+    assert rows(cb)[0][-1] == f"pr:{pid}"
+    assert labels(cb) == ["✓ Like", "Dislike", "Save", "Applied", "Prepare"]  # first row unchanged
     await handle_feedback(FakeCb(f"fb:save:{pid}"), conn, CLOCK)
     await handle_feedback(cb, conn, CLOCK)  # un-like, save still active
-    assert rows(cb)[1] == [f"pr:{pid}"]
+    assert rows(cb)[0][-1] == f"pr:{pid}"
     cb2 = FakeCb(f"fb:save:{pid}")
     await handle_feedback(cb2, conn, CLOCK)  # un-save, like inactive
     assert len(cb2.message.markups[-1].inline_keyboard) == 1
