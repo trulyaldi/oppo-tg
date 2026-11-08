@@ -134,14 +134,16 @@ class Thresholds:
     alert_score: float = 9.0
     alert_deadline_days: int = 7
     alert_deadline_min_score: float = 0.0
-    fresh_alert_score: float = 7.5
-    fresh_alert_max_per_day: int = 5
+    kz_fresh_alert_score: float = 7.0
+    intl_fresh_alert_score: float = 8.0
+    fresh_alert_max_per_day: int = 6
     fresh_window_hours: int = 48
     digest_score_band: float = 1.0
 
     def __post_init__(self) -> None:
         for name in (
-            "fresh_alert_score",
+            "kz_fresh_alert_score",
+            "intl_fresh_alert_score",
             "fresh_alert_max_per_day",
             "fresh_window_hours",
             "digest_score_band",
@@ -385,6 +387,11 @@ class AppConfig:
         th = dict(data.get("thresholds", {}))
         for gone in ("digest_min_items", "digest_max_items"):  # D-79, D-118: old configs still load
             th.pop(gone, None)
+        if "fresh_alert_score" in th:  # D-266: split per region, fail loudly
+            raise ValueError(
+                "[thresholds] fresh_alert_score was replaced by kz_fresh_alert_score"
+                " and intl_fresh_alert_score"
+            )
         known = Thresholds.__dataclass_fields__
         unknown = set(th) - set(known)
         if unknown:

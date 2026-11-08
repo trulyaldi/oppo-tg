@@ -14,7 +14,7 @@ from src.config import AppConfig, Settings
 from src.delivery.digest import is_paused, item_from_row, load_weights_checked
 from src.delivery.format import Item, feedback_keyboard, render_item
 from src.ranking.adjust import blocker_penalty, recompute_adjusted, region_hints
-from src.ranking.weights import Weights
+from src.ranking.weights import Weights, bucket
 
 log = logging.getLogger(__name__)
 
@@ -48,6 +48,7 @@ def select_alerts(
     today = now.astimezone(ZoneInfo(tz)).date()
     last = today + timedelta(days=th.alert_deadline_days)
     cutoff = now - timedelta(hours=th.fresh_window_hours)
+    kz_min, intl_min = th.kz_fresh_alert_score, th.intl_fresh_alert_score  # D-266
     out: list[tuple[Item, str]] = []
     fresh: list[tuple[float, Item]] = []
     for row in db.undelivered_scored(conn):
@@ -66,7 +67,8 @@ def select_alerts(
         if by_score or by_deadline:
             out.append((item, "alert"))  # overlap: existing rule wins, no cap use (D-189)
         elif (
-            base >= th.fresh_alert_score and datetime.fromisoformat(row["first_seen_at"]) >= cutoff
+            base >= (kz_min if bucket(item.employer_category) == "kz" else intl_min)
+            and datetime.fromisoformat(row["first_seen_at"]) >= cutoff
         ):
             fresh.append((base, item))
     room = max(th.fresh_alert_max_per_day - _fresh_sent_today(conn, clock, tz), 0)

@@ -172,8 +172,9 @@ digest_min_score = 5.0
 alert_score = 9.0
 alert_deadline_days = 7
 alert_deadline_min_score = 0.0
-fresh_alert_score = 7.5     # base score needed for a fresh alert (D-189)
-fresh_alert_max_per_day = 5 # fresh alerts per Asia/Almaty day
+kz_fresh_alert_score = 7.0   # base score for a fresh alert, KZ employers (D-266)
+intl_fresh_alert_score = 8.0 # base score for a fresh alert, intl and unknown employers
+fresh_alert_max_per_day = 6  # fresh alerts per Asia/Almaty day, all regions
 fresh_window_hours = 48     # an item is fresh for this long after first_seen_at
 digest_score_band = 1.0     # digest ranks by band = floor(score / this), then freshness
 

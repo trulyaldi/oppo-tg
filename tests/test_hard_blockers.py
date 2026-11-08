@@ -19,7 +19,10 @@ FILTERS: dict = {}
 
 def cfg(**extra):
     return AppConfig.from_dict(
-        {"thresholds": {"fresh_alert_score": 10.0}, "filters": {**FILTERS, **extra}}
+        {
+            "thresholds": {"kz_fresh_alert_score": 10.0, "intl_fresh_alert_score": 10.0},
+            "filters": {**FILTERS, **extra},
+        }
     )
 
 

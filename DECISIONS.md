@@ -1592,3 +1592,8 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - Defaults changed in `config/weights.yaml`, the `Quotas` model and the weights snapshot. `pick_with_quotas` is unchanged: the fall-through logic already handles short buckets, and the digest size stays 10 (the sum).
   - The best-remaining slot goes to the strongest leftover of any bucket, so 8 KZ plus 8 intl gives 6/4 or 7/3 depending on which side scores higher; both tests pin that.
   - `tests/test_weights.py::test_snapshot_values` also pinned 4/4/2, so it was updated to 6/3/1 (it reads the snapshot owned by this task).
+
+- **D-281 KF-13 implementation (regional fresh-alert thresholds).**
+  - `select_alerts` picks the threshold with `bucket(item.employer_category)`; kz uses `kz_fresh_alert_score`, everything else (intl, unknown) uses `intl_fresh_alert_score`. Category is the one recomputed by `recompute_adjusted` just before.
+  - Old-key check lives in `AppConfig.from_dict` (not `Thresholds`) so the message can name both new keys before the unknown-key check.
+  - Existing fresh tests moved to intl-range scores (8.x) and gained a `region` argument on `add`; tests that disable fresh alerts set both keys to 10.0. README paragraph updated.

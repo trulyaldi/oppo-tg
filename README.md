@@ -345,8 +345,9 @@ tier has its own job (`[scheduler]`, D-186, D-207):
 - Existing alert rules are unchanged: base score >= `alert_score` (9.0), or a deadline within
   `alert_deadline_days` (7).
 - Fresh alert (header NEW): the item was first seen within `fresh_window_hours` (48), is not a
-  baseline item, has a base score >= `fresh_alert_score` (7.5), and at most `fresh_alert_max_per_day`
-  (5) are sent per Asia/Almaty day, best base score first. An item that meets an existing rule is
+  baseline item, has a base score >= `kz_fresh_alert_score` (7.0) for a KZ employer or
+  `intl_fresh_alert_score` (8.0) for an international or unknown one, and at most
+  `fresh_alert_max_per_day` (6) are sent per Asia/Almaty day, best base score first. An item that meets an existing rule is
   sent as a normal alert and does not use that cap (D-189, D-208).
 - Digest order: items are grouped in score bands of `digest_score_band` (1.0) on the adjusted
   score, higher band first, fresh items first within a band. Quotas apply after sorting.

@@ -126,7 +126,8 @@ def test_fc06_defaults_when_sections_absent():
     assert cfg.scheduler.tier1_minutes == 15 and cfg.scheduler.no_validator_min_minutes == 60
     assert cfg.politeness.max_concurrent_requests == 4 and cfg.politeness.hosts == {}
     th = cfg.thresholds
-    assert (th.fresh_alert_score, th.fresh_alert_max_per_day) == (7.5, 5)
+    assert (th.kz_fresh_alert_score, th.intl_fresh_alert_score) == (7.0, 8.0)
+    assert th.fresh_alert_max_per_day == 6
     assert (th.fresh_window_hours, th.digest_score_band) == (48, 1.0)
 
 
@@ -183,3 +184,8 @@ def test_fc06_jobicy_floor_and_cron_env_description():
     assert JobicySource.min_poll_minutes == 60
     cron = next(v for v in ENV_VARS if v.name == "COLLECT_CRON_HOURS")
     assert cron.description == "ignored; see [scheduler] in config.toml"
+
+
+def test_kf13_old_fresh_alert_score_key_names_new_keys():
+    with pytest.raises(ValueError, match="kz_fresh_alert_score.*intl_fresh_alert_score"):
+        AppConfig.from_dict({"thresholds": {"fresh_alert_score": 7.5}})

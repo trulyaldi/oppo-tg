@@ -4,7 +4,7 @@ Alerts: median 30m, p90 30m (n=1)
 Digest: median 10m, p90 60m (n=7)
   greenhouse: median 5m, p90 60m (n=5)
   hn: median 22m, p90 30m (n=2)
-Fresh alerts today: 1/5
+Fresh alerts today: 1/6
 Scoring calls today: 12/200
 Triage today: yes 0, no 0, errors (all time) 0, calls 0/600
 New postings, 24h: tier1 6, tier2 0, tier3 0, unknown 2

@@ -16,7 +16,8 @@ CLOCK = FixedClock(NOW)
 SETTINGS = Settings.from_env(
     {"TELEGRAM_BOT_TOKEN": "t", "TELEGRAM_CHAT_ID": "42", "ANTHROPIC_API_KEY": "k"}
 )
-NOFRESH = {"fresh_alert_score": 10.0}  # these tests pin the base-score rules only
+# these tests pin the base-score rules only
+NOFRESH = {"kz_fresh_alert_score": 10.0, "intl_fresh_alert_score": 10.0}
 CFG = AppConfig.from_dict({"thresholds": NOFRESH})
 
 

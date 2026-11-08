@@ -34,7 +34,7 @@ def conn():
     return c
 
 
-def add(conn, score, tag, age_h=1, baseline=False, deadline=None):
+def add(conn, score, tag, age_h=1, baseline=False, deadline=None, region="intl"):
     p = Posting(
         source="t",
         external_id=tag,
@@ -49,7 +49,15 @@ def add(conn, score, tag, age_h=1, baseline=False, deadline=None):
     db.save_score(
         conn,
         p.id,
-        ScoreResult(score=score, reason="ok", deadline=deadline, red_flags=[], tags=[]),
+        ScoreResult(
+            score=score,
+            reason="ok",
+            deadline=deadline,
+            red_flags=[],
+            tags=[],
+            employer_region=region,
+            region_confidence=0.9 if region != "unknown" else 0.0,
+        ),
         "m",
         "v",
         NOW,
@@ -61,31 +69,45 @@ def sel(conn, clock=CLOCK):
     return [(i.posting_id, k) for i, k in select_alerts(conn, CFG, clock)]
 
 
-def test_fresh_threshold(conn):
-    hit = add(conn, 7.6, "a")
-    add(conn, 7.4, "b")
+def test_fresh_threshold_by_region(conn):
+    kz_hit = add(conn, 7.1, "a", region="kz")
+    add(conn, 6.9, "b", region="kz")
+    add(conn, 7.9, "c", region="intl")
+    intl_hit = add(conn, 8.1, "d", region="intl")
+    assert sorted(sel(conn)) == sorted([(kz_hit, "fresh_alert"), (intl_hit, "fresh_alert")])
+
+
+def test_unknown_region_uses_intl_threshold(conn):
+    add(conn, 7.5, "a", region="unknown")
+    hit = add(conn, 8.0, "b", region="unknown")
     assert sel(conn) == [(hit, "fresh_alert")]
 
 
 def test_baseline_and_old_never_fresh_alert(conn):
-    add(conn, 8.0, "a", baseline=True)
-    add(conn, 8.0, "b", age_h=49)
+    add(conn, 8.5, "a", baseline=True)
+    add(conn, 8.5, "b", age_h=49)
     assert sel(conn) == []
 
 
 def test_high_score_is_alert_and_uncapped(conn):
     big = add(conn, 9.2, "big")
     for i in range(6):
-        add(conn, 7.6 + i * 0.1, f"f{i}")
+        add(conn, 8.1 + i * 0.1, f"f{i}")
     got = sel(conn)
     assert (big, "alert") in got
-    assert sum(1 for _, k in got if k == "fresh_alert") == 5
+    assert sum(1 for _, k in got if k == "fresh_alert") == 6
+
+
+def test_seven_qualifying_give_six(conn):
+    for i in range(7):
+        add(conn, 7.2 + i * 0.1, f"k{i}", region="kz")
+    assert len(sel(conn)) == 6
 
 
 async def test_cap_best_first_and_next_day(conn):
-    ids = [add(conn, 7.5 + i * 0.1, f"f{i}") for i in range(6)]
+    ids = [add(conn, 8.0 + i * 0.1, f"f{i}") for i in range(7)]
     bot = FakeBot()
-    assert await send_alerts(bot, conn, SETTINGS, CFG, CLOCK) == 5
+    assert await send_alerts(bot, conn, SETTINGS, CFG, CLOCK) == 6
     kinds = {r["kind"] for r in conn.execute("SELECT kind FROM deliveries")}
     assert kinds == {"fresh_alert"}
     assert not db.is_delivered(conn, ids[0])  # the lowest is left for the digest
@@ -97,11 +119,11 @@ async def test_cap_best_first_and_next_day(conn):
 
 async def test_alert_does_not_use_cap_and_paused(conn):
     add(conn, 9.2, "big")
-    for i in range(5):
-        add(conn, 7.6, f"f{i}")
+    for i in range(6):
+        add(conn, 8.1, f"f{i}")
     bot = FakeBot()
-    assert await send_alerts(bot, conn, SETTINGS, CFG, CLOCK) == 6
-    assert sum(t.startswith("<b>NEW</b>") for t in bot.sent) == 5
+    assert await send_alerts(bot, conn, SETTINGS, CFG, CLOCK) == 7
+    assert sum(t.startswith("<b>NEW</b>") for t in bot.sent) == 6
     assert sum(t.startswith("<b>ALERT</b>") for t in bot.sent) == 1
 
 

@@ -3585,7 +3585,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - Unknown-bucket items use only free slots.
   - The YAML edit test still reorders.
 
-### KF-13 [ ] Regional fresh-alert thresholds (D-266)
+### KF-13 [x] Regional fresh-alert thresholds (D-266)
 - Build:
   - `Thresholds` loses `fresh_alert_score` and gains `kz_fresh_alert_score = 7.0` and `intl_fresh_alert_score = 8.0`. `fresh_alert_max_per_day` defaults to 6.
   - A leftover `fresh_alert_score` raises, naming the new keys.
