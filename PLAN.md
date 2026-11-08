@@ -3181,7 +3181,7 @@ Verified with evidence, no FIX needed:
 - Files: `.gitignore`, `tests/test_gitignore.py`.
 - Acceptance: `git check-ignore evals/last_triage_run.json` matches, pinned by the test.
 
-### FIX-49 [-] MOVED to KF-28 (D-233): Discovery validates boards for an ATS that will never poll them
+### FIX-49 [x] closed by KF-28 (D-296): Discovery validates boards for an ATS that will never poll them
 - Severity: non-blocking. It wastes validation requests and the new-board cap.
 - Problem:
   - `src/discovery/boards.py` `_validator` checks only `cfg.source_enabled(source)`.
@@ -3887,7 +3887,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - A rendered item's link line ends with ` · via Arbeitnow`.
   - `test_readme.py` passes.
 
-### KF-28 [ ] Verify board discovery; validate only boards that will be polled (closes FIX-49; D-258)
+### KF-28 [x] Verify board discovery; validate only boards that will be polled (closes FIX-49; D-258)
 - Build:
   - Pin the existing behaviour, if not already pinned:
     - the 20 new-boards-per-day cap and the validation cap;

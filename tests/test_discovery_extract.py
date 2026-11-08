@@ -47,3 +47,13 @@ def test_find_skips_overlong_url():
 
 def test_find_empty():
     assert find_board_refs("") == []
+
+
+def test_out_of_scope_ats_urls_give_no_refs():
+    """D-258: SmartRecruiters, Recruitee and Personio are never discovered."""
+    text = (
+        "https://jobs.smartrecruiters.com/Acme/123 https://careers.smartrecruiters.com/Acme"
+        " https://acme.recruitee.com/o/dev https://acme.jobs.personio.de/job/1"
+        " https://acme.jobs.personio.com/"
+    )
+    assert find_board_refs(text) == []

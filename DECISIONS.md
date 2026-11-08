@@ -1690,3 +1690,7 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - **Mapping.** `external_id = slug`; url must be on host `www.arbeitnow.com` (exact hostname match, else skipped); `remote` only when the API value is `true`; description is `html_to_text`, with `html.unescape` first only when the fragment is entity-encoded (`&lt;` and no `<`); `raw_tags` is the API `tags` plus `job_types`.
   - **Attribution and /prepare.** `SOURCE_ATTRIBUTION["arbeitnow"]` was already present; `arbeitnow.com` is added to `AGGREGATOR_HOSTS` (D-229) so employer-contact discovery never treats it as the employer domain. Politeness 2.0 s for `arbeitnow.com`.
   - **Snapshot.** `config_repo_snapshot.toml` gains an enabled `[sources.arbeitnow]`, so `sources_expected.txt` has the line and the credential-free count stays derived from config.
+
+- **D-296 KF-28: discovery validates only boards that will be polled (FIX-49).**
+  - **Choice.** `_validator` now also requires the source's own `enabled(settings, cfg)`, so greenhouse/lever/ashby with an empty config list cause zero requests and no `board_candidates` row. Workable is exempt from `enabled()` and needs only `[sources.workable] enabled`: its `enabled()` is true only once a discovered board exists, so using it would make the first Workable board undiscoverable.
+  - **Verified, already pinned.** Daily caps (20 new, validation cap), `/boards` list and remove (`tests/test_bot_boards.py`), extracted URLs never fetched, boards stored in `data/discovered_boards.toml` via `store`.

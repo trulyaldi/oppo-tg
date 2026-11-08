@@ -214,3 +214,37 @@ async def test_disabled_does_nothing(tmp_path):
     conn, http, cfg, clock, seen = setup(tmp_path, {}, discovery={"enabled": False})
     add_posting(conn, 1, "https://jobs.lever.co/aa")
     assert (await run(conn, http, cfg, clock)).validated == 0 and seen == []
+
+
+async def test_empty_config_list_means_no_validation_and_no_row(tmp_path):
+    conn, http, cfg, clock, seen = setup(tmp_path, {"": (200, LEVER)})
+    cfg = AppConfig.from_dict(
+        {
+            "sources": {"lever": {"enabled": True, "companies": []}},
+            "discovery": {"boards_file": str(tmp_path / "boards.toml")},
+        }
+    )
+    add_posting(conn, 1, "https://jobs.lever.co/acme")
+    stats = await run(conn, http, cfg, clock)
+    assert seen == [] and stats.validated == 0
+    assert conn.execute("SELECT COUNT(*) FROM board_candidates").fetchone()[0] == 0
+
+
+async def test_one_config_company_means_validated(tmp_path):
+    conn, http, cfg, clock, seen = setup(tmp_path, {"": (200, LEVER)})
+    add_posting(conn, 1, "https://jobs.lever.co/acme")
+    stats = await run(conn, http, cfg, clock)
+    assert stats.validated == 1 and [u.path for u in seen] == ["/v0/postings/acme"]
+
+
+async def test_workable_enabled_without_accounts_still_validates(tmp_path):
+    conn, http, cfg, clock, seen = setup(tmp_path, {"": (200, "{}")})
+    cfg = AppConfig.from_dict(
+        {
+            "sources": {"workable": {"enabled": True, "accounts": []}},
+            "discovery": {"boards_file": str(tmp_path / "boards.toml")},
+        }
+    )
+    add_posting(conn, 1, "https://apply.workable.com/acme/j/1")
+    stats = await run(conn, http, cfg, clock)
+    assert stats.validated == 1 and len(seen) == 1

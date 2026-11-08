@@ -37,12 +37,23 @@ class DiscoveryStats:
     added_boards: list[tuple[str, str]] = field(default_factory=list)
 
 
-def _validator(cfg: AppConfig, source: str):
-    """The board source's `validate`, or None if it is unregistered or disabled."""
+def _validator(cfg: AppConfig, settings: Settings, source: str):
+    """The board source's `validate`, or None if it would never poll discovered boards.
+
+    Eligibility is the collection rule (FIX-49, D-296): unregistered, disabled, or
+    (greenhouse/lever/ashby) no config boards means None. Workable is eligible once
+    enabled, since its first discovered board is what turns polling on.
+    """
     factory = REGISTRY.get(source)
     if factory is None or not cfg.source_enabled(source):
         return None
     src = factory()
+    if source != "workable":
+        try:
+            if not src.enabled(settings, cfg):
+                return None
+        except Exception:  # noqa: BLE001 - an odd enabled() must not break discovery
+            return None
     return src if callable(getattr(src, "validate", None)) else None
 
 
@@ -141,7 +152,7 @@ async def run_board_discovery(
                 continue
             seen.add(key)
             if ref.source not in sources:
-                src = _validator(cfg, ref.source)
+                src = _validator(cfg, settings, ref.source)
                 sources[ref.source] = src
                 configured[ref.source] = _config_tokens(ctx, src) if src else set()
             src = sources[ref.source]
