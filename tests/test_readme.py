@@ -158,3 +158,52 @@ def test_fix47_corrected_sentences():
     assert "`[triage] daily_call_cap = 0` is rejected at config load" in text
     assert "the correction retry included" in text
     assert 'labeled "errors (all time)"' in text
+
+
+def test_kz_first_readme():
+    text = " ".join(README.split())
+    for needle in (
+        "/findchannels",
+        "/add",
+        "/search",
+        "/cvreview",
+        "config/cues.toml",
+        "[telegram_discovery]",
+        "[cv_review]",
+        "kz_fresh_alert_score",
+        "intl_fresh_alert_score",
+        "Relevance",
+        "via Arbeitnow",
+        "kz_program",
+        "HTTP_CONTACT",
+        "`re:<regex>`",
+        "`stem*`",
+        "`tg_minutes` = 4",
+        "Add and Ignore",
+        "entity cache",
+        "flood wait",
+        "`auto_join` was removed",
+        "NOT verified live",
+        "No live smoke run has happened on this branch yet",
+    ):
+        assert needle in text, needle
+    for n in range(235, 246):
+        assert f"D-{n}" in README, n
+    assert "6 KZ / 3 intl / 1 best" in text
+    for tier in ("tier1", "tier2", "tier3", "`tg`"):
+        assert tier in README
+
+
+def test_readme_removed_stale_claims():
+    text = " ".join(README.split())
+    assert "there is no Arbeitnow module" not in text
+    assert "every 90 min" not in text
+    assert "every 15 min" not in text
+
+
+def test_digest_format_skill_describes_new_layout():
+    skill = (ROOT / ".claude/skills/digest-format/SKILL.md").read_text()
+    for needle in ("Relevance N/10", "Prepare", "pr:<posting_id>", "via Arbeitnow", "five"):
+        assert needle in skill, needle
+    assert "Red flags:" in skill  # only as the removed paragraph
+    assert "Like / Dislike / Save / Applied." not in skill

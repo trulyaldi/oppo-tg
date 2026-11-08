@@ -4037,7 +4037,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 
 ### Part L: docs, review, smoke
 
-### KF-36 [ ] README for kz-first-fresh-cv
+### KF-36 [x] README for kz-first-fresh-cv
 - Build: update the README for:
   - opportunity types;
   - KZ-first weights and 6/3/1 quotas;

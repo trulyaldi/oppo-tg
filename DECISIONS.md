@@ -1729,3 +1729,12 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - **Chat summary:** 3 fit lines, 5 numbered changes, 3 gaps tagged `[add if true]` / `[worth learning]`, each line clipped to 300 chars and HTML-escaped, chunked by `chunk_lines` at 3500. The full report goes as `answer_document(BufferedInputFile(...))`, in memory only, named `cv_review_v{N}.md`.
   - **CLI:** `python -m src.main cvreview [--cv-file PATH]`. Settings are as in the bot, so `DB_PATH` selects a scratch DB. With `--cv-file` the file is ingested through the same `ingest_cv_text` with `auto_review=False` and a silent sink (the "saved" note is printed, not sent), so exactly 2 outputs (summary and document) go to `TELEGRAM_CHAT_ID` via a small message-like adapter. It prints only counts and exits 1 on no CV or a review error. The report is never written to disk.
   - **Test impact:** the full-flow tests that count LLM calls (privacy sweep, logging canary) gained the review call (+1); their fake messages gained `answer_document`.
+
+## 2026-11-08 — KF-36 README (implementer)
+
+- **D-303 KF-36: README and digest-format skill.**
+  - **Verified against code.** Every number and command in the new README text was read from `config.toml`, `config/cues.toml`, `config/weights.yaml`, `src/bot/app.py`, `src/delivery/format.py` and the D-numbers cited. Where a D-entry and the code differ (flood wait shown by `/sources`, `/channels` and `/stats`, not only the first two), the code won.
+  - **Stale text fixed.** The old tier timings (15 and 90 min), the "no Arbeitnow module" section, the `auto_join` sentence and the "FIX-44..51 remain open" line described the previous branch. They now describe this one. The README keeps its older sentences that existing tests pin.
+  - **Verification status.** The new paragraph says offline only and that no live smoke has run on this branch; nothing is claimed as live. KF-38 owns the live smoke.
+  - **Skill file.** D-260 said agents do not edit `.claude/skills/digest-format/SKILL.md`; the KF-36 task and the orchestrator ask for it explicitly, because a stale skill misleads later agents. It now describes the two-line item, the `Relevance N/10` line, the `via` credit on the link line and the five buttons (D-283), with the source files named as the truth.
+  - **Tests.** `tests/test_readme.py` pins the new commands, cue syntax, config sections, D-235 to D-245 refs, the tier names, and that the skill describes the new layout.

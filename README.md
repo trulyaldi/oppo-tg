@@ -1,7 +1,7 @@
 # oppo-tg
 
 A personal Telegram bot that finds, ranks and delivers job, internship, startup, hackathon and
-research-program opportunities (Kazakhstan and worldwide), tuned to one user. There is no web UI.
+research-program opportunities (Kazakhstan first, then worldwide), tuned to one user. There is no web UI.
 
 Pipeline: collect -> dedupe -> cheap filter -> LLM score (Claude) -> Telegram digest and instant
 alerts -> your like/dislike/save/applied feedback tunes later scoring.
@@ -26,8 +26,16 @@ Read this first. Be honest about what has and has not been checked.
   (its fixture is hand-written, D-215; no Workable boards ran in the smoke test), hh (credentials
   not used), the Telethon live listener and channel history, fresh alerts and their latency (no
   alert fired), the long-running tiered scheduler, and the triage eval (`--triage`). The review
-  fixes FIX-40..43 were tested offline but not re-reviewed; FIX-44, 45, 46, 49, 50, 51 remain open
-  as known limits.
+  fixes FIX-40..43 were tested offline but not re-reviewed. FIX-44, 45, 46, 49, 50 and 51 were
+  folded into the KZ-first branch below and closed there (D-233, D-264, D-269 to D-271, D-284, D-296).
+- Branch kz-first-fresh-cv (KF-01..KF-33): everything below is tested offline only, with fixtures
+  and fakes for Telethon, Anthropic and the Bot. No live smoke run has happened on this branch yet.
+  NOT verified live: the KZ-first ranking and 6/3/1 digest on real data, the two-line item format in
+  a real chat, the cue-driven hh queries (needs `HH_ACCESS_TOKEN` and an email in `HTTP_CONTACT`),
+  the Telethon entity cache, flood-wait handling and channel discovery (`/findchannels`), Add and
+  Ignore, `/add` and forwards, `/search`, the Arbeitnow parser (its fixture is a trimmed copy of one
+  real response, D-238), the new pagewatch pages against live sites, and the CV review (`/cvreview`)
+  against the real Claude API.
 - NOT verified, outreach and weights: the CV, `/prepare`, `/contacts` and `/draft` features and the
   LLM region fields (`employer_region` and friends) were built and tested offline only (fakes and
   fixtures). They have never been run against the real Anthropic or Telegram APIs, and the scoring
@@ -61,6 +69,50 @@ Outreach and weights (SPEC.md "Definition of done: outreach and weights"):
 - Contacts come only from the listed public sources, expire on schedule, and LinkedIn is never fetched (tested): verified offline (the HTTP client refuses LinkedIn hosts without any request, D-104).
 - A live smoke run with at most 20 scoring calls is recorded in DECISIONS.md, or listed as a user action: recorded in D-166: `once` scored 20, sent a 10-item digest. Not seen live: KZ flags and a mixed quota batch, and /cv, /prepare, /draft (offline tests only).
 
+## Opportunity types and message format
+
+Every posting has one type: `job`, `internship`, `research`, `fellowship`, `scholarship`, `grant`,
+`hackathon`, `competition`, `accelerator`, `summer_school`, `startup_role` or `other` (D-247,
+D-275). It starts from the source's `kind` (or a pagewatch page's optional `type`) and is
+overridden by triage, then by the scorer. A grant, scholarship, fellowship, hackathon, competition,
+accelerator or summer school run by a KZ employer gets the exclusive `kz_program` weight.
+
+Each digest item, alert, `/top`, `/search` and `/add` reply is two lines plus the link (D-260,
+D-283):
+
+```
+🇰🇿 <b>Title</b> — Company · City · until 2026-12-01 · ⚠ marker
+Relevance 8.5/10: one-line reason.
+https://example.com/job · via Arbeitnow
+```
+
+- Line 1: flag, title, company, then city, deadline and a single marker (hard blocker, possible
+  scam, personal contact only, visa barrier, or the first model red flag) when known. Alerts start
+  with `ALERT`, fresh alerts with `NEW`.
+- Line 2: "Relevance" is the LLM base score, not the adjusted score (which only orders items).
+- Line 3: the link. Remote OK, Jobicy and Arbeitnow items add `via <name>` on this line (their
+  credit requirement, D-260).
+- Buttons, one row: Like, Dislike, Save, Applied, Prepare.
+
+## Cue file
+
+`config/cues.toml` is the one place for every keyword list (D-257): opportunity types (`[types.*]`),
+fields (`[fields.*]`), Kazakhstan locations, `[negative]`, `[seniority]`, `[protect]`, `[spam]`,
+`[unpaid]`, `[hard_blockers]`, `[qualifications.*]` (used by the CV review), the hh query settings
+(`[hh]`) and the Telegram discovery queries (`[telegram_discovery]`). Each group has `en`, `ru` and
+`kk` lists. Edit it and restart `run`; a bad entry raises an error naming it.
+
+Entry syntax (matching is case-folded, NFKC, with the Russian e-diaeresis folded):
+
+- `word` or `a phrase`: whole-word match; spaces match spaces or hyphens.
+- `stem*`: prefix match, for Russian and Kazakh inflection (`стажир*`). Entries of 3 characters or
+  fewer (`ai`, `ml`, `c++`) are whole-word only; `ai*` is a load error.
+- `re:<regex>`: a raw regex over the folded text; write the boundaries yourself.
+
+The old keyword keys under `[filters]` (positive, spam, unpaid, seniority, negative, protect and
+hard-blocker lists) moved here; a leftover key fails at load with "<key> moved to config/cues.toml".
+`/search` expands each word to its whole cue group, so `/search internship` also finds `стажировка`.
+
 ## Employer-region weights
 
 The LLM base score is region-blind (D-92). Code then adds a small adjustment by employer, so
@@ -68,16 +120,24 @@ Kazakhstan employers are not buried under big international names. All of it liv
 no code change needed:
 
 - `config/weights.yaml`: `adjustments` (`intl_top_tier`, `intl_other`, `kz_employer`, `kz_startup`,
-  and `intl_onsite_visa_barrier`, a modifier that stacks only with the two international categories
-  and only for on-site roles), `region_min_confidence` (LLM region guesses below it are ignored),
-  `digest_quotas` (`kz`, `intl`, `best_remaining`; their sum is the digest size, and unfilled
-  slots fall through to the best remaining items), `flags` (the emoji shown before the title; `""`
+  `kz_program`, and `intl_onsite_visa_barrier`, a modifier that stacks only with the two
+  international categories and only for on-site roles), `region_min_confidence` (LLM region guesses
+  below it are ignored), `digest_quotas` (`kz`, `intl`, `best_remaining`; their sum is the digest
+  size, and unfilled slots fall through to the best remaining items), `flags` (the emoji shown before the title; `""`
   turns one off) and the watchlist paths.
 - `config/watchlists/intl_top_tier.yaml` and `config/watchlists/kz_employers.yaml` (the latter has a
   `startup: true|false` flag per employer). They are starting points: extend them. Names match
   exactly after normalization (case, punctuation and legal forms like LLC/ТОО are ignored), so list
   spelling variants under `aliases`. Only the top-tier watchlist can make an employer top-tier.
 - `[ranking] weights_file` in `config.toml` points at the YAML file.
+
+KZ-first defaults (D-248, D-278, D-280): `kz_startup` +1.5, `kz_employer` +1.0, `kz_program` +1.0,
+`intl_top_tier` +0.5, `intl_other` 0, visa barrier -0.5, and `digest_quotas` 6 KZ / 3 intl / 1 best
+remaining (10 items). `kz_program` is exclusive: a KZ employer running a grant, scholarship,
+fellowship, hackathon, competition, accelerator or summer school gets it instead of the employer or
+startup bonus. An employer the watchlists and the LLM leave unknown counts as KZ when the posting
+is in Russian or Kazakh and its location matches a Kazakhstan cue (`lang_loc`, D-249); an English
+posting in Kazakhstan stays unknown. Unknown employers use the intl fresh-alert threshold.
 
 How the score works: `adjusted = clamp(base + adjustment, 0, 10)`. Eligibility for the digest and
 for instant alerts uses the base score, so a bonus never lifts a weak posting in and never fires an
@@ -126,6 +186,16 @@ Privacy:
 `daily_llm_call_cap` (all outreach calls per day, retries included), `max_page_fetches_per_prepare`,
 `max_page_fetches_per_day`, `max_contacts_per_posting`, `contact_ttl_days`, `rediscover_after_days`,
 `cv_max_bytes`, `cv_max_pages`, `cv_max_chars`, `pending_input_minutes`.
+
+`[cv_review]` in `config.toml` (unknown keys are rejected) controls the market summary the review
+uses: it counts which skills and qualifications (the `fields.*` and `qualifications.*` cue groups)
+appear in your KZ and international postings first seen in the last `market_days` (30), with a base
+score of at least `market_min_score` (7.0) or a like; `top_n` (10) groups per bucket, and a bucket
+with fewer than `min_postings` (5) is reported as not enough data (D-299). The review is cached per
+CV version and prompt, so `/cvreview` costs no call unless the CV, the profile or `refresh`
+changes. It is advice only: any suggested wording is checked against your CV text, and a skill you
+might not have is shown as a question ("Do you have experience with X? If yes, add it."), never as
+a claim (D-300).
 
 ## Contacts
 
@@ -193,14 +263,18 @@ in `src/config.py`; this table is checked against it by a test.
 
 - `[sources.greenhouse] boards`, `[sources.lever] companies`, `[sources.ashby] boards`: the ATS
   company watchlists (board slugs); the matching `.names` tables give display names.
-- `[sources.hh]`: `area` (40 = Kazakhstan), `period` in days. Search queries come from `config/cues.toml` `[hh]` (an old `queries` key is rejected). Needs `HH_ACCESS_TOKEN` and `HTTP_CONTACT` set to your email.
+- `[sources.hh]`: `area` (40 = Kazakhstan), `period` in days. Search queries come from `config/cues.toml` `[hh]` (an old `queries` key is rejected). Needs `HH_ACCESS_TOKEN` and `HTTP_CONTACT` set to an email: hh stays disabled (reason shown in `/sources`) while `HTTP_CONTACT` has no `@`. Each run sends at most `max_requests_per_run` (4) queries, taking `[hh] groups` from the cue file in rotation (D-288).
 - `[[sources.rss.feeds]]`: `url`, `name`, `kind` (job, internship, research, ...).
 - `[[sources.pagewatch.pages]]`: pages to watch for changes (`url`, `name`, `kind`, optional
   `css_selector`, optional `company`: the employer name used for weighting, e.g. `IMC`). Only add pages whose robots.txt allows it.
 - `[sources.jobicy]`: `industries` slugs and optional `tags`.
 - `[sources.arbeitnow]`: `max_pages` (1..2, default 1); polled at most hourly (D-238).
 - `[sources.telegram_channels] channels`: public channel handles, for example `["some_channel"]`.
-  Empty by default: you must fill it in, and it only works after the Telethon login below.
+  Empty by default: you must fill it in (or use `/findchannels`, `/channels add`), and it only
+  works after the Telethon login below. Also `max_channels_per_poll` (20), `max_resolves_per_poll`
+  (3), `pause_s` (4) and `live_flush_s` (30).
+- `[telegram_discovery]`: the weekly and on-demand channel discovery (see "Channel discovery").
+- `[cv_review]`: the market summary used by `/cvreview` (see "CV, prepare and drafts").
 - `[filters]`: `cues_file` (default `config/cues.toml`, which holds the title, spam, unpaid,
   seniority, negative, protect and hard-blocker keyword lists, D-257), `max_age_days`.
 - `[thresholds]`: `digest_min_score`, `alert_score`,
@@ -296,7 +370,7 @@ Only you can do these.
      It asks for your phone, the login code and your 2FA password and writes the session file
      (`TG_SESSION_PATH`, gitignored). Keep it private: it grants access to your account.
 4. Fill your own items in `config.toml`: extra target companies in the ATS watchlists, and Kazakh
-   Telegram channels in `[sources.telegram_channels].channels`.
+   Telegram channels in `[sources.telegram_channels].channels` (or find them with `/findchannels`).
 5. Check the live sources with `.venv/bin/python -m src.main probe` (expect exit 0). Then verify the real
    digest with `.venv/bin/python -m src.main once`, send `/sources` to the bot and check that the counted
    families show ok runs, then start unattended mode with `run`.
@@ -322,11 +396,15 @@ Everything here is in `config.toml` and was tested offline only (see Verificatio
 `run` no longer collects everything every few hours. Each source target belongs to a tier, and each
 tier has its own job (`[scheduler]`, D-186, D-207):
 
-- tier1, every 15 min (`tier1_minutes`, jitter up to `tier1_jitter_s` = 60 s): the Greenhouse, Lever
-  and Ashby boards and the Workable accounts you list in `config.toml`.
-- tier2, every 90 min (`tier2_minutes`, jitter 300 s): discovered boards, Remote OK,
-  Jobicy, RSS, HN, MLH, hh and Telegram channel polling.
+- tier1, every 10 to 15 min (`tier1_minutes` = 10, jitter up to `tier1_jitter_s` = 300 s): the
+  Greenhouse, Lever and Ashby boards and the Workable accounts you list in `config.toml`, plus hh
+  (never faster than every 10 min, one request per query group, at most 4 per run).
+- tier2, every 1 to 2 h (`tier2_minutes` = 60, jitter 3600 s): discovered boards, Remote OK,
+  Arbeitnow, Jobicy, RSS, HN and MLH.
 - tier3, every 60 min (`tier3_minutes`, jitter 300 s): pagewatch pages.
+- `tg`, every 4 to 5 min (`tg_minutes` = 4, at least 3, jitter `tg_jitter_s` = 60 s): Telegram
+  channel polling. It reads at most `max_channels_per_poll` channels per run, least recently polled
+  first, with `pause_s` seconds between channels.
 - A `[sources.x] tier` value overrides the default. Remote OK has an hourly floor
   (`min_poll_minutes = 60`): it is not fetched twice within 60 minutes. Jobicy responses are cached
   for an hour (D-58).
@@ -366,6 +444,11 @@ tier has its own job (`[scheduler]`, D-186, D-207):
   `/channels add <handle>` and `/channels remove <handle>` change the list at runtime without
   editing `config.toml`; at most 50 channels.
 - `/sources` now also shows each source's tier.
+- `/search <words>`: the top 5 scored postings from the last 30 days that match your words (or
+  their cue-file synonyms in en, ru, kk). Local only: no LLM call and no network (D-297).
+- `/findchannels [keywords]`: see "Channel discovery".
+- `/add <text with a link>`: score a posting you found yourself (see "Your own items").
+- `/cvreview`: see "CV, prepare and drafts".
 
 ### Board discovery
 
@@ -387,12 +470,41 @@ tier has its own job (`[scheduler]`, D-186, D-207):
 
 With `TG_API_ID`, `TG_API_HASH` and the one-time Telethon login done, `run` listens live: new
 messages from channels your account has joined arrive within about `live_flush_s` (30 s) and go
-through scoring and alerts. You must join the channels yourself in Telegram: `auto_join` is false
-by default and the bot will not join for you. Channels that are not joined stay on tier2 polling,
-which is also the fallback while the listener is disconnected. Without credentials or a session
+through scoring and alerts. You must join the channels yourself in Telegram: the bot never joins
+for you and has no join or write call (`auto_join` was removed, and a leftover `auto_join` key
+fails at config load; D-256). Channels that are not joined stay on `tg` polling, which is also the
+fallback while the listener is disconnected. Without credentials or a session
 the listener does not start (logged once; `/channels` shows why). In `run` mode, polling reuses the
-listener's client (D-193, D-218). hh and Telegram postings with an unknown employer region count as
+listener's client (D-193, D-218). Polling resolves each handle once and keeps its id and access
+hash in an entity cache (SQLite), so later runs make no username lookup; a channel that turns out
+private or invalid is marked in `/channels` and dropped from polling. After a Telegram flood wait,
+all Telegram calls pause for the wait plus 10% (`/sources`, `/channels` and `/stats` show it; D-244, D-287). hh and Telegram postings with an unknown employer region count as
 Kazakhstan employers (`region_hint = "kz"`, D-194).
+
+### Channel discovery
+
+`/findchannels` (or `/findchannels word1, word2`, at most 3 keywords of 4+ characters) searches
+Telegram for public channels, reads a sample of recent posts from each, and replies with candidates
+(each with its share of job-like posts and a few sample posts). Without keywords it
+takes `max_queries_per_run` (5) queries from `[telegram_discovery]` in the cue file, rotating. Each
+candidate has Add and Ignore buttons: Add puts the handle in the `/channels` list (it does not join
+the channel; you still join it yourself for live listening), Ignore hides it for good. Channels you
+already have, removed or ignored are never listed again. A weekly job runs the same search on
+`weekly_day` at `run_time` (Asia/Almaty) and sends nothing when there are no candidates.
+It needs `TG_API_ID`, `TG_API_HASH` and the Telethon login, honors a flood wait, and is read-only.
+`[telegram_discovery]` keys: `enabled`, `daily_call_cap` (30 Telethon calls per day; 0 blocks all),
+`weekly_day`, `run_time`, `max_queries_per_run`, `max_candidates_per_query`, `sample_window` (20),
+`sample_posts` (3) (D-289 to D-291).
+
+### Your own items
+
+- `/add <posting text, including its link>`, or forward a post from a channel to the bot. The text
+  is triaged and scored like any other posting and the item is sent back at once; it never enters
+  the digest or alerts again. The link is stored but never opened. Text over 8000 characters is
+  refused. A forward from a public channel reuses that channel's posting id, so later polling does
+  not duplicate it. Triage and scoring caps apply and the reply says when one is reached (D-292).
+- User-added items can still be marked unpaid or as a repost of an earlier posting; the reply then
+  says "Not scored: filtered (reason)".
 
 ### Triage and daily caps
 
@@ -411,6 +523,20 @@ Kazakhstan employers (`region_hint = "kz"`, D-194).
   `triage_error` posting ever, so it is labeled "errors (all time)".
 - If every triage (or every scoring) call in a run fails, you get one throttled error notice naming
   the stage (D-224). Set `[triage] enabled = false` to skip triage.
+- All caps in one place (each resets per Asia/Almaty day; a reached cap warns once and is not an
+  error):
+
+  | Cap | Default | Counts |
+  |---|---|---|
+  | `[scoring] daily_call_cap` | 200 | scoring calls, retries included |
+  | `MAX_SCORES_PER_RUN` (env) | 150 | scoring calls in one run |
+  | `[triage] daily_call_cap` | 600 | triage calls, retries included |
+  | `[outreach] daily_llm_call_cap` | 40 | CV parse, CV review, `/prepare`, `/draft` calls |
+  | `[telegram_discovery] daily_call_cap` | 30 | discovery searches and reads |
+  | `[discovery] max_validations_per_day` / `max_new_boards_per_day` | 40 / 20 | board validations / boards added |
+  | `fresh_alert_max_per_day` | 6 | fresh alerts |
+  | `[hh]` `max_requests_per_run` (cue file) | 4 | hh queries per run |
+
 - `python -m src.evals.run --triage` measures triage recall on the labeled set (see Evals).
 
 ### Hard blockers
@@ -423,16 +549,36 @@ work-authorization requirements). `"filter"` drops it before triage instead (D-1
 The `[negative]` cues (with `[protect]` as exceptions) and `sr` as a seniority cue live in the
 same file. A leftover `[filters]` keyword key fails at load with "<key> moved to config/cues.toml".
 
-### Sources left out of this round
+### Sources checked
 
-Dropped sources are in the Sources table with their D-refs (SmartRecruiters D-174, Recruitee D-175,
-Personio D-176, Remotive D-177, We Work Remotely D-180). Arbeitnow (D-179) and web-search board
-discovery (D-181, D-192) were left out of this round (D-202): there is no Arbeitnow module and no
-web-search discovery code, so no web-search cost exists. The earlier verdicts stay on record.
+The KZ-first branch re-checked sources against robots.txt and terms (D-235 to D-245, read 2026-11-08):
+
+| Source | Verdict |
+|---|---|
+| enbek.kz | skipped: robots disallows the vacancy listing, no public API (D-235) |
+| Astana Hub | skipped: blocks our honest User-Agent with 403 (D-236) |
+| Remotive | out: robots `Disallow: /api/*` (D-237) |
+| Arbeitnow | added (D-238): robots allows the API, terms ask for a link back |
+| We Work Remotely | out: unchanged from D-180 (D-239) |
+| SmartRecruiters | out: unchanged from D-174 (D-240) |
+| Recruitee | out: needs a per-company token (D-241) |
+| Personio | out: terms unreadable (HTTP 429), re-check later (D-242) |
+| hh.kz | kept: application token plus a contact email (D-243) |
+| 23 pagewatch pages | added; unusable candidates skipped with reasons (D-245) |
+
+Earlier verdicts stay on record: SmartRecruiters D-174, Recruitee D-175, Personio D-176, Remotive
+D-177, Arbeitnow D-179 (re-evaluated in D-238), We Work Remotely D-180. Web-search board discovery
+(D-181, D-192) was cut in D-202 and no code for it exists.
+
+The pagewatch seed list in `config.toml` has 30 pages: 12 Kazakhstan (Kaspi, Halyk, Kolesa, BTS
+Digital, ForteBank, EPAM Kazakhstan campus, four Nazarbayev University pages, ISSAI, Science Fund),
+11 international (DESY, DAAD RISE, Mitacs, Google Summer of Code, three ML summer schools, IMC
+Prosperity, Jane Street programs, DeepMind, Max Planck) and the 7 older ones. Each page may set
+`type`; only add pages whose robots.txt allows it.
 
 ### hh and attribution
 
-hh needs an application token and a contact email (see "hh.kz"). Postings from Remote OK, Jobicy and Arbeitnow
+hh needs an application token and a contact email in `HTTP_CONTACT` (see "hh.kz"). Postings from Remote OK, Jobicy and Arbeitnow
 render "via Remote OK", "via Jobicy" or "via Arbeitnow" and link to the aggregator's own page (D-191, D-216).
 
 ## Running
@@ -448,8 +594,9 @@ render "via Remote OK", "via Jobicy" or "via Arbeitnow" and link to the aggregat
 `run` collects per tier (see "Coverage and freshness"; `COLLECT_CRON_HOURS` is ignored), sends the daily digest at `DIGEST_TIME`
 (`TIMEZONE`), sends instant alerts and prunes old cache rows at 04:00. Bot commands: `/top`,
 `/saved`, `/applied`, `/sources`, `/stats`, `/boards`, `/channels`, `/pause`, `/resume`, plus `/cv`, `/cvreview`, `/forgetcv`, `/cancel`,
-`/prepare`, `/contacts`, `/addcontact` and `/draft` (see "CV, prepare and drafts"). Each item has
-feedback buttons.
+`/prepare`, `/contacts`, `/addcontact` and `/draft` (see "CV, prepare and drafts"), plus `/search`,
+`/add`, `/findchannels` and forwarded posts (see "Coverage and freshness"). Each item has five
+buttons (see "Opportunity types and message format").
 
 ### Running unattended
 
@@ -504,7 +651,8 @@ These evals have never been run yet. Re-run them after any prompt, profile or ru
 - The bot does not answer: `TELEGRAM_CHAT_ID` must be your own chat id; other chats are ignored silently.
 - hh or telegram_channels shown as `credentials:` or `disabled:` in `/sources`: set the variables,
   complete the Telethon login and add channels (see above).
-- Too many or too few results: tune `[filters]` and `[thresholds]` in `config.toml`.
+- Too many or too few results: tune `[filters]` and `[thresholds]` in `config.toml`, and the
+  keyword lists in `config/cues.toml`.
 - Scoring stops early: `MAX_SCORES_PER_RUN` caps Claude calls per run.
 - `test_source_count` failing after you edited `config.toml`: it reads the real file on purpose and
   fails by design when fewer than 6 credential-free families are enabled. Re-enable a source.
