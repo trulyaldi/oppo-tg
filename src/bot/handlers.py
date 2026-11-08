@@ -81,6 +81,7 @@ START_TEXT = (
     "/sources - source status\n"
     "/stats - delivery latency and pipeline counters\n"
     "/channels - Telegram channels (/channels add &lt;@h|t.me/h&gt;, /channels remove &lt;h&gt;)\n"
+    "/findchannels [keywords] - find new Telegram channels (Add or Ignore buttons)\n"
     "/boards - discovered ATS boards (/boards remove &lt;n|source:token&gt;)\n"
     "/pause - pause the digest\n"
     "/resume - resume the digest\n"

@@ -3785,7 +3785,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - A query shorter than 4 characters is not sent.
   - The recording fake shows only allowlisted calls.
 
-### KF-23 [ ] /findchannels, Add and Ignore buttons, the weekly job (D-256)
+### KF-23 [x] /findchannels, Add and Ignore buttons, the weekly job (D-256)
 - Build:
   - `/findchannels [keywords]`: without keywords, uses the cue queries; with keywords, uses them (at most 3, each at least 4 characters). It runs `discover_channels` and replies with one message per candidate:
     - `@handle — title (N subscribers, job posts ~35%)`;

@@ -55,6 +55,9 @@ class SchedulerDeps:
     digest_time: str = "09:00"
     discover: Job | None = None
     discover_time: str = "05:30"
+    tg_discover: Job | None = None
+    tg_discover_day: str = "mon"
+    tg_discover_time: str = "06:00"
 
 
 def safe_job(name: str, fn: Job) -> Callable[[], Awaitable[None]]:
@@ -112,6 +115,16 @@ def build_scheduler(deps: SchedulerDeps) -> AsyncIOScheduler:
             safe_job("board_discovery", deps.discover),
             CronTrigger(hour=d_hour, minute=d_minute, timezone=tz),
             id="board_discovery",
+            **common,
+        )
+    if deps.tg_discover is not None:
+        t_hour, t_minute = parse_hhmm(deps.tg_discover_time)
+        sched.add_job(
+            safe_job("telegram_channel_discovery", deps.tg_discover),
+            CronTrigger(
+                day_of_week=deps.tg_discover_day, hour=t_hour, minute=t_minute, timezone=tz
+            ),
+            id="telegram_channel_discovery",
             **common,
         )
     return sched

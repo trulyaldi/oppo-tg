@@ -16,7 +16,7 @@ from typing import Any
 from src import config as config_mod
 from src import db
 from src.clock import SystemClock
-from src.config import AppConfig, ScoringConfig, Settings, TriageConfig
+from src.config import AppConfig, ScoringConfig, Settings, TelegramDiscoveryConfig, TriageConfig
 from src.delivery.digest import send_digest
 from src.http import build_client
 from src.lock import AlreadyRunning, InstanceLock
@@ -201,6 +201,11 @@ async def _serve(settings: Settings) -> None:
 
         log.info("discovery: %s", await run_board_discovery(conn, http, cfg, clock, settings))
 
+    async def tg_discover() -> None:
+        from src.discovery.telegram_flow import weekly_discovery
+
+        await weekly_discovery(bot, conn, settings, cfg, clock, load_filter_cues(cfg))
+
     async def prune() -> None:
         log.info("pruned: %s", db.prune(conn, clock.now()))
 
@@ -214,6 +219,7 @@ async def _serve(settings: Settings) -> None:
     listener = TelegramListener(settings, cfg, conn, on_new=live_flush, clock=clock)
     set_listener(listener)
 
+    tgd_cfg = TelegramDiscoveryConfig.from_cfg(cfg)
     scheduler = build_scheduler(
         SchedulerDeps(
             clock=clock,
@@ -225,6 +231,9 @@ async def _serve(settings: Settings) -> None:
             digest_time=settings.digest_time,
             discover=discover if cfg.discovery.enabled else None,
             discover_time=cfg.discovery.run_time,
+            tg_discover=tg_discover if tgd_cfg.enabled else None,
+            tg_discover_day=tgd_cfg.weekly_day,
+            tg_discover_time=tgd_cfg.run_time,
         )
     )
     dp = build_dispatcher(conn, settings, cfg, clock, client, http)

@@ -301,3 +301,19 @@ def test_kf17_default_cadence_four_jobs_tg_staggered_at_6_minutes():
     assert got["tier2"][:2] == (timedelta(minutes=60), 3600)
     assert got["tg"][:2] == (timedelta(minutes=4), 60)
     assert got["tg"][2] == start + timedelta(minutes=6)
+
+
+def test_kf23_weekly_telegram_discovery_job_uses_configured_day_and_time():
+    assert make([]).get_job("telegram_channel_discovery") is None
+
+    async def d():
+        pass
+
+    job = make([], tg_discover=d, tg_discover_day="wed", tg_discover_time="07:15").get_job(
+        "telegram_channel_discovery"
+    )
+    assert job is not None and job.max_instances == 1
+    trig = str(job.trigger)
+    assert "day_of_week='wed'" in trig and "hour='7'" in trig and "minute='15'" in trig
+    nxt = job.trigger.get_next_fire_time(None, datetime(2026, 11, 8, 8, 0, tzinfo=TZ))
+    assert nxt.weekday() == 2 and (nxt.hour, nxt.minute) == (7, 15)

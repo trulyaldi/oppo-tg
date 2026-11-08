@@ -11,7 +11,7 @@ from aiogram import BaseMiddleware, Bot, Dispatcher, F
 from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message, TelegramObject, Update
 
-from src.bot import handlers, outreach_handlers
+from src.bot import findchannels, handlers, outreach_handlers
 from src.bot.handlers import handle_feedback
 from src.clock import Clock
 from src.config import AppConfig, Settings
@@ -60,8 +60,17 @@ def build_dispatcher(
     clock: Clock,
     client: Any = None,
     http: Any = None,
+    tg_factory: Any = None,
 ) -> Dispatcher:
-    dp = Dispatcher(conn=conn, settings=settings, cfg=cfg, clock=clock, client=client, http=http)
+    dp = Dispatcher(
+        conn=conn,
+        settings=settings,
+        cfg=cfg,
+        clock=clock,
+        client=client,
+        http=http,
+        tg_factory=tg_factory,
+    )
     dp.update.outer_middleware(WhitelistMiddleware(settings.telegram_chat_id))
 
     @dp.callback_query(F.data.startswith("fb:"))
@@ -179,6 +188,27 @@ def build_dispatcher(
         clock: Clock,
     ) -> None:
         await handlers.cmd_channels(m, conn, settings, cfg, clock, command.args)
+
+    @dp.message(Command("findchannels"))
+    async def _findchannels(
+        m: Message,
+        command: CommandObject,
+        bot: Bot,
+        conn: sqlite3.Connection,
+        settings: Settings,
+        cfg: AppConfig,
+        clock: Clock,
+        tg_factory: Any,
+    ) -> None:
+        await findchannels.cmd_findchannels(
+            m, bot, conn, settings, cfg, clock, command.args, tg_factory
+        )
+
+    @dp.callback_query(F.data.startswith("tc:"))
+    async def _candidate_cb(
+        cb: CallbackQuery, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig
+    ) -> None:
+        await findchannels.on_candidate_callback(cb, conn, clock, cfg)
 
     @dp.message(Command("pause"))
     async def _pause(m: Message, conn: sqlite3.Connection) -> None:
