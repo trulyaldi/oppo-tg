@@ -4012,7 +4012,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 
 ### Part K: caps and safety sweep
 
-### KF-34 [ ] Verify daily caps, cap warnings and total-failure exit codes (D-254)
+### KF-34 [-] (cut by D-301, folded into KF-37) Verify daily caps, cap warnings and total-failure exit codes (D-254)
 - Build:
   - Pin with tests, through `score_pending` / `main(["once"])` and fakes:
     - triage, scoring and discovery caps each warn once per day;
@@ -4025,7 +4025,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 - Files: `tests/test_caps.py`, `tests/test_main_exit.py`, plus any `src/` file the tests show is wrong; `tests/fixtures/stats_expected.txt` only if lines change.
 - Acceptance: the pinned cases pass; `main(["once"])` returns 0 on a cap-only run and 1 on a total triage or scoring failure.
 
-### KF-35 [ ] Handler, privacy and injection sweep for the new surfaces (D-256)
+### KF-35 [-] (cut by D-301, folded into KF-37) Handler, privacy and injection sweep for the new surfaces (D-256)
 - Build (tests first, then fix what they find):
   - One parametrized dispatcher test: for `/findchannels`, `tc:add:x`, `tc:ign:x`, `/add ...`, a forwarded message, `/search x`, `/cvreview`, `/boards`, `/channels`, `/stats`, and a document upload, an update from another chat produces zero bot calls.
   - A `ReadOnlyTelegram` recording test across polling, the listener, discovery and forwards shows only allowlisted calls.
@@ -4073,6 +4073,10 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - snapshot ownership (D-250) per commit (`git show --stat`);
   - README accuracy;
   - a clean-venv install: `python3 -m venv /tmp/<scratch>/v && <scratch>/v/bin/python -m pip install -r requirements.txt && <scratch>/v/bin/python -m pytest -q`, using the session scratchpad, not the repo.
+
+  Also check, folded in from the cut KF-34/KF-35 (D-301): caps warn once per day and a cap alone exits 0; total triage or scoring failure alerts and exits 1; every new handler and callback (/findchannels, tc:add, tc:ign, /add, forwards, /search, /cvreview, /boards) ignores other chats; every bot send targets TELEGRAM_CHAT_ID; no posting, CV, contact or channel text in logs; data/ and *.session are gitignored. Add a test only where one is missing.
+
+  Shortened by D-301: one review pass plus at most one re-review. Only blocking findings get FIX tasks and are fixed; non-blocking findings are listed in DECISIONS for the final report and not fixed.
 
   Findings go in a new "## 13. Review fixes (kz-first-fresh-cv review)" with FIX-52 onward, each marked blocking or non-blocking, one commit each. Re-review until nothing blocking remains.
 - Files: `PLAN.md`, `DECISIONS.md`, plus fixes.

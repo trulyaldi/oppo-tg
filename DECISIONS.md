@@ -1719,3 +1719,7 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - **Gaps:** an `add_if_true` gap already in the CV is dropped; the rest render as "Do you have experience with X? If yes, add it." Keywords must appear in the CV.
   - **Budget:** `cv_review` is in `OUTREACH_PURPOSES`; the review builds the outreach budget itself, so a reached cap gives `ReviewError("budget")` with 0 calls.
   - **Privacy:** only counts are logged. The CV reaches the model only inside `<cv>` (sections JSON plus the first 12000 characters of text); the system block holds the prompt and profile only.
+
+## 2026-11-08 — plan shortened at the user's request (orchestrator)
+
+- **D-301 Remaining plan shortened.** The user asked to shorten the remaining plan after KF-32. KF-34 (caps and exit-code pins) and KF-35 (handler, privacy and injection sweep) are cut (`[-]`) and their checks are folded into the KF-37 review checklist, adding tests only where one is missing. KF-37 is limited to one review pass plus at most one re-review; only blocking findings are fixed, non-blocking ones are listed for the final report. KF-33, KF-36 and KF-38 stay. Reason: speed; caps and the all-fail exit code were already pinned by D-223/D-224 and KF-01/KF-21, and the reviewer covers the privacy and whitelist checks.
