@@ -109,3 +109,49 @@ def test_scoring_config_validation():
     assert ScoringConfig.from_cfg(AppConfig.load(snap)) == ScoringConfig()
     root = Path(__file__).parent.parent / "config.toml"
     assert ScoringConfig.from_cfg(AppConfig.load(root)) == ScoringConfig()
+
+
+def test_kf21_discovery_cap_warns_once_per_day_and_is_isolated(tmp_path):
+    import asyncio
+
+    from src.config import TelegramDiscoveryConfig
+    from src.discovery.telegram_budget import TG_PURPOSES, discovery_budget, reserve_or_warn
+    from src.llm.budget import OUTREACH_PURPOSES
+
+    assert not set(TG_PURPOSES) & set(OUTREACH_PURPOSES)
+    conn = mk(tmp_path)
+    clock = FixedClock(datetime(2026, 11, 1, 5, 0, tzinfo=UTC))
+    b = discovery_budget(conn, clock, TelegramDiscoveryConfig(daily_call_cap=3))
+
+    class Bot:
+        def __init__(self):
+            self.sent = []
+
+        async def send_message(self, chat, text, **kw):
+            self.sent.append(text)
+
+    bot = Bot()
+
+    async def go():
+        return [
+            await reserve_or_warn(bot, 1, conn, clock, b, p)
+            for p in ("tg_search", "tg_sample", "tg_sample", "tg_search", "tg_sample")
+        ]
+
+    assert asyncio.run(go()) == [True, True, True, False, False]
+    assert len(bot.sent) == 1 and "cap" in bot.sent[0]
+    clock.set(datetime(2026, 11, 2, 5, 0, tzinfo=UTC))
+    assert asyncio.run(go()) == [True, True, True, False, False] and len(bot.sent) == 2
+
+
+def test_kf21_tg_rows_do_not_use_scoring_or_triage_caps(tmp_path):
+    conn = mk(tmp_path)
+    clock = FixedClock(datetime(2026, 11, 1, 5, 0, tzinfo=UTC))
+    disc = LlmBudget(conn, clock, 100, ("tg_search", "tg_sample"))
+    for _ in range(10):
+        assert disc.reserve("tg_search")
+    score = LlmBudget(conn, clock, 2, ("score", "score_baseline"))
+    triage = LlmBudget(conn, clock, 2, ("triage", "triage_baseline"))
+    outreach = LlmBudget(conn, clock, 2, ("parse_cv", "extract_contact", "tailor", "draft"))
+    assert score.used() == triage.used() == outreach.used() == 0
+    assert score.reserve("score") and triage.reserve("triage")

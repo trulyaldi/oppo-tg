@@ -275,6 +275,54 @@ class TriageConfig:
         return cls.from_mapping(cfg.triage)
 
 
+@dataclass(frozen=True)
+class TelegramDiscoveryConfig:
+    """Weekly Telegram channel discovery and its daily call cap (D-254, KF-21)."""
+
+    enabled: bool = True
+    daily_call_cap: int = 30  # every discovery Telethon call, per Asia/Almaty day
+    weekly_day: str = "mon"
+    run_time: str = "06:00"
+    max_queries_per_run: int = 5
+    max_candidates_per_query: int = 5
+    sample_window: int = 20
+    sample_posts: int = 3
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.enabled, bool):
+            raise ValueError("[telegram_discovery] enabled must be a boolean")
+        if self.weekly_day not in ("mon", "tue", "wed", "thu", "fri", "sat", "sun"):
+            raise ValueError("[telegram_discovery] weekly_day must be mon, tue, ... or sun")
+        rt = self.run_time
+        ok = isinstance(rt, str) and len(rt) == 5 and rt[2] == ":" and rt[:2] + rt[3:] != ""
+        if ok:
+            ok = (rt[:2] + rt[3:]).isdigit() and int(rt[:2]) < 24 and int(rt[3:]) < 60
+        if not ok:
+            raise ValueError("[telegram_discovery] run_time must be HH:MM")
+        for name in (
+            "daily_call_cap",
+            "max_queries_per_run",
+            "max_candidates_per_query",
+            "sample_window",
+            "sample_posts",
+        ):
+            v = getattr(self, name)
+            minimum = 0 if name == "daily_call_cap" else 1
+            if isinstance(v, bool) or not isinstance(v, int) or v < minimum:
+                raise ValueError(f"[telegram_discovery] {name} must be an integer >= {minimum}")
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> TelegramDiscoveryConfig:
+        unknown = set(data) - set(cls.__dataclass_fields__)
+        if unknown:
+            raise ValueError(f"unknown telegram_discovery keys: {sorted(unknown)}")
+        return cls(**data)
+
+    @classmethod
+    def from_cfg(cls, cfg: AppConfig) -> TelegramDiscoveryConfig:
+        return cls.from_mapping(cfg.telegram_discovery)
+
+
 TG_POLL_LIMITS = {  # key: (minimum, maximum)
     "max_channels_per_poll": (1, 30),
     "max_resolves_per_poll": (1, 30),
@@ -408,6 +456,7 @@ class AppConfig:
     outreach: dict[str, Any] = field(default_factory=dict)
     scoring: dict[str, Any] = field(default_factory=dict)
     triage: dict[str, Any] = field(default_factory=dict)
+    telegram_discovery: dict[str, Any] = field(default_factory=dict)
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
     politeness: PolitenessConfig = field(default_factory=PolitenessConfig)
     discovery: DiscoveryConfig = field(default_factory=DiscoveryConfig)
@@ -438,6 +487,8 @@ class AppConfig:
         ScoringConfig.from_mapping(scoring)  # fail fast at load
         triage = dict(data.get("triage", {}))
         TriageConfig.from_mapping(triage)  # fail fast at load
+        tgd = dict(data.get("telegram_discovery", {}))
+        TelegramDiscoveryConfig.from_mapping(tgd)  # fail fast at load
         filters = dict(data.get("filters", {}))
         for key in MOVED_FILTER_KEYS:
             if key in filters:
@@ -450,6 +501,7 @@ class AppConfig:
             outreach=outreach,
             scoring=scoring,
             triage=triage,
+            telegram_discovery=tgd,
             scheduler=SchedulerConfig.from_mapping(dict(data.get("scheduler", {}))),
             politeness=PolitenessConfig.from_mapping(dict(data.get("politeness", {}))),
             discovery=DiscoveryConfig.from_mapping(dict(data.get("discovery", {}))),

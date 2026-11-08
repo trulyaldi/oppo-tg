@@ -1640,3 +1640,7 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - **Rotation.** State `hh:next_group` is the start index; each run takes `max_requests_per_run` groups (one page each, `per_page=100`, `page=0`, `order_by=publication_time`, `area=40`) and advances the index, even if the run fails, so one bad group cannot block the others. With 6 groups and 4 per run, the groups that wrap round may be served from the 5 min response cache.
   - **Contact check.** `disabled_reason` returns the token reason first, then "set HTTP_CONTACT to your email (hh requires it in the User-Agent)" when `HTTP_CONTACT` has no `@`. The default contact is a URL, so hh stays off until the user sets an email. The email itself comes only from env.
   - **Tests** use `tests/fixtures/cues_hh_two.toml` (groups q1 and q2) where a test needs exact queries.
+
+- **D-289 KF-21: Telegram discovery cap and config.**
+  - `[telegram_discovery]` is validated by `TelegramDiscoveryConfig` (unknown keys, bad day, bad HH:MM and non-positive limits are rejected; `daily_call_cap = 0` is allowed and blocks all discovery calls).
+  - `src/discovery/telegram_budget.py` builds an `LlmBudget` over `tg_search` and `tg_sample` and `reserve_or_warn` sends one HTML warning per Almaty day under `cap_warned:tg_discovery:<day>`; a send failure is logged and never raises. The warning is a small local renderer rather than an extension of `scoring_alert.warn_cap_once`, which is keyed on a `capped` stat and has a scoring/triage-specific text.

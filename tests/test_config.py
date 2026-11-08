@@ -141,6 +141,36 @@ def test_fc06_repo_config_documented_values():
     assert asdict(snap.thresholds) == asdict(cfg.thresholds)
 
 
+def test_kf21_telegram_discovery_defaults_and_repo_config():
+    from src.config import TelegramDiscoveryConfig
+
+    d = TelegramDiscoveryConfig.from_cfg(AppConfig.from_dict({}))
+    assert (d.enabled, d.daily_call_cap, d.weekly_day, d.run_time) == (True, 30, "mon", "06:00")
+    assert (d.max_queries_per_run, d.max_candidates_per_query) == (5, 5)
+    assert (d.sample_window, d.sample_posts) == (20, 3)
+    root = Path(__file__).resolve().parent.parent
+    snap = FIXTURES / "config_repo_snapshot.toml"
+    for p in (root / "config.toml", snap):
+        assert TelegramDiscoveryConfig.from_cfg(AppConfig.load(p)) == d
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"bogus": 1},
+        {"weekly_day": "monday"},
+        {"run_time": "6:00"},
+        {"run_time": "25:00"},
+        {"daily_call_cap": -1},
+        {"sample_posts": 0},
+        {"enabled": "yes"},
+    ],
+)
+def test_kf21_telegram_discovery_rejects_bad_values(bad):
+    with pytest.raises(ValueError, match="telegram_discovery"):
+        AppConfig.from_dict({"telegram_discovery": bad})
+
+
 def test_fc06_hosts_and_overrides_load():
     cfg = AppConfig.from_dict(
         {"scheduler": {"tier1_minutes": 5}, "politeness": {"hosts": {"example.com": 5.0}}}

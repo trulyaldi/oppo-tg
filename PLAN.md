@@ -3746,7 +3746,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - The FC-25 error texts are unchanged.
   - A stem entry (`стажир*`) is never sent.
 
-### KF-21 [ ] Discovery cap and `[telegram_discovery]` config (D-254)
+### KF-21 [x] Discovery cap and `[telegram_discovery]` config (D-254)
 - Build:
   - `[telegram_discovery]` config, a `TelegramDiscoveryConfig` dataclass validated like the others:
     - `enabled = true`;

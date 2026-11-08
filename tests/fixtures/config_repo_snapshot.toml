@@ -203,6 +203,17 @@ weights_file = "tests/fixtures/weights_snapshot/weights.yaml"
 daily_call_cap = 200       # all scoring calls per Asia/Almaty day, retries included; 0 = no scoring
 baseline_max_share = 0.5   # baseline postings may use at most this share of the cap
 
+[telegram_discovery]
+# Weekly Telegram channel discovery (D-254). The cap counts every discovery Telethon call.
+enabled = true
+daily_call_cap = 30          # searches, full-channel reads and sample reads per Asia/Almaty day
+weekly_day = "mon"
+run_time = "06:00"           # Asia/Almaty
+max_queries_per_run = 5
+max_candidates_per_query = 5
+sample_window = 20           # recent messages read per candidate
+sample_posts = 3             # sample posts shown per candidate
+
 [outreach]
 cheap_model = "claude-haiku-4-5"     # CV parsing, pasted-contact extraction
 tailor_model = "claude-sonnet-4-6"   # /prepare and /draft
