@@ -176,11 +176,25 @@ class TelegramListener:
         skipped = [c for c in wanted if c not in self._live]
         if skipped:
             log.info("not joined, kept on polling: %s", ", ".join(skipped))
+        self._record_state(self._live)
         if self._live:
             self.client.add_event_handler(
                 self._on_event, events.NewMessage(chats=sorted(self._live))
             )
             self._handler_added = True
+
+    def _record_state(self, handles: set[str]) -> None:
+        """Live channels get a baselined target_state row, so a later poll is not a baseline.
+
+        Without it, messages missed while the listener was down would be treated as a
+        first fetch and never alert (D-270).
+        """
+        from src import db
+
+        now = self._now()
+        for handle in sorted(handles):
+            db.record_target_attempt(self.conn, "telegram_channels", handle, now, ok=True)
+            db.mark_baselined(self.conn, "telegram_channels", handle, now)
 
     async def _join(self, handle: str) -> bool:
         try:

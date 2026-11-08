@@ -3335,7 +3335,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - A baseline posting whose first reply is invalid makes no second call when the baseline sub-cap is reached after the first call (fake client counts 1 call).
   - The existing FC-29 and FIX-43 triage tests pass.
 
-### KF-02 [ ] Verify baseline mode; a partial first fetch does not baseline; live channels get target state (closes FIX-44)
+### KF-02 [x] Verify baseline mode; a partial first fetch does not baseline; live channels get target state (closes FIX-44)
 - Build (D-188, D-203):
   - First pin today's behaviour, if not already pinned:
     - a new board's first ok fetch stores `baseline=1` and never alerts;

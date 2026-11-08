@@ -187,7 +187,7 @@ async def _collect_tier(
                 tier=tr.target.tier,
                 has_validators=tr.has_validators,
             )
-            if tr.ok and is_new:
+            if tr.ok and is_new and not tr.partial:
                 db.mark_baselined(conn, source.name, tr.target.key, clock.now())
         failed = [tr for tr in results if not tr.ok]
         ok = not (results and len(failed) == len(results))

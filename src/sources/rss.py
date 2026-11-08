@@ -134,6 +134,8 @@ class RssSource:
                 ctx.log.exception("rss feed %s failed", feed["name"])
                 tally.failure()
         tally.raise_if_all_failed()
+        if tally.partial:
+            ctx.note_partial("rss", target.key)
         return items
 
     async def fetch(self, ctx: SourceContext) -> list[Posting]:

@@ -113,4 +113,6 @@ class JobicySource:
                 ctx.log.exception("jobicy %s failed", query)
                 tally.failure()
         tally.raise_if_all_failed()
+        if tally.partial:
+            ctx.note_partial("jobicy")
         return items

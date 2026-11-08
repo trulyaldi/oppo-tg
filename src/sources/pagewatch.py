@@ -89,6 +89,7 @@ class PageWatchSource:
         text = extract_text(html, page["css_selector"] or None)
         if not text.strip():
             ctx.log.warning("pagewatch %s: no text", page["name"])
+            ctx.note_partial("pagewatch", target.key)
             return []
         digest = content_hash(text)
         conn = ctx.http.db

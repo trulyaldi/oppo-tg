@@ -36,6 +36,11 @@ class SourceContext:
     # (source, target key) -> callback the collector runs after the target's items are
     # stored (e.g. advance a cursor only once the data is safe, D-193).
     after_store: dict[tuple[str, str], Callable[[], None]] = field(default_factory=dict)
+    # (source, target key) pairs whose fetch had a failed sub-request (D-270).
+    partial: set[tuple[str, str]] = field(default_factory=set)
+
+    def note_partial(self, source: str, key: str = "") -> None:
+        self.partial.add((source, key))
 
     def __post_init__(self) -> None:
         # D-34: without db+clock the client silently skips robots checks and caching.
@@ -74,6 +79,8 @@ class TargetResult:
     error: str | None = None
     has_validators: bool | None = None
     on_stored: Callable[[], None] | None = None
+    # At least one sub-request failed: a first fetch like this must not baseline (D-270).
+    partial: bool = False
 
 
 class SourceUnavailable(Exception):
@@ -96,6 +103,10 @@ class RequestTally:
     def failure(self) -> None:
         self.total += 1
         self.failed += 1
+
+    @property
+    def partial(self) -> bool:
+        return self.failed > 0
 
     def raise_if_all_failed(self) -> None:
         if self.total and self.failed == self.total:
@@ -169,10 +180,15 @@ async def run_target(src: Source, ctx: SourceContext, target: Target) -> TargetR
         ctx.log.exception("source %s target %r failed", src.name, target.key)
         ctx.validators.pop((src.name, target.key), None)
         ctx.after_store.pop((src.name, target.key), None)
+        ctx.partial.discard((src.name, target.key))
         return TargetResult(src.name, target, False, [], f"{type(exc).__name__}: {exc}")
     hv = ctx.validators.pop((src.name, target.key), None)
     hook = ctx.after_store.pop((src.name, target.key), None)
-    return TargetResult(src.name, target, True, list(items), has_validators=hv, on_stored=hook)
+    partial = (src.name, target.key) in ctx.partial
+    ctx.partial.discard((src.name, target.key))
+    return TargetResult(
+        src.name, target, True, list(items), has_validators=hv, on_stored=hook, partial=partial
+    )
 
 
 async def fetch_board_json(ctx: SourceContext, target: Target, url: str, params: dict) -> object:

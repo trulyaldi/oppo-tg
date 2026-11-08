@@ -204,3 +204,96 @@ async def test_scoring_picks_non_baseline_first():
     env.conn.execute("UPDATE postings SET status='new', filter_reason=NULL")  # past staleness
     rows = dbm.pending_for_scoring(env.conn, 3)
     assert rows[0]["baseline"] == 0 and rows[1]["baseline"] == 1
+
+
+# ----- partial first fetch (KF-02, D-270) -----
+
+HH_FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "hh_vacancies.json").read_text())
+HH_SETTINGS = Settings.from_env(
+    {
+        "TELEGRAM_BOT_TOKEN": "t",
+        "TELEGRAM_CHAT_ID": "1",
+        "ANTHROPIC_API_KEY": "k",
+        "HH_ACCESS_TOKEN": "tok",
+    }
+)
+
+
+class HHEnv:
+    """hh with two queries: q1 returns the fixture, q2 the fixture items renumbered."""
+
+    def __init__(self):
+        self.cfg = AppConfig.from_dict(
+            {"sources": {"hh": {"enabled": True, "queries": ["q1", "q2"]}}}
+        )
+        self.conn = dbm.connect(":memory:")
+        dbm.migrate(self.conn)
+        self.fail: set[str] = set()
+        self.extra: list[dict] = []
+
+        def handler(req):
+            if req.url.path == "/robots.txt":
+                return httpx.Response(200, text="")
+            q = req.url.params["text"]
+            if q in self.fail:
+                return httpx.Response(200, text="not json")  # no data, no host backoff
+            items = [dict(i) for i in HH_FIXTURE["items"]]
+            if q == "q2":
+                for i in items:
+                    i["id"] = str(int(i["id"]) + 1000)
+                items += self.extra
+            return httpx.Response(200, json={**HH_FIXTURE, "items": items})
+
+        self.http = build_client(
+            self.conn, CLOCK, transport=httpx.MockTransport(handler), sleep=_nosleep
+        )
+
+    async def collect(self):
+        self.conn.execute("DELETE FROM http_cache")
+        self.conn.execute("DELETE FROM host_state")
+        self.conn.execute("UPDATE target_state SET last_ok_at=NULL")
+        return await collect_all(self.conn, self.http, HH_SETTINGS, self.cfg, CLOCK)
+
+    def flags(self):
+        rows = self.conn.execute("SELECT external_id, baseline FROM postings").fetchall()
+        return {r["external_id"]: r["baseline"] for r in rows}
+
+    def baselined(self):
+        return dbm.get_target_state(self.conn, "hh", "")["baselined_at"]
+
+
+async def test_hh_partial_first_fetch_does_not_baseline():
+    env = HHEnv()
+    env.fail = {"q1"}
+    await env.collect()
+    first = env.flags()
+    assert first and set(first.values()) == {1}
+    assert env.baselined() is None
+    # second run, both ok: the first query's items are still baseline, then it baselines
+    env.fail = set()
+    await env.collect()
+    flags = env.flags()
+    assert len(flags) == 2 * len(HH_FIXTURE["items"])
+    assert set(flags.values()) == {1}
+    assert env.baselined()
+    # third run: a genuinely new item is not baseline
+    extra = dict(HH_FIXTURE["items"][0])
+    extra["id"] = "999999999"
+    env.extra = [extra]
+    await env.collect()
+    assert env.flags()["999999999"] == 0
+
+
+async def test_hh_all_queries_failing_first_fetch_does_not_baseline():
+    env = HHEnv()
+    env.fail = {"q1", "q2"}
+    await env.collect()
+    assert env.flags() == {}
+    assert env.baselined() is None
+
+
+async def test_hh_fully_ok_first_fetch_baselines():
+    env = HHEnv()
+    await env.collect()
+    assert set(env.flags().values()) == {1}
+    assert env.baselined()

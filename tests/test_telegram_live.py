@@ -443,3 +443,23 @@ async def test_channels_command_reloads_listener(conn):
     cfg = cfg_with()
     await cmd_channels(m, conn, SETTINGS, cfg, CLOCK, "add fresh_kz")
     assert "fresh_kz" in lst.live_channels()
+
+
+async def test_live_subscribed_channels_get_baselined_target_state(conn):
+    client = FakeClient(joined=["job_kz"])
+    lst = make(conn, client)
+    assert await lst.start() is True
+    live = db.get_target_state(conn, "telegram_channels", "job_kz")
+    assert live is not None and live["baselined_at"] and live["last_ok_at"]
+    # a channel the account has not joined stays on polling and has no state row
+    assert db.get_target_state(conn, "telegram_channels", "intern_kz") is None
+
+
+async def test_live_state_keeps_an_existing_baseline_time(conn):
+    first = datetime(2026, 11, 1, tzinfo=UTC)
+    db.record_target_attempt(conn, "telegram_channels", "job_kz", first, ok=True)
+    db.mark_baselined(conn, "telegram_channels", "job_kz", first)
+    lst = make(conn, FakeClient(joined=["job_kz"]))
+    await lst.start()
+    row = db.get_target_state(conn, "telegram_channels", "job_kz")
+    assert row["baselined_at"].startswith("2026-11-01")

@@ -1519,3 +1519,10 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
 - **D-269 KF-01 implementation.**
   - **Sub-cap via `call_json(sub_budget=...)`.** An optional second budget is checked before every attempt, the correction retry included. The main budget still records the call, with purpose `triage_baseline`, so the sub-cap counts the same rows the scorer's does. A retry stopped by the sub-cap returns `error_kind = "budget"`, so the posting counts as `capped` and keeps its attempt count, like the first-attempt case.
   - **No snapshot change.** `tests/fixtures/config_repo_snapshot.toml` has no `[triage]` section, so only the `config.toml` comment changed.
+
+- **D-270 KF-02 implementation (partial first fetch, live channel state; closes FIX-44).**
+  - **Carrying "partial".** `SourceContext.partial` is a set of `(source, target key)` pairs, like `validators` and `after_store`. A source calls `ctx.note_partial(...)` when `RequestTally.partial` (at least one failed request) is true. `run_target` turns it into `TargetResult.partial`. This avoids changing the `fetch` return type.
+  - **Collector.** Items of a partial first fetch are stored with `baseline=1`, and `baselined_at` stays NULL, so the next fully ok fetch is still a baseline. Only `tr.ok and is_new and not tr.partial` baselines.
+  - **Sources.** hh, jobicy and rss (per shared name) set it from their tally. Pagewatch sets it for "no text" (a page that returned HTML but no extractable text).
+  - **Live listener.** `_subscribe` writes an ok `target_state` row and sets `baselined_at` (only if NULL) for each channel it is live on. Channels not joined stay on polling and get no row until polled. Tier is left to the collector.
+  - **Test note.** The hh partial test fails one query with a 200 non-JSON body, because a 5xx makes the host back off and also fails the second query.
