@@ -294,6 +294,11 @@ enabled = true
 industries = ["data-science", "engineering"]
 tags = []
 
+[sources.arbeitnow]
+enabled = true
+tier = "tier2"
+max_pages = 1
+
 [sources.yc]
 # dropped: YC terms forbid scraping (D-54)
 enabled = false

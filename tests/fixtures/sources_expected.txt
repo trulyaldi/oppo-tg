@@ -1,3 +1,4 @@
+<b>arbeitnow</b> [arbeitnow] tier2 counted; last run: never run
 <b>ashby</b> [ats] tier1 counted; last run: never run
 <b>devpost</b> [devpost] tier2 disabled: disabled in config.toml; last run: never run
 <b>greenhouse</b> [ats] tier1 counted; last run: never run
@@ -11,4 +12,4 @@
 <b>rss</b> [rss] tier2 counted; last run: failed (Boom &lt;x&gt;), 2026-11-06T06:00:00+00:00
 <b>telegram_channels</b> [telegram_channels] tg credentials: TG_API_ID, TG_API_HASH; last run: never run
 <b>workable</b> [ats] tier1 disabled: disabled in config.toml; last run: never run
-Credential-free source families enabled: 6 (need 6)
+Credential-free source families enabled: 7 (need 6)

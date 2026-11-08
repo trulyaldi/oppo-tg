@@ -447,6 +447,13 @@ MOVED_FILTER_KEYS = (
 )
 
 
+def _check_arbeitnow(cfg: Mapping[str, Any]) -> None:
+    """`[sources.arbeitnow] max_pages` is an integer from 1 to 2 (D-238)."""
+    value = cfg.get("max_pages", 1)
+    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 2:
+        raise ValueError("[sources.arbeitnow] max_pages must be an integer from 1 to 2")
+
+
 def _check_pagewatch_types(cfg: Mapping[str, Any]) -> None:
     """Each pagewatch page `type` must be a valid OpportunityType; the error names the page."""
     from src.models import OpportunityType
@@ -497,6 +504,7 @@ class AppConfig:
             raise ValueError("[sources.hh] queries moved to config/cues.toml [hh]")
         _check_telegram_poll(sources.get("telegram_channels", {}))
         _check_pagewatch_types(sources.get("pagewatch", {}))
+        _check_arbeitnow(sources.get("arbeitnow", {}))
         outreach = dict(data.get("outreach", {}))
         OutreachConfig.from_mapping(outreach)  # fail fast at load (D-147)
         scoring = dict(data.get("scoring", {}))

@@ -302,6 +302,13 @@ enabled = true
 tier = "tier2"
 tags = []
 
+[sources.arbeitnow]
+# https://www.arbeitnow.com/api/job-board-api, one GET per run, at most hourly (D-238). Items link to
+# the Arbeitnow job page and say "via Arbeitnow" (terms s.11 ask for a link back).
+enabled = true
+tier = "tier2"
+max_pages = 1  # 1..2
+
 [sources.yc]
 # dropped: YC terms forbid scraping (D-54)
 enabled = false
@@ -377,6 +384,7 @@ backoff_max_s = 21600
 [politeness.hosts]
 # host suffix = minimum seconds between requests, e.g. "example.com" = 5.0
 "remoteok.com" = 5.0
+"arbeitnow.com" = 2.0
 
 [ranking]
 weights_file = "config/weights.yaml"

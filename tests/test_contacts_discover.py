@@ -284,6 +284,7 @@ BOARD_FIXTURES = (
     "jobicy_jobs.json",
     "hh_vacancies.json",
     "remoteok_api.json",
+    "arbeitnow_api.json",
     "workable_account.json",
 )
 _URL_KEY = re.compile(r'"[A-Za-z_]*url"\s*:\s*"(https?://[^"]+)"', re.I)

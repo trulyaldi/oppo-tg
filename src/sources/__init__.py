@@ -1,6 +1,7 @@
 """Opportunity sources. Importing this package registers all implemented sources."""
 
 from src.sources import (
+    arbeitnow,  # noqa: F401  (registers "arbeitnow")
     ashby,  # noqa: F401  (registers "ashby")
     devpost,  # noqa: F401  (registers "devpost")
     greenhouse,  # noqa: F401  (registers "greenhouse")

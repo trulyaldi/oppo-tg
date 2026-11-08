@@ -3863,7 +3863,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - Every page is allowed by its robots fixture.
   - No skipped URL from D-245 appears in config.
 
-### KF-27 [ ] Arbeitnow source (D-238)
+### KF-27 [x] Arbeitnow source (D-238)
 - Build (section 0 source rules; the robots and terms checks are done in D-238, and the real fixture is committed):
   - `src/sources/arbeitnow.py`: its own family; `default_tier = "tier2"`; `min_poll_minutes = 60`; `[politeness.hosts] "arbeitnow.com" = 2.0`.
   - One GET of `https://www.arbeitnow.com/api/job-board-api`, robots on, page 1 only (`max_pages = 1` in config, validated 1..2), conditional requests.

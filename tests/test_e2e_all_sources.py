@@ -37,6 +37,7 @@ BODIES = {
     "api.lever.co": _read("lever_postings.json"),
     "api.ashbyhq.com": _read("ashby_board.json"),
     "jobicy.com": _read("jobicy_jobs.json"),
+    "www.arbeitnow.com": _read("arbeitnow_api.json"),
     "www.mlh.com": _read("mlh_events.html"),
     "hnrss.org": _read("rss_sample.xml"),
     "www.nsf.gov": _read("rss_nsf.xml"),
