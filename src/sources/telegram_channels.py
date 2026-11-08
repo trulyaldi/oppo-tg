@@ -25,6 +25,7 @@ from src.sources.base import (
     register,
     run_target,
 )
+from src.sources.telegram_ro import read_only
 
 BATCH = 100
 FLOOD_SLEEP_THRESHOLD_S = 60
@@ -134,11 +135,13 @@ def default_client_factory(settings: Settings) -> Any:
     from telethon import TelegramClient  # lazy: only needed for live runs
 
     Path(settings.tg_session_path).parent.mkdir(parents=True, exist_ok=True)
-    return TelegramClient(
-        settings.tg_session_path,
-        int(settings.tg_api_id or 0),
-        settings.tg_api_hash or "",
-        flood_sleep_threshold=FLOOD_SLEEP_THRESHOLD_S,
+    return read_only(
+        TelegramClient(
+            settings.tg_session_path,
+            int(settings.tg_api_id or 0),
+            settings.tg_api_hash or "",
+            flood_sleep_threshold=FLOOD_SLEEP_THRESHOLD_S,
+        )
     )
 
 
@@ -218,7 +221,7 @@ class TelegramChannelsSource:
             if not shared.is_connected():
                 await shared.connect()
             return shared, False
-        client = self._factory(ctx.settings)
+        client = read_only(self._factory(ctx.settings))
         await client.connect()
         return client, True
 

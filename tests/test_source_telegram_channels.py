@@ -238,7 +238,7 @@ def test_default_client_factory_builds_client(monkeypatch, tmp_path):
         {"TG_API_ID": "123", "TG_API_HASH": "hh", "TG_SESSION_PATH": str(sess)},
         require_secrets=False,
     )
-    assert isinstance(default_client_factory(settings), Fake)
+    assert isinstance(default_client_factory(settings).wrapped, Fake)
     assert made == [((str(sess), 123, "hh"), {"flood_sleep_threshold": FLOOD_SLEEP_THRESHOLD_S})]
     assert sess.parent.is_dir()
 

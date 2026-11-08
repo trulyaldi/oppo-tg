@@ -29,6 +29,7 @@ from src.sources.telegram_channels import (
     parse_message,
     session_exists,
 )
+from src.sources.telegram_ro import read_only
 
 log = logging.getLogger(__name__)
 
@@ -76,10 +77,6 @@ class TelegramListener:
         except (TypeError, ValueError):
             return DEFAULT_FLUSH_S
 
-    @property
-    def auto_join(self) -> bool:
-        return bool(self.cfg.source("telegram_channels").get("auto_join", False))
-
     # ----- state -----
 
     def live_channels(self) -> set[str]:
@@ -119,7 +116,7 @@ class TelegramListener:
             return False
         client = None
         try:
-            client = self._factory(self.settings)
+            client = read_only(self._factory(self.settings))
             await client.connect()
             if not await client.is_user_authorized():
                 await self._discard(client)
@@ -168,10 +165,6 @@ class TelegramListener:
             self._handler_added = False
         wanted = channels(self.cfg, self.conn)
         joined = await self._joined()
-        if self.auto_join:
-            for handle in wanted:
-                if handle.casefold() not in joined and await self._join(handle):
-                    joined.add(handle.casefold())
         self._live = {c for c in wanted if c.casefold() in joined}
         skipped = [c for c in wanted if c not in self._live]
         if skipped:
@@ -195,16 +188,6 @@ class TelegramListener:
         for handle in sorted(handles):
             db.record_target_attempt(self.conn, "telegram_channels", handle, now, ok=True)
             db.mark_baselined(self.conn, "telegram_channels", handle, now)
-
-    async def _join(self, handle: str) -> bool:
-        try:
-            from telethon.tl.functions.channels import JoinChannelRequest
-
-            await self.client(JoinChannelRequest(handle))
-            return True
-        except Exception:  # noqa: BLE001
-            log.warning("auto_join failed for @%s", handle, exc_info=True)
-            return False
 
     async def reload(self) -> None:
         """Re-read the channel list (after a /channels change); no-op when not running."""

@@ -196,3 +196,8 @@ def test_fc06_jobicy_floor_and_cron_env_description():
 def test_kf13_old_fresh_alert_score_key_names_new_keys():
     with pytest.raises(ValueError, match="kz_fresh_alert_score.*intl_fresh_alert_score"):
         AppConfig.from_dict({"thresholds": {"fresh_alert_score": 7.5}})
+
+
+def test_auto_join_key_is_rejected():
+    with pytest.raises(ValueError, match="joining is never automatic"):
+        AppConfig.from_dict({"sources": {"telegram_channels": {"auto_join": False}}})

@@ -404,6 +404,8 @@ class AppConfig:
         if unknown:
             raise ValueError(f"unknown thresholds: {sorted(unknown)}")
         sources = {k: dict(v) for k, v in dict(data.get("sources", {})).items()}
+        if "auto_join" in sources.get("telegram_channels", {}):
+            raise ValueError("joining is never automatic; join channels yourself in Telegram")
         outreach = dict(data.get("outreach", {}))
         OutreachConfig.from_mapping(outreach)  # fail fast at load (D-147)
         scoring = dict(data.get("scoring", {}))

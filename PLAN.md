@@ -3687,7 +3687,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - hh is skipped when its last attempt was 5 minutes ago and runs at 11 minutes.
   - The tier2 jitter is 3600.
 
-### KF-18 [ ] Read-only Telethon wrapper; auto-join removed (D-256)
+### KF-18 [x] Read-only Telethon wrapper; auto-join removed (D-256)
 - Build:
   - `src/sources/telegram_ro.py`: `ReadOnlyTelegram(client)` exposes only the D-256 allowlist and `__call__(request)` only for `contacts.SearchRequest`, `channels.GetFullChannelRequest` and `messages.GetHistoryRequest`, checked by class name so tests need no telethon import. Anything else raises `ReadOnlyViolation`.
   - `telegram_channels.default_client_factory` and the listener wrap their client.

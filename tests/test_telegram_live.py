@@ -165,15 +165,7 @@ async def test_subscribes_only_to_joined_channels(conn):
     assert await lst.start() is True
     assert lst.live_channels() == {"job_kz"}
     assert len(client.handlers) == 1
-    assert client.requests == []  # auto_join is off: nothing joined
-
-
-async def test_auto_join_true_joins_missing_channels(conn):
-    client = FakeClient(joined=["job_kz"])
-    lst = make(conn, client, cfg_with(auto_join=True))
-    await lst.start()
-    assert len(client.requests) == 1
-    assert lst.live_channels() == {"job_kz", "intern_kz"}
+    assert client.requests == []  # the bot never joins
 
 
 # ----- events -----

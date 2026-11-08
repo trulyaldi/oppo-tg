@@ -154,9 +154,8 @@ enabled = true
 # Public channel handles, e.g. ["some_channel"]. Empty until you fill it in (D-69).
 channels = []
 # Live listening (D-193): messages from channels the account has joined arrive at once;
-# the rest stay on polling. Joining is a user action, so auto_join is false.
+# the rest stay on polling. Joining is a user action; the bot never joins (D-256).
 live_flush_s = 30
-auto_join = false
 region_hint = "kz" # D-194
 
 [filters]
