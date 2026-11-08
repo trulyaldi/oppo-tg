@@ -1,0 +1,23 @@
+{
+ "fit_summary": ["Strong systems and Python base for quantitative developer internships."],
+ "changes": [
+  {"what": "State that you have 5 years of Python experience", "why": "Python is in 58% of postings."},
+  {"what": "Mention your 42% accuracy improvement", "why": "Shows impact."},
+  {"what": "Keep it to one page", "why": "Recruiters skim 1-2 pages."},
+  {"what": "Move SKILLS above PROJECTS", "why": "Keyword scanners read skills first."}
+ ],
+ "gaps": [
+  {"gap": "your Google internship experience", "bucket": "intl", "mark": "add_if_true", "note": "Big names help."},
+  {"gap": "Docker", "bucket": "intl", "mark": "worth_learning", "note": "add your 95% accuracy result"}
+ ],
+ "report": {
+  "structure": "Education, Experience, Projects, Skills.",
+  "length": "Keep it to one page.",
+  "ordering": "Skills above Projects.",
+  "bullets": [],
+  "keywords": ["Python"],
+  "kz_notes": "add your 95% accuracy result",
+  "intl_notes": "Use a one-page English CV.",
+  "formatting": "Plain text sections, no tables."
+ }
+}

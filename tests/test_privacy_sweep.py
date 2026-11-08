@@ -236,6 +236,7 @@ CANNED_MODEL_REPLIES = {
     "tests/fixtures/cv_parse_reply.json",
     "tests/fixtures/cv_review_reply_ok.json",
     "tests/fixtures/cv_review_reply_fabricated.json",
+    "tests/fixtures/cv_review_reply_market_numbers.json",
 }
 
 

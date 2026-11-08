@@ -4192,7 +4192,7 @@ Verified with evidence, no FIX needed:
   - `/search стажировка` still returns "ML Intern" (`test_russian_word_finds_english_intern`).
   - All existing `test_bot_search.py` tests pass, and the 30-term cap and `%`/`_` literal handling still hold.
 
-### FIX-53 [ ] CV review verification lets invented numbers and claims into the chat summary and the report
+### FIX-53 [x] CV review verification lets invented numbers and claims into the chat summary and the report
 - Severity: **blocking**. It breaks Part 0 ("Never invent or inflate anything about me. Every claim in CV advice ... must trace to my CV text") and the Part 8 verification step. This overrides D-300 on number checks.
 - Where: `src/cv/review.py:144` (`advice_n` = CV + market text + vocabulary, used as evidence), `:158-161` (`changes[].what`/`why`), `:165-184` (gap text never checked; notes checked with `numbers=False`) and `:186-193` (report notes, `numbers=False`).
 - Failure, reproduced with `verify_review` on `tests/fixtures/cv_fake.txt` and a market text "KZ employers (12 postings): ml 5 (42%); python 7 (58%)":

@@ -11,6 +11,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import re
 import sqlite3
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -43,6 +44,15 @@ NOTE_FIELDS = ("structure", "length", "ordering", "kz_notes", "intl_notes", "for
 MAX_FIELD = 400
 # Language and country names are CV-advice vocabulary (D-300), not claims about the candidate.
 ADVICE_VOCAB = "russian kazakh english kazakhstan"
+# Advice-format numbers (D-306): formatting advice, not facts about the candidate. Everything else
+# numeric in a free-text field must appear in the CV text itself (never in market text).
+_ADVICE_NUMBERS = re.compile(
+    r"(?<!\w)(?:(?:one|two|1|2)(?:\s*(?:-|to)\s*(?:one|two|1|2|3))?[\s-]*pages?"
+    r"|(?:one|1)[\s-]*(?:line|sentence|liner)"
+    r"|[2-6]\s*(?:-|to)\s*[2-6]\s*(?:bullets?|lines|sentences)"
+    r"|[2-6]\s*(?:bullets?|lines|sentences))(?!\w)"
+)
+_CLAIM_ABOUT_USER = re.compile(r"(?<!\w)(?:your|you|you've|youve)(?!\w)")
 
 
 def prompt_version() -> str:
@@ -112,17 +122,39 @@ def _unsupported(text: str, evidence_n: str, cv_n: str, skills: list[str]) -> li
     return [x for x in out if not (x in seen or seen.add(x))]  # type: ignore[func-returns-value]
 
 
-def _text_ok(text: str, corpus_n: str, skills: list[str], *, numbers: bool = True) -> bool:
-    """Free-text statement check against the CV (plus market labels for advice fields)."""
+def _numbers_ok(text: str, cv_n: str) -> bool:
+    """Every number must be in the CV text, except allowlisted advice numbers (D-306)."""
+    t = _ADVICE_NUMBERS.sub(" ", norm(text))
+    return vf.numbers(t) <= vf.numbers(cv_n)
+
+
+def _text_ok(text: str, corpus_n: str, skills: list[str], *, cv_n: str | None = None) -> bool:
+    """Free-text check: numbers against the CV only; other tokens against `corpus_n`.
+
+    `corpus_n` is the CV for claim fields and CV plus market labels for advice fields. Market
+    text never licenses a number (D-306).
+    """
     if not text or vf.has_contact_info(text, corpus_n):
         return False
     t = norm(text)
-    if numbers and not vf.numbers(t) <= vf.numbers(corpus_n):
+    if not _numbers_ok(text, cv_n if cv_n is not None else corpus_n):
         return False
     return (
         vf.inflation_stems(t) <= vf.inflation_stems(corpus_n)
         and vf.skill_terms(t, skills) <= vf.skill_terms(corpus_n, skills)
         and not vf.ungrounded_entities(text, corpus_n, skills)
+    )
+
+
+def _gap_ok(gap: str, cv_n: str, advice_n: str, skills: list[str]) -> bool:
+    """A gap names a skill. Skills are free (it becomes a question); claims are not."""
+    t = norm(gap)
+    return (
+        not vf.has_contact_info(gap, cv_n)
+        and not _CLAIM_ABOUT_USER.search(t)
+        and _numbers_ok(gap, cv_n)
+        and vf.inflation_stems(t) <= vf.inflation_stems(advice_n)
+        and not vf.ungrounded_entities(f"Add {gap}", advice_n, skills)
     )
 
 
@@ -155,8 +187,10 @@ def verify_review(
 
     for it in _items(out.get("changes"), CAPS["changes"]):
         what, why = _s(it.get("what")), _s(it.get("why"))
-        if len(verified["changes"]) < CAPS["changes"] and _text_ok(what, advice_n, skills):
-            if why and not _text_ok(why, advice_n, skills, numbers=False):
+        if len(verified["changes"]) < CAPS["changes"] and _text_ok(
+            what, advice_n, skills, cv_n=cv_n
+        ):
+            if why and not _text_ok(why, advice_n, skills, cv_n=cv_n):
                 why = ""
             verified["changes"].append({"what": what, "why": why})
         else:
@@ -168,13 +202,16 @@ def verify_review(
         if not gap or mark not in ("add_if_true", "worth_learning"):
             removed += 1
             continue
+        if not _gap_ok(gap, cv_n, advice_n, skills):
+            removed += 1  # asserts something about the candidate or names an unknown entity
+            continue
         if mark == "add_if_true" and vf.has_term(gap, cv_n):
             removed += 1  # already in the CV, nothing to add
             continue
         if len(verified["gaps"]) >= CAPS["gaps"]:
             removed += 1
             continue
-        if note and not _text_ok(note, advice_n, skills, numbers=False):
+        if note and not _text_ok(note, advice_n, skills, cv_n=cv_n):
             note = ""
         bucket = it.get("bucket") if it.get("bucket") in ("kz", "intl", "both") else "both"
         entry = {"gap": gap, "bucket": bucket, "mark": mark, "note": note}
@@ -187,7 +224,7 @@ def verify_review(
     report: dict = {}
     for name in NOTE_FIELDS:
         text = _s(report_raw.get(name))
-        if text and not _text_ok(text, advice_n, skills, numbers=False):
+        if text and not _text_ok(text, advice_n, skills, cv_n=cv_n):
             removed += 1
             text = ""
         report[name] = text
