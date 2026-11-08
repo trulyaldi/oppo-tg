@@ -21,6 +21,9 @@ from src.delivery.digest import item_from_row, load_weights_checked
 from src.delivery.format import SOURCE_ATTRIBUTION, feedback_keyboard, render_item
 from src.llm.budget import LlmBudget
 from src.outreach.render import CHUNK_LIMIT, chunk_lines
+from src.pipeline import manual
+from src.pipeline.filters import load_filter_cues
+from src.pipeline.run import pipeline_lock, score_pending
 from src.ranking.adjust import blocker_penalty, recompute_adjusted, region_hints
 from src.sources.base import MIN_SOURCE_FAMILIES, REGISTRY, count_report, source_family
 
@@ -82,6 +85,7 @@ START_TEXT = (
     "/stats - delivery latency and pipeline counters\n"
     "/channels - Telegram channels (/channels add &lt;@h|t.me/h&gt;, /channels remove &lt;h&gt;)\n"
     "/findchannels [keywords] - find new Telegram channels (Add or Ignore buttons)\n"
+    "/add &lt;text with link&gt; - score a posting you paste (or just forward a post)\n"
     "/boards - discovered ATS boards (/boards remove &lt;n|source:token&gt;)\n"
     "/pause - pause the digest\n"
     "/resume - resume the digest\n"
@@ -531,3 +535,157 @@ async def cmd_pause(message: Any, conn: sqlite3.Connection) -> None:
 async def cmd_resume(message: Any, conn: sqlite3.Connection) -> None:
     db.set_state(conn, "paused", "0")
     await _say(message, RESUMED_TEXT)
+
+
+ADD_USAGE = (
+    "Usage: /add &lt;posting text, including its link&gt;. You can also forward a post to me. "
+    "I never open the link."
+)
+NO_LINK_TEXT = "Include the posting link (I never open it to read the page)."
+TOO_LONG_TEXT = f"That text is too long (at most {manual.MAX_TEXT_CHARS} characters)."
+NO_LLM_TEXT = "Could not score this right now (no LLM client); try again later."
+FAILED_TEXT = "Could not score this right now; try again later."
+TRIAGE_CAP_TEXT = "Not scored: the daily triage cap is reached. Try again tomorrow."
+SCORE_CAP_TEXT = "Not scored: the daily scoring cap is reached. Try again tomorrow."
+
+
+def _scored_item_row(conn: sqlite3.Connection, posting_id: str) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT p.*, s.base_score AS base_score, s.adjusted_score AS adjusted_score,"
+        " s.adjusted_score AS score, s.employer_category AS employer_category,"
+        " s.adjustment_detail AS adjustment_detail, s.reason AS reason,"
+        " s.deadline AS llm_deadline, s.red_flags AS red_flags,"
+        " s.visa_barrier AS visa_barrier, s.contract AS contract"
+        " FROM postings p JOIN scores s ON s.posting_id=p.id WHERE p.id=?",
+        (posting_id,),
+    ).fetchone()
+
+
+def _not_scored_text(
+    conn: sqlite3.Connection, cfg: AppConfig, clock: Clock, row: sqlite3.Row | None
+) -> str:
+    if row is not None and row["status"] in ("filtered", "duplicate"):
+        return f"Not scored: filtered ({_esc(row['filter_reason'] or row['status'])})."
+    tcfg, sc = TriageConfig.from_cfg(cfg), ScoringConfig.from_cfg(cfg)
+    if row is not None and row["status"] == "new" and tcfg.enabled:
+        used = LlmBudget(conn, clock, tcfg.daily_call_cap, ("triage", "triage_baseline")).used()
+        if used >= tcfg.daily_call_cap:
+            return TRIAGE_CAP_TEXT
+    if LlmBudget(conn, clock, sc.daily_call_cap, ("score", "score_baseline")).used() >= (
+        sc.daily_call_cap
+    ):
+        return SCORE_CAP_TEXT
+    return FAILED_TEXT
+
+
+async def add_user_posting(
+    message: Any,
+    conn: sqlite3.Connection,
+    settings: Settings,
+    cfg: AppConfig,
+    clock: Clock,
+    client: Any,
+    mp: manual.ManualPosting,
+) -> None:
+    """Store, run triage, post-triage and scoring for this posting only, and reply (D-256).
+
+    The delivery is recorded as kind `manual` whatever the outcome, so the item never shows up
+    in a later digest or alert.
+    """
+    pid = manual.store_manual(conn, mp, clock.now())
+    chat_id = str(message.chat.id)
+    if client is None:
+        db.record_delivery(conn, pid, "manual", chat_id, None, clock.now())
+        await _say(message, NO_LLM_TEXT)
+        return
+    async with pipeline_lock():
+        try:
+            await score_pending(
+                conn,
+                client,
+                settings.scoring_model,
+                clock,
+                2,
+                scoring_cfg=ScoringConfig.from_cfg(cfg),
+                triage_cfg=TriageConfig.from_cfg(cfg),
+                cues=load_filter_cues(cfg),
+                only_id=pid,
+            )
+        except Exception:
+            log.exception("manual posting %s failed", pid)
+        weights = load_weights_checked(cfg)[0]
+        recompute_adjusted(conn, weights, region_hints(cfg), blocker_penalty(cfg))
+        row = _scored_item_row(conn, pid)
+        if row is None or row["status"] != "scored":
+            db.record_delivery(conn, pid, "manual", chat_id, None, clock.now())
+            await _say(message, _not_scored_text(conn, cfg, clock, db.get_posting(conn, pid)))
+            return
+        sent = await message.answer(
+            render_item(item_from_row(row, weights)),
+            parse_mode="HTML",
+            reply_markup=feedback_keyboard(pid, db.active_reactions(conn, pid)),
+        )
+        db.record_delivery(
+            conn, pid, "manual", chat_id, getattr(sent, "message_id", None), clock.now()
+        )
+
+
+async def cmd_add(
+    message: Any,
+    conn: sqlite3.Connection,
+    settings: Settings,
+    cfg: AppConfig,
+    clock: Clock,
+    client: Any,
+    args: str | None,
+) -> None:
+    text = (args or "").strip()
+    if not text:
+        await _say(message, ADD_USAGE)
+        return
+    if len(text) > manual.MAX_TEXT_CHARS:
+        await _say(message, TOO_LONG_TEXT)
+        return
+    mp = manual.build_manual_posting(text)
+    if mp is None:
+        await _say(message, NO_LINK_TEXT)
+        return
+    await add_user_posting(message, conn, settings, cfg, clock, client, mp)
+
+
+def forward_channel_origin(message: Any) -> tuple[str, int] | None:
+    """(username, message id) of a forward from a public channel, else None."""
+    origin = getattr(message, "forward_origin", None)
+    chat = getattr(origin, "chat", None)
+    username = getattr(chat, "username", None)
+    if getattr(origin, "type", None) != "channel" or not username:
+        return None
+    return str(username), int(origin.message_id)
+
+
+async def on_forward(
+    message: Any,
+    conn: sqlite3.Connection,
+    settings: Settings,
+    cfg: AppConfig,
+    clock: Clock,
+    client: Any,
+) -> None:
+    text = message.text or message.caption or ""
+    if len(text) > manual.MAX_TEXT_CHARS:
+        await _say(message, TOO_LONG_TEXT)
+        return
+    mp = None
+    origin = forward_channel_origin(message)
+    if origin is not None:
+        from src.sources.telegram_channels import channels
+
+        mp = manual.build_channel_posting(
+            text, origin[0], origin[1], channels(cfg, conn), getattr(message, "forward_date", None)
+        )
+    if mp is None:
+        mp = manual.build_manual_posting(text)
+    if mp is None:
+        await _say(message, NO_LINK_TEXT if text.strip() else "There is no text to add.")
+        return
+    await add_user_posting(message, conn, settings, cfg, clock, client, mp)

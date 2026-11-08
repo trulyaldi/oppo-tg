@@ -479,7 +479,7 @@ def set_status(
 
 
 def pending_for_scoring(
-    conn: sqlite3.Connection, limit: int, triage: bool = False
+    conn: sqlite3.Connection, limit: int, triage: bool = False, only_id: str | None = None
 ) -> list[sqlite3.Row]:
     """Postings to score under MAX_SCORE_ATTEMPTS: non-baseline first, then newest.
 
@@ -489,19 +489,23 @@ def pending_for_scoring(
     """
     statuses = ("triaged",) if triage else ("new", "triaged")
     marks = ",".join("?" for _ in statuses)
+    only = " AND id=?" if only_id is not None else ""
     return conn.execute(
         f"SELECT * FROM postings WHERE status IN ({marks},'score_error') AND score_attempts < ?"
-        " ORDER BY baseline ASC, first_seen_at DESC, rowid DESC LIMIT ?",
-        (*statuses, MAX_SCORE_ATTEMPTS, limit),
+        f"{only} ORDER BY baseline ASC, first_seen_at DESC, rowid DESC LIMIT ?",
+        (*statuses, MAX_SCORE_ATTEMPTS, *([only_id] if only_id is not None else []), limit),
     ).fetchall()
 
 
-def pending_for_triage(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
+def pending_for_triage(
+    conn: sqlite3.Connection, limit: int, only_id: str | None = None
+) -> list[sqlite3.Row]:
     """`new` postings under MAX_TRIAGE_ATTEMPTS: non-baseline first, then newest (D-196)."""
+    only = " AND id=?" if only_id is not None else ""
     return conn.execute(
-        "SELECT * FROM postings WHERE status='new' AND triage_attempts < ?"
+        f"SELECT * FROM postings WHERE status='new' AND triage_attempts < ?{only}"
         " ORDER BY baseline ASC, first_seen_at DESC, rowid DESC LIMIT ?",
-        (MAX_TRIAGE_ATTEMPTS, limit),
+        (MAX_TRIAGE_ATTEMPTS, *([only_id] if only_id is not None else []), limit),
     ).fetchall()
 
 

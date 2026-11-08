@@ -3805,7 +3805,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - The weekly job is registered with the configured day and time.
   - Updates from another chat (command and callback) produce no reply (dispatcher test).
 
-### KF-24 [ ] /add and forwarded messages (D-256, D-262)
+### KF-24 [x] /add and forwarded messages (D-256, D-262, D-292)
 - Build:
   - `/add <text>` (multi-line, at most 8000 characters) and messages with `forward_origin`.
     - Channel origins with a username: `source=telegram_channels`, `external_id=<username>:<message_id>`, url `https://t.me/<username>/<message_id>`, `target=<username>`.

@@ -291,10 +291,15 @@ async def triage_pending(
     triage_cfg: TriageConfig,
     bot: Any | None = None,
     chat_id: int | str | None = None,
+    only_id: str | None = None,
 ) -> dict[str, int]:
-    """Triage `new` postings (D-196); warns once per day at the cap, alerts on total failure."""
+    """Triage `new` postings (D-196); warns once per day at the cap, alerts on total failure.
+
+    With `only_id` (a user-added item, KF-24) only that posting is triaged and a "not relevant"
+    verdict does not drop it.
+    """
     triager = Triager(client, conn, clock, triage_cfg)
-    stats = await triager.triage_pending()
+    stats = await triager.triage_pending(only_id=only_id, keep_irrelevant=only_id is not None)
     if bot is not None and chat_id is not None:
         decided = stats["yes"] + stats["no"] + stats["cached"] + stats["exempt"]
         await report_stage_outcome(
@@ -323,6 +328,7 @@ async def score_pending(
     scoring_cfg: ScoringConfig | None = None,
     triage_cfg: TriageConfig | None = None,
     cues: Cues | None = None,
+    only_id: str | None = None,
 ) -> dict[str, int]:
     """Score pending postings, at most `max_calls` API calls (retries count).
 
@@ -335,13 +341,15 @@ async def score_pending(
     triage_on = triage_cfg is not None and triage_cfg.enabled
     if triage_on:
         assert triage_cfg is not None
-        tstats = await triage_pending(conn, client, clock, triage_cfg, bot, chat_id)
+        tstats = await triage_pending(conn, client, clock, triage_cfg, bot, chat_id, only_id)
         log.info("triage: %s", tstats)
         triage_failed = (
             tstats["errors"] > 0
             and tstats["yes"] + tstats["no"] + tstats["cached"] + tstats["exempt"] == 0
         )
-    post = apply_post_triage(conn, cues or load_cues(), clock, include_new=not triage_on)
+    post = apply_post_triage(
+        conn, cues or load_cues(), clock, include_new=not triage_on, only_id=only_id
+    )
     log.info("post-triage: %s", post)
     scorer = Scorer(
         client,
@@ -353,7 +361,7 @@ async def score_pending(
         baseline_budget=LlmBudget(conn, clock, sc.baseline_cap, ("score_baseline",)),
         triage=triage_on,
     )
-    stats = await scorer.score_pending(limit if limit is not None else max_calls)
+    stats = await scorer.score_pending(limit if limit is not None else max_calls, only_id)
     if bot is not None and chat_id is not None:
         await report_stage_outcome(
             "scoring", bot, chat_id, conn, clock, stats, scorer.last_error, model, sc.daily_call_cap

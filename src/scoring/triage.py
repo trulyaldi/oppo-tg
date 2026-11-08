@@ -164,9 +164,15 @@ class Triager:
             return None, res.error_kind
         return res.value, None
 
-    async def triage_pending(self, limit: int | None = None) -> dict[str, int]:
-        """Triage `new` postings (new ones before baseline). Never raises per posting."""
-        rows = db.pending_for_triage(self.conn, limit or max(self.cfg.daily_call_cap, 1))
+    async def triage_pending(
+        self, limit: int | None = None, only_id: str | None = None, keep_irrelevant: bool = False
+    ) -> dict[str, int]:
+        """Triage `new` postings (new ones before baseline). Never raises per posting.
+
+        `only_id` limits the run to one posting; `keep_irrelevant` stores a "not relevant"
+        verdict but keeps the posting (user-added items, D-256).
+        """
+        rows = db.pending_for_triage(self.conn, limit or max(self.cfg.daily_call_cap, 1), only_id)
         sem = asyncio.Semaphore(CONCURRENCY)
         stats = {"yes": 0, "no": 0, "cached": 0, "exempt": 0, "errors": 0, "capped": 0}
 
@@ -179,7 +185,10 @@ class Triager:
                 cached = db.get_triage_result(self.conn, row["id"], row["content_hash"])
                 if cached is not None:
                     db.apply_triage_verdict(
-                        self.conn, row["id"], bool(cached["relevant"]), cached["reason"]
+                        self.conn,
+                        row["id"],
+                        bool(cached["relevant"]) or keep_irrelevant,
+                        cached["reason"],
                     )
                     if cached["type"] or cached["language"]:
                         db.apply_triage_extraction(
@@ -213,7 +222,9 @@ class Triager:
                         verdict.type.value if verdict.type else None,
                         verdict.language,
                     )
-                    db.apply_triage_verdict(self.conn, row["id"], verdict.relevant, verdict.reason)
+                    db.apply_triage_verdict(
+                        self.conn, row["id"], verdict.relevant or keep_irrelevant, verdict.reason
+                    )
                     extra: dict[str, str | None] = {}
                     if row["source"] in FREE_TEXT_SOURCES:
                         extra = {

@@ -163,8 +163,8 @@ class Scorer:
             log.exception("scoring call failed for %s", posting.id)
         return None
 
-    async def score_pending(self, limit: int) -> dict[str, int]:
-        rows = db.pending_for_scoring(self.conn, limit, self.triage)
+    async def score_pending(self, limit: int, only_id: str | None = None) -> dict[str, int]:
+        rows = db.pending_for_scoring(self.conn, limit, self.triage, only_id)
         examples = self._examples()
         sem = asyncio.Semaphore(CONCURRENCY)
         stats = {"scored": 0, "errors": 0, "skipped": 0, "capped": 0}

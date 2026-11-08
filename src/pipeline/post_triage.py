@@ -59,7 +59,11 @@ def _find_original(conn: sqlite3.Connection, row: sqlite3.Row, key: str, since: 
 
 
 def apply_post_triage(
-    conn: sqlite3.Connection, cues: Cues, clock: Clock, include_new: bool = False
+    conn: sqlite3.Connection,
+    cues: Cues,
+    clock: Clock,
+    include_new: bool = False,
+    only_id: str | None = None,
 ) -> dict[str, int]:
     """Filter unpaid and scam rows, mark reposts; returns counts by reason.
 
@@ -68,10 +72,11 @@ def apply_post_triage(
     statuses = ("triaged", "new") if include_new else ("triaged",)
     marks = ",".join("?" for _ in statuses)
     since = (clock.now() - timedelta(days=REPOST_WINDOW_DAYS)).isoformat()
+    only = " AND id=?" if only_id is not None else ""
     rows = conn.execute(
-        f"SELECT rowid AS rowid, * FROM postings WHERE status IN ({marks})"
+        f"SELECT rowid AS rowid, * FROM postings WHERE status IN ({marks}){only}"
         " ORDER BY first_seen_at, rowid",
-        statuses,
+        (*statuses, *([only_id] if only_id is not None else [])),
     ).fetchall()
     counts: dict[str, int] = {}
 

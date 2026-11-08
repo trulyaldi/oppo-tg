@@ -174,6 +174,18 @@ def build_dispatcher(
     ) -> None:
         await handlers.cmd_stats(m, conn, settings, cfg, clock)
 
+    @dp.message(Command("add"))
+    async def _add(
+        m: Message,
+        command: CommandObject,
+        conn: sqlite3.Connection,
+        settings: Settings,
+        cfg: AppConfig,
+        clock: Clock,
+        client: Any,
+    ) -> None:
+        await handlers.cmd_add(m, conn, settings, cfg, clock, client, command.args)
+
     @dp.message(Command("boards"))
     async def _boards(m: Message, command: CommandObject, cfg: AppConfig) -> None:
         await handlers.cmd_boards(m, cfg, command.args)
@@ -284,5 +296,17 @@ def build_dispatcher(
         m: Message, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig, client: Any, bot: Bot
     ) -> None:
         await outreach_handlers.on_document(m, conn, clock, cfg, client, bot)
+
+    # Registered last: while a CV or contact is pending, forwarded text goes to those flows.
+    @dp.message(F.forward_origin)
+    async def _forward(
+        m: Message,
+        conn: sqlite3.Connection,
+        settings: Settings,
+        cfg: AppConfig,
+        clock: Clock,
+        client: Any,
+    ) -> None:
+        await handlers.on_forward(m, conn, settings, cfg, clock, client)
 
     return dp
