@@ -228,6 +228,14 @@ async def test_every_bot_send_targets_configured_chat(tmp_path, monkeypatch, cap
     conn.close()
 
 
+# Canned model replies (structured fields, no free CV document) need no marker (D-138, D-301).
+CANNED_MODEL_REPLIES = {
+    "tests/fixtures/cv_parse_reply.json",
+    "tests/fixtures/cv_review_reply_ok.json",
+    "tests/fixtures/cv_review_reply_fabricated.json",
+}
+
+
 def test_no_data_or_cv_files_tracked_and_fixtures_marked():
     assert [f for f in git_ls("data") if f != "data/.gitkeep"] == []
     assert git_ls("*.db", "*.db-wal", "*.db-shm", "*.session") == []
@@ -240,7 +248,7 @@ def test_no_data_or_cv_files_tracked_and_fixtures_marked():
     # so the marker applies to CV documents and contact fixtures (D-138).
     missing = [
         f for f in marked
-        if f != "tests/fixtures/cv_parse_reply.json"
+        if f not in CANNED_MODEL_REPLIES
         and b"FAKE FIXTURE" not in (ROOT / f).read_bytes()
     ]  # fmt: skip
     assert missing == []
