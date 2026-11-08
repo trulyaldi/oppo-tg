@@ -1807,3 +1807,21 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
 ## 2026-11-08 — FIX-54 (implementer)
 
 - **D-308 FIX-54: sweep tests added, no `src/` change.** `tests/test_whitelist_new_handlers.py` feeds 13 surfaces from chat 99 through `build_dispatcher` with `Bot.__call__` patched: `/add <text>`, a forwarded channel post, `/search`, `/findchannels`, `tc:add`, `tc:ign`, `/cvreview`, `/cvreview refresh`, `/boards`, `/channels`, `/stats`, a document upload and an `edited_message`. Each gives zero Bot calls and unchanged row counts in `postings`, `tg_channels`, `cv_reviews`, `tg_channel_candidates`. A one-off control run from chat 42 answered all but the document and the edited message (a document needs a pending CV flow, and edited messages have no handler), so those two cases pin "silent" rather than prove the whitelist alone. The send-site test walks the `src/` AST for `send_message`, `send_document` and `answer_document` calls, pins the exact per-file set and asserts every target is the configured chat id (`chat_id`, `self.chat_id`, `settings.telegram_chat_id`) or an `answer_document` reply. Weekly discovery and the zero-cap warning are tested to send only to chat "42". The planned `tests/test_privacy_sweep.py` edit was skipped because the new file holds the site list. No bug found.
+
+## 2026-11-08 — KF-37 re-review of feature/kz-first-fresh-cv (reviewer)
+
+- **D-309 KF-37 re-review verdict: PASSED, no blocking issues remain.** This is the one re-review D-301 allows, at HEAD 6abf273. KF-37 is marked `[x]`.
+  - **FIX-52 (74a12ce, D-305): verified.** `/search` now compiles the raw cue entries with `compile_entry` and filters rows by the cue rules: whole word for short tokens, `stem*` as a prefix, phrases as phrases.
+    - The D-304 scratchpad probes now return "Nothing found." for `ai` against "Email marketing specialist" / "domain maintenance" and "Бухгалтер в отдел компании", and for `ml` against "Frontend (HTML, CSS)".
+    - New probes: `qa` finds "QA Engineer Intern" but not "Aquatic research assistant" (aqua, qatar). `ai` finds "AI Research Intern" and "Стажёр ИИ". `c++`, `sql` and `pyth` (a typed prefix) work. `стажировка` and `intern` find the intern postings. `r` matches nothing.
+  - **FIX-53 (b3ab478, D-306): verified.** With `cv_fake.txt` and the market text "KZ employers (12 postings): ml 5 (42%); python 7 (58%)", `verify_review` now:
+    - removes "State that you have 5 years of Python experience", "Mention your 42% accuracy improvement", "add your 95% accuracy result" (`kz_notes`) and the gap "your Google internship experience";
+    - clears the gap note "add your 95% accuracy result";
+    - removes the new variants: a number hidden in `why` ("your 7 shipped models", cleared), a number hidden in `kz_notes` ("the 12 production services you built"), the spelled-out "five years" and "forty percent";
+    - still passes "Keep it to one page with 3-5 bullets per role", and an `add_if_true` gap still becomes a question.
+    
+    One narrow allowlist bypass remains, filed as non-blocking FIX-64: "you wrote 2 pages of research papers" passes.
+  - **FIX-54 (6abf273, D-308): verified.** `tests/test_whitelist_new_handlers.py` covers 13 surfaces from chat 99, with zero Bot calls and unchanged tables: `/add`, a forward, `/search`, `/findchannels`, `tc:add`, `tc:ign`, `/cvreview`, `/cvreview refresh`, `/boards`, `/channels`, `/stats`, a document and an edited message. It also has the weekly-discovery and cap-warning chat target tests and the pinned send call-site list. My scratchpad probe repeated the owner-chat side: each command answers from chat 42, so the other-chat test is not vacuous.
+  - **FIX-55 (987dd03, D-307).** This item was non-blocking, but it was fixed anyway. Chat change lines now read "what — why", and its test passes.
+  - **Suite and lint.** `.venv/bin/python -m pytest -q`: 1597 tests, exit 0. `ruff check .`: "All checks passed!". `ruff format --check .`: 220 files already formatted. The clean venv from D-304 (requirements.txt unchanged since then) runs `pytest -q` with 1597 tests, exit 0.
+  - **Deferred, non-blocking (D-301), for the KF-38 final report:** FIX-56 to FIX-64.

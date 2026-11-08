@@ -4061,7 +4061,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - The env table still matches `ENV_VARS`.
   - The DoD tests pass.
 
-### KF-37 [ ] Review pass (Opus reviewer) against the brief, and fix loop
+### KF-37 [x] Review pass (Opus reviewer) against the brief, and fix loop
 - Build: the reviewer reviews `git diff main...HEAD` against `docs/briefs/kz-first-fresh-cv.md`, Parts 0 to 9, and SPEC's new section. Checks:
   - correctness;
   - ToS and rate limits: verdicts D-235 to D-245; robots wildcard matching; tier, floor and `tg` bounds; FloodWait; no join or write Telethon call;
@@ -4299,3 +4299,9 @@ Verified with evidence, no FIX needed:
 - Severity: non-blocking. Deferred (D-301). The risk is low: the market text is built from cue labels and counts, and the CV is the user's own text inside `<cv>`.
 - Where: `src/cv/review.py:339-341` wraps with `wrap_untrusted("market", ...)`, but `src/llm/untrusted.py:7` `RESERVED_TAGS` lacks `market`, so a `<market>`/`</market>` inside the CV text is not neutralised.
 - Acceptance: `market` is added to `RESERVED_TAGS`, with a test that a CV containing `</market>` reaches the model as `‹/market>`.
+
+### FIX-64 [ ] The CV review's advice-number allowlist also clears claim numbers phrased as pages, lines or bullets
+- Severity: non-blocking (KF-37 re-review, D-309). Deferred (D-301): listed, not fixed on this branch.
+- Where: `src/cv/review.py` `_ADVICE_NUMBERS` (D-306). It strips any "1-2 page(s)", "one line" or "2-6 bullets/lines/sentences" phrase before the number check, wherever the phrase appears.
+- Failure: `changes[].what` "Say you wrote 2 pages of research papers in Python" and "Say you maintained 4 lines of business in SQL" both pass `verify_review` on `cv_fake.txt`. The trap is contrived: a real model reply is unlikely to phrase an invented fact this way, and every case in the FIX-53 acceptance is rejected.
+- Acceptance: allowlisted numbers count only in formatting context ("keep it to one page", "3-5 bullets per role"), for example only in `length`/`formatting`/`structure` notes, or only when no "you"/"your" claim verb precedes them. Both strings above are removed, and "Keep it to one page with 3-5 bullets per role" still passes.
