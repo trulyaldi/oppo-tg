@@ -56,6 +56,7 @@ def _pages(cfg: AppConfig) -> list[dict[str, str]]:
             "name": str(p.get("name") or p["url"]),
             "company": str(p.get("company") or p.get("name") or p["url"]),
             "kind": str(p.get("kind", "")),
+            "type": str(p.get("type") or ""),
             "css_selector": str(p.get("css_selector") or ""),
         }
         for p in pages
@@ -117,6 +118,7 @@ class PageWatchSource:
                 description=text[:MAX_DESC],
                 posted_at=ctx.clock.now(),
                 kind=_kind(page["kind"], page["name"]),
+                opportunity_type=page["type"] or None,
             )
         ]
 

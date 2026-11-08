@@ -46,7 +46,7 @@ def test_snapshot_values():
     assert (q.kz, q.intl, q.best_remaining) == (6, 3, 1)
     assert w.region_min_confidence == 0.7
     assert len(w.intl_top_tier) == 14
-    assert len(w.kz_employers) == 15
+    assert len(w.kz_employers) == 17
     assert w.version != "builtin" and len(w.version) == 12
     assert w.flags.kz and w.flags.intl
 

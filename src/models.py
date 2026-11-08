@@ -90,6 +90,7 @@ class Posting:
     deadline: date | None = None
     kind: Kind = Kind.OTHER
     raw_tags: tuple[str, ...] = ()
+    opportunity_type: str | None = None  # config-asserted type (type_source='config', KF-25)
 
     def __post_init__(self) -> None:
         parsed = urlparse(self.url)

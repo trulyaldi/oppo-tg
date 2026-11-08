@@ -447,6 +447,21 @@ MOVED_FILTER_KEYS = (
 )
 
 
+def _check_pagewatch_types(cfg: Mapping[str, Any]) -> None:
+    """Each pagewatch page `type` must be a valid OpportunityType; the error names the page."""
+    from src.models import OpportunityType
+
+    for page in cfg.get("pages") or []:
+        if isinstance(page, dict) and "type" in page:
+            try:
+                OpportunityType(page["type"])
+            except ValueError:
+                name = page.get("name") or page.get("url")
+                raise ValueError(
+                    f"[sources.pagewatch] page {name!r}: invalid type {page['type']!r}"
+                ) from None
+
+
 @dataclass(frozen=True)
 class AppConfig:
     sources: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -481,6 +496,7 @@ class AppConfig:
         if "queries" in sources.get("hh", {}):
             raise ValueError("[sources.hh] queries moved to config/cues.toml [hh]")
         _check_telegram_poll(sources.get("telegram_channels", {}))
+        _check_pagewatch_types(sources.get("pagewatch", {}))
         outreach = dict(data.get("outreach", {}))
         OutreachConfig.from_mapping(outreach)  # fail fast at load (D-147)
         scoring = dict(data.get("scoring", {}))

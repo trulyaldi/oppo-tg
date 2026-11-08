@@ -1672,3 +1672,10 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - **Filters still apply after triage**: post-triage may filter a user-added item as `unpaid` or mark it a `repost` duplicate (scam stays a marker only, D-262). The reply then says "Not scored: filtered (reason)" rather than staying silent.
   - **Caps.** Triage and scoring keep their daily caps. A reply names the cap reached (`TRIAGE_CAP_TEXT`, `SCORE_CAP_TEXT`).
   - **Handler order.** The `F.forward_origin` handler is registered last, after the pending contact, pending CV text and pending CV document handlers, so those consume forwards while their input is pending. Chat check is the existing `WhitelistMiddleware`.
+
+- **D-293 KF-25: pagewatch `type` key and the vetted KZ pages.**
+  - **Delivery.** `Posting` gets an optional `opportunity_type` (config-asserted). `upsert_posting` inserts it with `type_source='config'` when set, else the kind-derived type with `'kind'`. Triage and scorer still override through the `set_opportunity_type` precedence. Pagewatch ids change with the content hash, so every changed page is a fresh insert and the type applies.
+  - **Validation.** `AppConfig.from_dict` rejects an invalid page `type` with an error naming the page; `type` is optional.
+  - **kind vs type for new pages.** `kind` must be a valid `Kind`, which has no summer_school or grant, so the NU summer schools page and Science Fund use kind `other` and carry the real value in `type`.
+  - **Pages.** The 12 KZ pages are exactly the D-245 list (EPAM Kazakhstan campus included, company "EPAM Kazakhstan"). EPAM is not added to `kz_employers` (intl by the HQ rule), so it stays unknown to the watchlist. ISSAI and Science Fund are added to `kz_employers.yaml` (startup false), with the weights snapshot copy and the count test (15 to 17) updated.
+  - **Robots test** checks every configured URL against `robots_pagewatch_seeds.json` with `src/robots.py` and the `oppo-tg` agent; no network.

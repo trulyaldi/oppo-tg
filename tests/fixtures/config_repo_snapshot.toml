@@ -76,42 +76,133 @@ url = "https://www.imc.com/eu/careers/"
 name = "IMC Careers"
 company = "IMC"
 kind = "internship"
+type = "internship"
 
 [[sources.pagewatch.pages]]
 url = "https://www.optiver.com/join-us/jobs/"
 name = "Optiver Jobs"
 company = "Optiver"
 kind = "internship"
+type = "internship"
 
 [[sources.pagewatch.pages]]
 url = "https://www.janestreet.com/join-jane-street/internships/"
 name = "Jane Street Internships"
 company = "Jane Street"
 kind = "internship"
+type = "internship"
 
 [[sources.pagewatch.pages]]
 url = "https://home.cern/summer-student-programme"
 name = "CERN Summer Student Programme"
 company = "CERN"
 kind = "research"
+type = "summer_school"
 
 [[sources.pagewatch.pages]]
 url = "https://summer.epfl.ch/"
 name = "Summer@EPFL"
 company = "EPFL"
 kind = "research"
+type = "research"
 
 [[sources.pagewatch.pages]]
 url = "https://inf.ethz.ch/studies/summer-research-fellowship.html"
 name = "ETH Student Summer Research Fellowship"
 company = "ETH Zurich"
 kind = "fellowship"
+type = "fellowship"
 
 [[sources.pagewatch.pages]]
 url = "https://www.oist.jp/admissions/research-internship/apply-research-internship"
 name = "OIST Research Internship"
 company = "OIST"
 kind = "research"
+type = "research"
+
+[[sources.pagewatch.pages]]
+url = "https://job.kaspi.kz/"
+name = "Kaspi.kz Careers"
+company = "Kaspi.kz"
+kind = "job"
+type = "job"
+
+[[sources.pagewatch.pages]]
+url = "https://halykbank.kz/about/career"
+name = "Halyk Bank Careers"
+company = "Halyk Bank"
+kind = "job"
+type = "job"
+
+[[sources.pagewatch.pages]]
+url = "https://kolesa.group/career/job"
+name = "Kolesa Group Careers"
+company = "Kolesa Group"
+kind = "job"
+type = "job"
+
+[[sources.pagewatch.pages]]
+url = "https://btsdigital.kz/ru/career"
+name = "BTS Digital Careers"
+company = "BTS Digital"
+kind = "job"
+type = "job"
+
+[[sources.pagewatch.pages]]
+url = "https://career.forte.kz/"
+name = "ForteBank Careers"
+company = "ForteBank"
+kind = "job"
+type = "job"
+
+[[sources.pagewatch.pages]]
+url = "https://campus.epam.kz/ru"
+name = "EPAM Kazakhstan Campus"
+company = "EPAM Kazakhstan"
+kind = "internship"
+type = "internship"
+
+[[sources.pagewatch.pages]]
+url = "https://nu.edu.kz/about/work-at-nu/jobs-at-nu/"
+name = "Nazarbayev University Jobs"
+company = "Nazarbayev University"
+kind = "research"
+type = "research"
+
+[[sources.pagewatch.pages]]
+url = "https://nu.edu.kz/students/academic-mobility-and-career/summer-schools/"
+name = "Nazarbayev University Summer Schools"
+company = "Nazarbayev University"
+kind = "other"
+type = "summer_school"
+
+[[sources.pagewatch.pages]]
+url = "https://nu.edu.kz/students/academic-mobility-and-career/jobs-and-mentoring/"
+name = "Nazarbayev University Internships and Mentoring"
+company = "Nazarbayev University"
+kind = "internship"
+type = "internship"
+
+[[sources.pagewatch.pages]]
+url = "https://issai.nu.edu.kz/"
+name = "ISSAI"
+company = "ISSAI"
+kind = "research"
+type = "research"
+
+[[sources.pagewatch.pages]]
+url = "https://research.nu.edu.kz/"
+name = "Nazarbayev University Research"
+company = "Nazarbayev University"
+kind = "research"
+type = "research"
+
+[[sources.pagewatch.pages]]
+url = "https://science-fund.kz/"
+name = "Science Fund"
+company = "Science Fund"
+kind = "other"
+type = "grant"
 
 [sources.devpost]
 # Disabled: Devpost ToS forbids automated access (D-50)

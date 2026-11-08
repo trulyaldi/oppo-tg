@@ -3831,7 +3831,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 
 ### Part H: pagewatch and international breadth
 
-### KF-25 [ ] Pagewatch `type` key and the vetted Kazakhstan pages (D-245, D-263)
+### KF-25 [x] Pagewatch `type` key and the vetted Kazakhstan pages (D-245, D-263)
 - Build:
   - The `[[sources.pagewatch.pages]]` `type` key is validated against `OpportunityType`. Postings get `set_opportunity_type(..., "config")`.
   - Add `type` to the existing 7 pages:

@@ -174,3 +174,109 @@ async def test_company_key_used_and_falls_back_to_name():
     assert classify_employer("IMC Careers", "internship", "unknown", 0, None, w).category == (
         "unknown"
     )
+
+
+# ---- KF-25: type key and the vetted pages --------------------------------------------------
+
+import json  # noqa: E402
+import tomllib  # noqa: E402
+from urllib.parse import urlsplit  # noqa: E402
+
+import pytest  # noqa: E402
+
+from src import robots  # noqa: E402
+
+ROOT = Path(__file__).resolve().parent.parent
+D245_KZ = {
+    "https://job.kaspi.kz/",
+    "https://halykbank.kz/about/career",
+    "https://kolesa.group/career/job",
+    "https://btsdigital.kz/ru/career",
+    "https://career.forte.kz/",
+    "https://campus.epam.kz/ru",
+    "https://nu.edu.kz/about/work-at-nu/jobs-at-nu/",
+    "https://nu.edu.kz/students/academic-mobility-and-career/summer-schools/",
+    "https://nu.edu.kz/students/academic-mobility-and-career/jobs-and-mentoring/",
+    "https://issai.nu.edu.kz/",
+    "https://research.nu.edu.kz/",
+    "https://science-fund.kz/",
+}
+
+
+def _repo_pages():
+    return tomllib.loads((ROOT / "config.toml").read_text())["sources"]["pagewatch"]["pages"]
+
+
+def test_repo_pages_have_valid_types_and_kz_urls_match_d245():
+    from src.models import OpportunityType
+
+    pages = _repo_pages()
+    assert len(pages) == 19
+    for p in pages:
+        assert OpportunityType(p["type"])
+    urls = {p["url"] for p in pages}
+    assert urls >= D245_KZ
+    assert len(urls) == len(pages)
+    by_name = {p["name"]: p["type"] for p in pages}
+    assert by_name["CERN Summer Student Programme"] == "summer_school"
+    assert by_name["ETH Student Summer Research Fellowship"] == "fellowship"
+    assert by_name["Science Fund"] == "grant"
+
+
+def test_every_repo_pagewatch_url_allowed_by_robots_fixture():
+    hosts = json.loads((FX / "robots_pagewatch_seeds.json").read_text())["hosts"]
+    for p in _repo_pages():
+        parts = urlsplit(p["url"])
+        entry = hosts[parts.netloc]
+        if entry["status"] == 404:
+            continue
+        rules = robots.parse(entry["body"])
+        path = parts.path + (f"?{parts.query}" if parts.query else "")
+        assert robots.allowed(rules, "oppo-tg", path), p["url"]
+
+
+def test_invalid_type_fails_naming_page():
+    page = {"url": URL, "name": "Bad Page", "kind": "job", "type": "nonsense"}
+    with pytest.raises(ValueError, match="Bad Page"):
+        AppConfig.from_dict({"sources": {"pagewatch": {"enabled": True, "pages": [page]}}})
+
+
+async def test_configured_type_sets_type_source_config():
+    page = {"url": URL, "name": "Sci Fund", "kind": "other", "type": "grant"}
+    cfg = AppConfig.from_dict({"sources": {"pagewatch": {"enabled": True, "pages": [page]}}})
+    h = Harness(cfg)
+    r = await _fetch(h)
+    assert r.items[0].opportunity_type == "grant"
+    dbm.upsert_posting(h.conn, r.items[0], "fp", h.clock.now())
+    row = h.conn.execute("SELECT opportunity_type, type_source FROM postings").fetchone()
+    assert (row["opportunity_type"], row["type_source"]) == ("grant", "config")
+
+
+async def test_untyped_page_keeps_kind_type_source():
+    h = Harness(_cfg())
+    r = await _fetch(h)
+    assert r.items[0].opportunity_type is None
+    dbm.upsert_posting(h.conn, r.items[0], "fp", h.clock.now())
+    row = h.conn.execute("SELECT type_source FROM postings").fetchone()
+    assert row["type_source"] == "kind"
+
+
+def test_kz_pagewatch_classification():
+    from src.ranking.employer import classify_employer
+    from src.ranking.weights import load_weights
+
+    w = load_weights(ROOT / "config" / "weights.yaml")
+
+    def cat(company, kind, opp=None):
+        return classify_employer(
+            company, kind, "unknown", 0, None, w, opportunity_type=opp
+        ).category
+
+    assert cat("Halyk Bank", "job", "job") == "kz_employer"
+    assert cat("Science Fund", "other", "grant") == "kz_program"
+    assert cat("Фонд науки", "other", "grant") == "kz_program"
+    assert cat("АО Фонд науки", "other", "grant") == "kz_program"
+    assert cat("Institute of Smart Systems and Artificial Intelligence", "research") == (
+        "kz_employer"
+    )
+    assert cat("EPAM Kazakhstan", "internship") == "unknown"

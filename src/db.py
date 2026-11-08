@@ -373,8 +373,8 @@ def upsert_posting(
             published,
             chash,
             int(baseline),
-            kind_to_type(p.kind).value,
-            "kind",
+            p.opportunity_type or kind_to_type(p.kind).value,
+            "config" if p.opportunity_type else "kind",
         ),
     )
     if cur.rowcount == 1:

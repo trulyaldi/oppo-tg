@@ -16,3 +16,5 @@ employers:
   - {name: Nazarbayev University, aliases: [], domain: nu.edu.kz, startup: false}
   - {name: Astana IT University, aliases: [], domain: astanait.edu.kz, startup: false}
   - {name: Arbuz.kz, aliases: [Arbuz], domain: arbuz.kz, startup: true}
+  - {name: Science Fund, aliases: [Фонд науки, АО Фонд науки], domain: science-fund.kz, startup: false}
+  - {name: ISSAI, aliases: [Institute of Smart Systems and Artificial Intelligence], domain: issai.nu.edu.kz, startup: false}
