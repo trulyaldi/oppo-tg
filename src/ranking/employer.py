@@ -6,6 +6,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
+from src.cues import Cues, load_cues, match_any
 from src.models import PROGRAM_TYPES, Kind, OpportunityType, kind_to_type
 from src.ranking.weights import Weights
 
@@ -35,7 +36,7 @@ _DOT = re.compile(r"(?<!\w)\.|\.(?!\w)")
 @dataclass(frozen=True)
 class Classification:
     category: str  # intl_top_tier|intl_other|kz_employer|kz_startup|kz_program|unknown
-    source: str  # watchlist|llm|hint|none
+    source: str  # watchlist|llm|hint|lang_loc|none
 
 
 def normalize_company(name: str | None) -> str:
@@ -77,6 +78,9 @@ def classify_employer(
     weights: Weights,
     hint: str | None = None,
     opportunity_type: str | None = None,
+    language: str | None = None,
+    location: str | None = None,
+    cues: Cues | None = None,
 ) -> Classification:
     norm = normalize_company(company)
     if norm:
@@ -95,4 +99,9 @@ def classify_employer(
     if hint == "kz":  # D-194: only after the watchlist, and only for unknown/low-confidence
         startup = is_startup is True or str(kind) == Kind.STARTUP.value
         return Classification(_kz(startup, opportunity_type, kind), "hint")
+    if language in ("ru", "kk") and location and location.strip():  # D-249
+        group = (cues or load_cues())["locations.kz"]
+        if match_any(group, location):
+            startup = is_startup is True or str(kind) == Kind.STARTUP.value
+            return Classification(_kz(startup, opportunity_type, kind), "lang_loc")
     return Classification("unknown", "none")

@@ -5,8 +5,10 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from src.cues import Cues, load_cues
 from src.ranking.employer import classify_employer
 from src.ranking.weights import Weights
+from src.text import detect_language
 
 _LABELS = {
     "intl_top_tier": "top-tier",
@@ -79,6 +81,7 @@ def recompute_adjusted(
     weights: Weights,
     hints: dict[str, str] | None = None,
     blocker_penalty: float = 0.0,
+    cues: Cues | None = None,
 ) -> int:
     """Re-classify and re-adjust rows whose weights_version differs. Returns rows updated."""
     hints = hints or {}
@@ -87,16 +90,22 @@ def recompute_adjusted(
         version += "+" + ",".join(f"{k}={v}" for k, v in sorted(hints.items()))
     if blocker_penalty:
         version += f"+hb={blocker_penalty:g}"
+    version += "+ll"  # language + location region rule (D-249)
     rows = conn.execute(
         "SELECT s.posting_id, s.base_score, s.employer_region, s.region_confidence,"
         " s.employer_is_startup, s.visa_barrier, p.company, p.kind, p.remote, p.source,"
-        " p.hard_blocker, p.opportunity_type"
+        " p.hard_blocker, p.opportunity_type, p.language, p.location, p.ex_location,"
+        " p.title, p.description"
         " FROM scores s JOIN postings p ON p.id = s.posting_id"
         " WHERE s.weights_version IS NULL OR s.weights_version != ?",
         (version,),
     ).fetchall()
+    if rows and cues is None:
+        cues = load_cues()
     with conn:
         for r in rows:
+            language = r["language"] or detect_language(f"{r['title']} {r['description']}")
+            location = " ".join(x for x in (r["location"], r["ex_location"]) if x)
             cat = classify_employer(
                 r["company"],
                 r["kind"],
@@ -106,6 +115,9 @@ def recompute_adjusted(
                 weights,
                 hints.get(r["source"]),
                 r["opportunity_type"],
+                language,
+                location,
+                cues,
             ).category
             adjusted, adj, detail = adjust(
                 r["base_score"],

@@ -1582,3 +1582,8 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - `recompute_adjusted` selects `p.opportunity_type`. The weights version is the YAML hash, so editing `config/weights.yaml` already forces one recompute; no extra version suffix.
   - Only `tests/fixtures/weights_snapshot/weights.yaml` changed in the snapshot (adjustments only; quotas stay 4/4/2 until KF-12). Existing tests that pinned the old bonuses (1.0/0.5/1.0) were updated to the new numbers.
   - The invariant test takes the product over KZ category (employer, startup, program), KZ fresh, intl category, intl fresh, visa, remote and intl base. Fresh KZ uses bases {3, 4, 5}; non-fresh KZ adds 5.5. `test_documented_exception_fresh_kz_55` pins the accepted exception from D-248.
+
+- **D-279 KF-11 implementation (lang_loc region rule).**
+  - `classify_employer` gets trailing parameters `language`, `location`, `cues`. The `lang_loc` step runs after the hint and before unknown; it reuses `_kz()` so programs and startups keep the KF-10 logic. Cues default to `load_cues()` (group `locations.kz`, all languages).
+  - `recompute_adjusted` uses `postings.language`, else `detect_language(title + description)`, and `location` plus `ex_location` joined. It takes an optional `cues` argument and loads the default lazily, only when rows need recompute. The version string always ends in `+ll`, so existing rows recompute once.
+  - `detect_language` counts letters only. Empty or letterless text is `en`. Kazakh letters win over the Cyrillic ratio.

@@ -20,3 +20,13 @@ def test_truncate_never_exceeds(limit):
 def test_truncate_short_unchanged():
     assert truncate("abc", 10) == "abc"
     assert truncate("abcdefghij", 5).endswith("…")
+
+
+def test_detect_language():
+    from src.text import detect_language
+
+    assert detect_language("Backend developer wanted in Almaty, Python and Django") == "en"
+    assert detect_language("Требуется разработчик Python в Алматы, опыт от года") == "ru"
+    assert detect_language("Әзірлеуші қажет: Python білімі міндетті") == "kk"
+    assert detect_language("") == "en"
+    assert detect_language(None) == "en"

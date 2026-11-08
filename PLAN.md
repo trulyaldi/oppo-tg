@@ -3557,7 +3557,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - The invariant test as specified passes.
   - Changing `config/weights.yaml` triggers a recompute (weights version changes).
 
-### KF-11 [ ] Region rule: Russian or Kazakh posting located in Kazakhstan (D-249)
+### KF-11 [x] Region rule: Russian or Kazakh posting located in Kazakhstan (D-249)
 - Build:
   - `src/text.py::detect_language(text) -> "kk" | "ru" | "en"`, per D-249.
   - `classify_employer(..., language=None, location=None, cues=None)` adds the `lang_loc` step after the hint: language in {ru, kk} and the location (or `ex_location`) matching `locations.kz` gives KZ. It then goes through the KF-10 program and startup logic. Classification source: `lang_loc`.

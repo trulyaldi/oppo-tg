@@ -114,3 +114,42 @@ def test_hint_startup():
 
 def test_no_hint_stays_unknown():
     assert hint_cls("Nobody Ltd", hint=None) == ("unknown", "none")
+
+
+def ll_cls(company, language, location, region="unknown", conf=0.0, kind=Kind.JOB, **kw):
+    c = classify_employer(
+        company, kind, region, conf, None, W, language=language, location=location, **kw
+    )
+    return c.category, c.source
+
+
+def test_lang_loc_russian_almaty_is_kz():
+    assert ll_cls("Nobody Ltd", "ru", "Алматы") == ("kz_employer", "lang_loc")
+
+
+def test_lang_loc_english_stays_unknown():
+    assert ll_cls("Nobody Ltd", "en", "Almaty") == ("unknown", "none")
+
+
+def test_lang_loc_kazakh_astana_is_kz():
+    assert ll_cls("Nobody Ltd", "kk", "Астана") == ("kz_employer", "lang_loc")
+
+
+def test_lang_loc_russian_moscow_stays_unknown():
+    assert ll_cls("Nobody Ltd", "ru", "Москва") == ("unknown", "none")
+
+
+def test_lang_loc_watchlist_intl_wins():
+    assert ll_cls("Citadel", "ru", "Алматы") == ("intl_top_tier", "watchlist")
+
+
+def test_lang_loc_confident_intl_wins():
+    assert ll_cls("Nobody Ltd", "ru", "Алматы", "intl", 0.9) == ("intl_other", "llm")
+
+
+def test_lang_loc_program_type():
+    c = classify_employer(
+        "Nobody", Kind.JOB, "unknown", 0.0, None, W,
+        opportunity_type="hackathon", language="ru", location="Алматы",
+    )  # fmt: skip
+    assert (c.category, c.source) == ("kz_program", "lang_loc")

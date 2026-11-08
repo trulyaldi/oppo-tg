@@ -49,3 +49,22 @@ def truncate(text: str, limit: int, suffix: str = "…") -> str:
     if len(suffix) >= limit:
         return text[:limit]
     return text[: limit - len(suffix)].rstrip() + suffix
+
+
+_KK_LETTERS = frozenset("әғқңөұүһіӘҒҚҢӨҰҮҺІ")
+_KK_MIN_CYRILLIC = 0.30
+
+
+def detect_language(text: str | None) -> str:
+    """Deterministic language guess: "kk", "ru" or "en" (D-249).
+
+    Any Kazakh-specific letter gives kk; at least 30% Cyrillic among the letters gives ru;
+    anything else is en."""
+    text = text or ""
+    if any(ch in _KK_LETTERS for ch in text):
+        return "kk"
+    letters = [ch for ch in text if ch.isalpha()]
+    if not letters:
+        return "en"
+    cyr = sum(1 for ch in letters if "\u0400" <= ch <= "\u04ff")
+    return "ru" if cyr / len(letters) >= _KK_MIN_CYRILLIC else "en"
