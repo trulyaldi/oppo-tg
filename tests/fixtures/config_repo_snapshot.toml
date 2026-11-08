@@ -145,6 +145,9 @@ enabled = false
 enabled = true
 # Public channel handles, e.g. ["some_channel"]. Empty until you fill it in (D-69).
 channels = []
+max_channels_per_poll = 20
+max_resolves_per_poll = 3
+pause_s = 4
 
 [filters]
 # Keyword lists (positive, spam, unpaid, seniority, negative, protect, hard blockers) live in

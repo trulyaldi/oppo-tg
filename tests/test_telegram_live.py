@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+from tg_fakes import handle_of, peer_for
 
 from src import db
 from src.bot.handlers import cmd_channels, render_channels
@@ -69,7 +70,11 @@ class FakeClient:
         self.requests.append(request)
         self.joined.append(request.channel)
 
+    async def get_input_entity(self, handle):
+        return peer_for(handle)
+
     async def iter_messages(self, channel, limit=None, min_id=0):
+        channel = handle_of(channel)
         for mid, text in self.history.get(channel, []):
             if mid > min_id:
                 yield SimpleNamespace(id=mid, message=text, date=NOW)

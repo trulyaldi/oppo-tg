@@ -26,6 +26,7 @@ from src.sources.telegram_channels import (
     advance_last_id,
     channels,
     default_client_factory,
+    flood_gate,
     parse_message,
     session_exists,
 )
@@ -163,6 +164,8 @@ class TelegramListener:
         if self._handler_added:
             self.client.remove_event_handler(self._on_event)
             self._handler_added = False
+        if flood_gate(self.conn, self._now(), log, "live listener"):
+            return  # flood wait: no Telethon request; keep the previous subscription (KF-19)
         wanted = channels(self.cfg, self.conn)
         joined = await self._joined()
         self._live = {c for c in wanted if c.casefold() in joined}

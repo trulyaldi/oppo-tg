@@ -178,7 +178,9 @@ async def cmd_applied(message: Any, conn: sqlite3.Connection) -> None:
     await _cmd_list(message, conn, "applied", NOTHING_APPLIED)
 
 
-def render_sources(conn: sqlite3.Connection, settings: Settings, cfg: AppConfig) -> str:
+def render_sources(
+    conn: sqlite3.Connection, settings: Settings, cfg: AppConfig, now: Any = None
+) -> str:
     report = count_report(settings, cfg)
     runs = {r["source"]: r for r in db.last_source_runs(conn)}
     status: dict[str, str] = {}
@@ -222,6 +224,9 @@ def render_sources(conn: sqlite3.Connection, settings: Settings, cfg: AppConfig)
         )
     n = len(report.counted)
     lines.append(f"Credential-free source families enabled: {n} (need {MIN_SOURCE_FAMILIES})")
+    flood = _flood_note(conn, now)
+    if flood:
+        lines.append(_esc(flood))
     return "\n".join(lines)
 
 
@@ -400,7 +405,18 @@ CHANNELS_USAGE = (
 BAD_CHANNEL = "That is not a valid public channel handle (5-32 letters, digits or _)."
 
 
-def render_channels(conn: sqlite3.Connection, settings: Settings, cfg: AppConfig) -> list[str]:
+def _flood_note(conn: sqlite3.Connection, now: Any = None) -> str:
+    """'telegram flood wait: 132s left' while Telethon reads are paused (KF-19), else ''."""
+    from src.clock import SystemClock
+    from src.sources.telegram_channels import flood_remaining
+
+    left = flood_remaining(conn, now or SystemClock().now())
+    return f"telegram flood wait: {left}s left" if left else ""
+
+
+def render_channels(
+    conn: sqlite3.Connection, settings: Settings, cfg: AppConfig, now: Any = None
+) -> list[str]:
     from src.sources.telegram_channels import (
         TelegramChannelsSource,
         channels,
@@ -417,11 +433,20 @@ def render_channels(conn: sqlite3.Connection, settings: Settings, cfg: AppConfig
             "SELECT target, baselined_at FROM target_state WHERE source='telegram_channels'"
         )
     }
+    ents = db.tg_entities(conn)
     lines = []
+    flood = _flood_note(conn, now)
+    if flood:
+        lines.append(_esc(flood))
     for i, c in enumerate(channels(cfg, conn), 1):
         origin = "config" if c in in_config else "added"
+        ent = ents.get(c.casefold())
         if c.casefold() in live:
             status = "live"
+        elif ent is not None and ent["status"] == "private":
+            status = "private: join it yourself or remove it"
+        elif ent is not None and ent["status"] == "invalid":
+            status = "invalid"
         elif reason:
             status = f"not polling ({reason})"
         elif polled.get(c):
@@ -458,7 +483,7 @@ async def cmd_channels(
 
     parts = (args or "").split()
     if not parts:
-        lines = render_channels(conn, settings, cfg)
+        lines = render_channels(conn, settings, cfg, clock.now())
         if not lines:
             await _say(message, "No Telegram channels. " + CHANNELS_USAGE)
             return

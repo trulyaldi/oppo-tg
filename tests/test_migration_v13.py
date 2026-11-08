@@ -52,7 +52,7 @@ def test_v12_to_v13_backfills_and_is_idempotent(tmp_path):
     _v12_db(path)
     conn = db.connect(path)
     db.migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION == 13
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION
     before = [tuple(r) for r in conn.execute("SELECT * FROM postings ORDER BY id")]
     for i, kind in enumerate(MAPPED):
         row = conn.execute("SELECT * FROM postings WHERE id=?", (f"p{i}",)).fetchone()
@@ -70,7 +70,7 @@ def test_v12_to_v13_backfills_and_is_idempotent(tmp_path):
 def test_fresh_db_goes_straight_to_v13(tmp_path):
     conn = db.connect(tmp_path / "new.db")
     db.migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 13
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(triage_results)")}
     assert {"type", "language"} <= cols
 

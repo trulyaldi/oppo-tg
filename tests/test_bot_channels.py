@@ -151,3 +151,22 @@ async def test_owner_via_dispatcher(conn, cfg, monkeypatch):
     out = await dispatch(conn, cfg, 42, "/channels add new_chan", monkeypatch)
     assert out == ["Added @new_chan. Its first poll is a baseline."]
     assert db.tg_channel_overlay(conn) == {"new_chan": "added"}
+
+
+async def test_private_invalid_and_flood_are_shown(conn, cfg):
+    from datetime import timedelta
+
+    from src.bot.handlers import render_sources
+    from src.sources.telegram_channels import set_flood
+
+    db.set_tg_entity(conn, "job_kz", "private", NOW)
+    db.set_tg_entity(conn, "intern_kz", "invalid", NOW)
+    out = (await run(conn, cfg, None))[0]
+    assert "private: join it yourself or remove it" in out and "@intern_kz [config] invalid" in out
+    assert "flood wait" not in out
+    set_flood(conn, NOW, 120)  # 132 s
+    out = (await run(conn, cfg, None))[0]
+    assert "telegram flood wait: 132s left" in out
+    assert "telegram flood wait: 132s left" in render_sources(conn, SETTINGS, cfg, NOW)
+    later = NOW + timedelta(seconds=200)
+    assert "flood wait" not in render_sources(conn, SETTINGS, cfg, later)

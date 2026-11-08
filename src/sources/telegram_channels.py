@@ -8,9 +8,10 @@ Message text is untrusted data: it is only stored as plain text, never executed.
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +26,7 @@ from src.sources.base import (
     register,
     run_target,
 )
-from src.sources.telegram_ro import read_only
+from src.sources.telegram_ro import ReadOnlyViolation, read_only
 
 BATCH = 100
 FLOOD_SLEEP_THRESHOLD_S = 60
@@ -59,6 +60,68 @@ def normalize_channel(raw: Any) -> str | None:
 
 
 MAX_CHANNELS = 50
+DEFAULT_MAX_CHANNELS_PER_POLL = 20
+DEFAULT_MAX_RESOLVES_PER_POLL = 3
+DEFAULT_PAUSE_S = 4.0  # D-252: 20 channels in about 80 s, FloodWait-safe
+RERESOLVE_AFTER = timedelta(days=1)
+FLOOD_KEY = "tg_flood_until"
+FLOOD_LOGGED_KEY = "tg_flood_logged"
+
+
+def poll_option(cfg: AppConfig, key: str, default: Any) -> Any:
+    return cfg.source("telegram_channels").get(key, default)
+
+
+def flood_until(conn: Any) -> datetime | None:
+    """When the current Telegram flood wait ends (None when there is none)."""
+    from src import db as dbm
+
+    raw = dbm.get_state(conn, FLOOD_KEY, "")
+    if not raw:
+        return None
+    try:
+        t = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    return t if t.tzinfo else t.replace(tzinfo=UTC)
+
+
+def flood_remaining(conn: Any, now: datetime) -> int:
+    """Whole seconds left of the flood wait, 0 when clear."""
+    until = flood_until(conn)
+    if until is None or now >= until:
+        return 0
+    return int((until - now).total_seconds() + 0.999)
+
+
+def set_flood(conn: Any, now: datetime, seconds: Any) -> datetime:
+    """now + ceil(seconds x 1.1), kept if a longer wait is already recorded (KF-19)."""
+    from src import db as dbm
+
+    try:
+        secs = max(int(seconds), 0)
+    except (TypeError, ValueError):
+        secs = 60
+    until = now + timedelta(seconds=-(-secs * 11 // 10))  # integer ceil(secs * 1.1)
+    old = flood_until(conn)
+    if old is not None and old > until:
+        return old
+    dbm.set_state(conn, FLOOD_KEY, until.isoformat())
+    return until
+
+
+def flood_gate(conn: Any, now: datetime, log: logging.Logger, who: str) -> int:
+    """Seconds of flood wait left; logs once per flood episode. Callers make no request if > 0."""
+    from src import db as dbm
+
+    rem = flood_remaining(conn, now)
+    if rem:
+        until = flood_until(conn)
+        stamp = until.isoformat() if until else ""
+        if dbm.get_state(conn, FLOOD_LOGGED_KEY, "") != stamp:
+            dbm.set_state(conn, FLOOD_LOGGED_KEY, stamp)
+            log.warning("%s: telegram flood wait, no requests for %ss", who, rem)
+    return rem
 
 
 def config_channels(cfg: AppConfig) -> list[str]:
@@ -185,7 +248,7 @@ class TelegramChannelsSource:
         self,
         client_factory: ClientFactory | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
-        pause_s: float = 4.0,  # D-252: 20 channels in about 80 s, FloodWait-safe
+        pause_s: float | None = None,  # None: [sources.telegram_channels] pause_s
         require_session_file: bool = True,
     ) -> None:
         self._factory = client_factory or default_client_factory
@@ -194,6 +257,12 @@ class TelegramChannelsSource:
         self._require_session = require_session_file
         self._run_client: Any = None  # set by run_targets: one client for the whole run
         self._flood_seconds: Any = None
+        self._resolves_left: int | None = None  # None: unlimited (standalone fetch)
+
+    def _pause(self, cfg: AppConfig) -> float:
+        if self._pause_s is not None:
+            return self._pause_s
+        return float(poll_option(cfg, "pause_s", DEFAULT_PAUSE_S))
 
     def disabled_reason(self, settings: Settings, cfg: AppConfig, conn: Any = None) -> str | None:
         if not cfg.source_enabled(self.name):
@@ -240,6 +309,8 @@ class TelegramChannelsSource:
         from telethon.errors import FloodWaitError
 
         db = ctx.http.db
+        if flood_gate(db, ctx.clock.now(), ctx.log, self.name):
+            return []
         out: list[Posting] = []
         tally = RequestTally()
         client, owned = None, True
@@ -248,12 +319,13 @@ class TelegramChannelsSource:
             if not await client.is_user_authorized():
                 raise SourceUnavailable("telegram session not authorized")
             for i, channel in enumerate(channels(ctx.cfg, db)):
-                if i and self._pause_s:
-                    await self._sleep(self._pause_s)
+                if i and (pause := self._pause(ctx.cfg)):
+                    await self._sleep(pause)
                 try:
                     out.extend(await self._read_channel(client, channel, ctx, db))
                     tally.success()
                 except FloodWaitError as exc:
+                    set_flood(db, ctx.clock.now(), getattr(exc, "seconds", 60))
                     ctx.log.warning(
                         "telegram_channels: flood wait %ss on %s, stopping run",
                         getattr(exc, "seconds", "?"),
@@ -279,13 +351,43 @@ class TelegramChannelsSource:
             if c.casefold() not in live  # live channels need no polling (D-193)
         ]
 
-    async def run_targets(self, ctx: SourceContext, targets: list[Target]) -> list[TargetResult]:
-        """Poll all due channels with one client, paused between channels (FIX-40).
+    def select_targets(self, ctx: SourceContext, targets: list[Target]) -> list[Target]:
+        """Which channels this run reads (D-252, KF-19).
 
-        A flood wait stops the run: the remaining channels fail without any request and
-        keep their cursors. Never raises.
+        Private and invalid channels are skipped; the rest are ordered by `last_polled_at`
+        (never polled first) and cut at `max_channels_per_poll`. Channels that still need a
+        username lookup are admitted only while the per-run resolve budget lasts.
+        """
+        from src import db as dbm
+
+        ents = dbm.tg_entities(ctx.http.db)
+        cap = int(poll_option(ctx.cfg, "max_channels_per_poll", DEFAULT_MAX_CHANNELS_PER_POLL))
+        resolves = int(poll_option(ctx.cfg, "max_resolves_per_poll", DEFAULT_MAX_RESOLVES_PER_POLL))
+        live = [(i, t) for i, t in enumerate(targets) if not _blocked(ents.get(t.key.casefold()))]
+        live.sort(key=lambda it: (_last_polled(ents.get(it[1].key.casefold())), it[0]))
+        picked: list[Target] = []
+        for _, t in live:
+            if len(picked) >= cap:
+                break
+            if not _resolved(ents.get(t.key.casefold())):
+                if resolves <= 0:
+                    continue
+                resolves -= 1
+            picked.append(t)
+        return picked
+
+    async def run_targets(self, ctx: SourceContext, targets: list[Target]) -> list[TargetResult]:
+        """Poll the due channels with one client, paused between channels (FIX-40, KF-19).
+
+        During a flood wait nothing is requested. A new flood wait stops the run: the remaining
+        channels fail without any request and keep their cursors. Never raises.
         """
         results: list[TargetResult] = []
+        if flood_gate(ctx.http.db, ctx.clock.now(), ctx.log, self.name):
+            return results
+        targets = self.select_targets(ctx, targets)
+        if not targets:
+            return results
         client, owned = None, True
         try:
             try:
@@ -297,6 +399,9 @@ class TelegramChannelsSource:
                 err = f"{type(exc).__name__}: {exc}"
                 return [TargetResult(self.name, t, False, [], err) for t in targets]
             self._run_client, self._flood_seconds = client, None
+            self._resolves_left = int(
+                poll_option(ctx.cfg, "max_resolves_per_poll", DEFAULT_MAX_RESOLVES_PER_POLL)
+            )
             for i, target in enumerate(targets):
                 if self._flood_seconds is not None:
                     results.append(
@@ -309,8 +414,8 @@ class TelegramChannelsSource:
                         )
                     )
                     continue
-                if i and self._pause_s:
-                    await self._sleep(self._pause_s)
+                if i and (pause := self._pause(ctx.cfg)):
+                    await self._sleep(pause)
                 results.append(await run_target(self, ctx, target))
                 if self._flood_seconds is not None:
                     ctx.log.warning(
@@ -321,6 +426,7 @@ class TelegramChannelsSource:
             return results
         finally:
             self._run_client = None
+            self._resolves_left = None
             await self._close(client, owned, ctx)
 
     async def fetch_target(self, ctx: SourceContext, target: Target) -> list[Posting]:
@@ -331,39 +437,152 @@ class TelegramChannelsSource:
         """
         from telethon.errors import FloodWaitError
 
+        from src import db as dbm
+
+        db = ctx.http.db
+        if self._run_client is None and flood_gate(db, ctx.clock.now(), ctx.log, self.name):
+            raise SourceUnavailable("telegram flood wait")
         client, owned = self._run_client, False
         try:
             if client is None:
                 client, owned = await self._open(ctx)
                 if not await client.is_user_authorized():
                     raise SourceUnavailable("telegram session not authorized")
-            return await self._read_channel(client, target.key, ctx, ctx.http.db, commit=False)
+            return await self._read_channel(client, target.key, ctx, db, commit=False)
         except FloodWaitError as exc:
             self._flood_seconds = getattr(exc, "seconds", "?")
+            set_flood(db, ctx.clock.now(), getattr(exc, "seconds", 60))
+            raise
+        except Exception:
+            # a failing channel must not hog the front of the queue
+            dbm.touch_tg_polled(db, target.key, ctx.clock.now())
             raise
         finally:
             if owned:
                 await self._close(client, owned, ctx)
 
+    async def _resolve(self, client: Any, channel: str, ctx: SourceContext) -> Any:
+        """get_input_entity once, cache id, hash and status. None: private or invalid.
+
+        Only a public channel or supergroup is ever stored as `ok` (the wrapper refuses users
+        and basic groups, and the class is checked again here).
+        """
+        from telethon.errors import (
+            ChannelPrivateError,
+            UsernameInvalidError,
+            UsernameNotOccupiedError,
+        )
+
+        from src import db as dbm
+
+        db, now = ctx.http.db, ctx.clock.now()
+        if self._resolves_left is not None:
+            if self._resolves_left <= 0:
+                raise SourceUnavailable("resolve budget used up for this run")
+            self._resolves_left -= 1
+        try:
+            peer = await client.get_input_entity(channel)
+        except ChannelPrivateError:
+            dbm.set_tg_entity(db, channel, "private", now)
+            return None
+        except (UsernameInvalidError, UsernameNotOccupiedError, ReadOnlyViolation):
+            dbm.set_tg_entity(db, channel, "invalid", now)
+            return None
+        if type(peer).__name__ != "InputPeerChannel":
+            dbm.set_tg_entity(db, channel, "invalid", now)
+            return None
+        dbm.set_tg_entity(
+            db,
+            channel,
+            "ok",
+            now,
+            channel_id=int(peer.channel_id),
+            access_hash=int(peer.access_hash),
+        )
+        return peer
+
+    async def _peer(self, client: Any, channel: str, ctx: SourceContext) -> Any:
+        """The cached InputPeerChannel, resolving the handle only when it is missing."""
+        from telethon.tl.types import InputPeerChannel
+
+        from src import db as dbm
+
+        ent = dbm.get_tg_entity(ctx.http.db, channel)
+        if ent is not None and ent["status"] != "ok":
+            return None
+        if _resolved(ent):
+            return InputPeerChannel(int(ent["channel_id"]), int(ent["access_hash"]))
+        return await self._resolve(client, channel, ctx)
+
+    async def _re_resolve(self, client: Any, channel: str, ctx: SourceContext) -> Any:
+        """After CHANNEL_INVALID or a peer error: look the handle up again, at most daily."""
+        from src import db as dbm
+
+        ent = dbm.get_tg_entity(ctx.http.db, channel)
+        stamp = ent["resolved_at"] if ent is not None else None
+        if stamp:
+            try:
+                at = datetime.fromisoformat(stamp)
+            except ValueError:
+                at = None
+            if at is not None:
+                at = at if at.tzinfo else at.replace(tzinfo=UTC)
+                if ctx.clock.now() - at < RERESOLVE_AFTER:
+                    return None
+        return await self._resolve(client, channel, ctx)
+
     async def _read_channel(
         self, client: Any, channel: str, ctx: SourceContext, db: Any, commit: bool = True
     ) -> list[Posting]:
+        from telethon.errors import (
+            ChannelInvalidError,
+            ChannelPrivateError,
+            PeerIdInvalidError,
+        )
+
         from src import db as dbm
 
+        now = ctx.clock.now()
+        peer = await self._peer(client, channel, ctx)
+        if peer is None:  # private or invalid: not polled any more
+            dbm.touch_tg_polled(db, channel, now)
+            return []
         last = int(dbm.get_state(db, _state_key(channel), "0") or 0)
         posts: list[Posting] = []
         max_id = last
-        async for msg in client.iter_messages(channel, limit=BATCH, min_id=last):
+        title: str | None = None
+        for attempt in (0, 1):
+            posts, max_id, title = [], last, None
             try:
-                mid = int(msg.id)
-            except (TypeError, ValueError, AttributeError):
-                continue
-            if mid <= last:
-                continue
-            max_id = max(max_id, mid)
-            p = parse_message(channel, msg)
-            if p is not None:
-                posts.append(p)
+                async for msg in client.iter_messages(peer, limit=BATCH, min_id=last):
+                    try:
+                        mid = int(msg.id)
+                    except (TypeError, ValueError, AttributeError):
+                        continue
+                    if mid <= last:
+                        continue
+                    max_id = max(max_id, mid)
+                    title = title or _chat_title(msg)
+                    p = parse_message(channel, msg)
+                    if p is not None:
+                        posts.append(p)
+                break
+            except ChannelPrivateError:
+                dbm.set_tg_entity(db, channel, "private", now)
+                dbm.touch_tg_polled(db, channel, now)
+                return []
+            except (ChannelInvalidError, PeerIdInvalidError):
+                if attempt:
+                    raise
+                peer = await self._re_resolve(client, channel, ctx)
+                if peer is None:
+                    raise
+        if title:
+            db.execute(
+                "UPDATE tg_entities SET title=? WHERE handle=? COLLATE NOCASE", (title, channel)
+            )
+            db.commit()
+        dbm.touch_tg_polled(db, channel, now)
         if max_id > last:
             if commit:  # legacy fetch(): no store step, advance after a full read
                 dbm.set_state(db, _state_key(channel), str(max_id))
@@ -372,3 +591,25 @@ class TelegramChannelsSource:
                     db, channel, max_id
                 )
         return posts
+
+
+def _resolved(ent: Any) -> bool:
+    return (
+        ent is not None
+        and ent["status"] == "ok"
+        and ent["channel_id"] is not None
+        and ent["access_hash"] is not None
+    )
+
+
+def _blocked(ent: Any) -> bool:
+    return ent is not None and ent["status"] in ("private", "invalid")
+
+
+def _last_polled(ent: Any) -> str:
+    return (ent["last_polled_at"] or "") if ent is not None else ""
+
+
+def _chat_title(msg: Any) -> str | None:
+    t = getattr(getattr(msg, "chat", None), "title", None)
+    return t[:200] if isinstance(t, str) and t else None

@@ -275,6 +275,29 @@ class TriageConfig:
         return cls.from_mapping(cfg.triage)
 
 
+TG_POLL_LIMITS = {  # key: (minimum, maximum)
+    "max_channels_per_poll": (1, 30),
+    "max_resolves_per_poll": (1, 30),
+}
+TG_MIN_PAUSE_S = 3
+
+
+def _check_telegram_poll(sec: Mapping[str, Any]) -> None:
+    """Validate the Telegram poll bounds (D-252, KF-19); absent keys use the defaults."""
+    for key, (lo, hi) in TG_POLL_LIMITS.items():
+        if key in sec:
+            v = sec[key]
+            if isinstance(v, bool) or not isinstance(v, int) or not lo <= v <= hi:
+                raise ValueError(f"[sources.telegram_channels] {key} must be an integer {lo}..{hi}")
+    if "pause_s" in sec:
+        v = sec["pause_s"]
+        if isinstance(v, bool) or not isinstance(v, int | float) or v < TG_MIN_PAUSE_S:
+            raise ValueError(
+                f"[sources.telegram_channels] pause_s must be at least {TG_MIN_PAUSE_S}"
+                " (Telegram politeness)"
+            )
+
+
 @dataclass(frozen=True)
 class SchedulerConfig:
     tier1_minutes: int = 10
@@ -406,6 +429,7 @@ class AppConfig:
         sources = {k: dict(v) for k, v in dict(data.get("sources", {})).items()}
         if "auto_join" in sources.get("telegram_channels", {}):
             raise ValueError("joining is never automatic; join channels yourself in Telegram")
+        _check_telegram_poll(sources.get("telegram_channels", {}))
         outreach = dict(data.get("outreach", {}))
         OutreachConfig.from_mapping(outreach)  # fail fast at load (D-147)
         scoring = dict(data.get("scoring", {}))

@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+from tg_fakes import peer_for
 
 from src import db
 from src.clock import FixedClock
@@ -71,7 +72,7 @@ class Recorder:
 
     async def get_input_entity(self, peer):
         self.calls.append("get_input_entity")
-        return peer
+        return peer_for(peer) if isinstance(peer, str) else peer
 
     def add_event_handler(self, cb, event):
         self.calls.append("add_event_handler")
@@ -168,3 +169,28 @@ async def test_polling_and_listener_use_only_allowed_calls():
     assert "iter_messages" in rec.calls and "add_event_handler" in rec.calls
     assert rec.bad == []
     assert not any("Join" in c or "Import" in c or "Leave" in c for c in rec.calls)
+
+
+# ----- KF-19: only public channels may be read -----
+
+
+async def test_iter_messages_refuses_users_chats_and_private_peers():
+    from telethon.tl.types import InputPeerChannel, InputPeerChat, InputPeerSelf, InputPeerUser
+
+    ro = read_only(Recorder())
+    for bad in (InputPeerUser(1, 2), InputPeerChat(3), InputPeerSelf(), "me", "self", 12345, None):
+        with pytest.raises(ReadOnlyViolation):
+            ro.iter_messages(bad, limit=1)
+    assert ro.iter_messages(InputPeerChannel(1, 2), limit=1) is not None
+    assert ro.iter_messages("job_kz", limit=1) is not None
+
+
+async def test_get_input_entity_refuses_a_user_result():
+    from telethon.tl.types import InputPeerUser
+
+    class UserRec(Recorder):
+        async def get_input_entity(self, peer):
+            return InputPeerUser(1, 2)
+
+    with pytest.raises(ReadOnlyViolation):
+        await read_only(UserRec()).get_input_entity("some_user")

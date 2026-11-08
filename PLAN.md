@@ -3699,7 +3699,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - `grep -rn "JoinChannelRequest\|auto_join" src/` finds only the rejection message.
   - The polling and listener tests pass on the wrapped fake. A recording fake run through polling, the listener and (later) discovery shows no disallowed call.
 
-### KF-19 [ ] Telegram entity cache, the 3-5 minute poll and FloodWait backoff (schema v14, D-252)
+### KF-19 [x] Telegram entity cache, the 3-5 minute poll and FloodWait backoff (schema v14, D-252)
 - Build:
   - `SCHEMA_14`: `tg_entities(handle TEXT PRIMARY KEY, channel_id INTEGER, access_hash INTEGER, title TEXT, status TEXT NOT NULL CHECK(status IN ('ok','private','invalid')), resolved_at TEXT, last_polled_at TEXT)`.
   - Polling (`run_targets` for tier `tg`):

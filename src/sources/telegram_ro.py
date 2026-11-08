@@ -8,10 +8,26 @@ need no telethon import.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 ALLOWED_REQUESTS = frozenset({"SearchRequest", "GetFullChannelRequest", "GetHistoryRequest"})
 ALLOWED_EVENTS = frozenset({"NewMessage"})
+# iter_messages may only read a public channel or supergroup: an InputPeerChannel/Channel or a
+# public handle string. Users, basic groups, "me" and phone numbers are refused (KF-19).
+READABLE_PEERS = frozenset({"InputPeerChannel", "Channel"})
+NON_CHANNEL_PEERS = frozenset(
+    {
+        "InputPeerUser",
+        "InputPeerChat",
+        "InputPeerSelf",
+        "InputPeerEmpty",
+        "InputPeerUserFromMessage",
+        "InputPeerChannelFromMessage",
+    }
+)
+_HANDLE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{3,31}$")
+_NOT_HANDLES = frozenset({"self"})
 
 
 class ReadOnlyViolation(RuntimeError):
@@ -43,10 +59,23 @@ class ReadOnlyTelegram:
     # ----- reads -----
 
     async def get_input_entity(self, peer: Any) -> Any:
-        return await self._client.get_input_entity(peer)
+        found = await self._client.get_input_entity(peer)
+        kind = type(found).__name__
+        if kind in NON_CHANNEL_PEERS:  # a handle that names a user or a basic group
+            raise ReadOnlyViolation(f"{kind} is not a channel (read-only Telegram)")
+        return found
 
-    def iter_messages(self, *args: Any, **kwargs: Any) -> Any:
-        return self._client.iter_messages(*args, **kwargs)
+    def iter_messages(self, entity: Any, *args: Any, **kwargs: Any) -> Any:
+        kind = type(entity).__name__
+        if isinstance(entity, str):
+            ok = bool(_HANDLE_RE.match(entity)) and entity.casefold() not in _NOT_HANDLES
+        else:
+            ok = kind in READABLE_PEERS
+        if not ok:
+            raise ReadOnlyViolation(
+                f"iter_messages on {kind} is not allowed: public channels only (read-only Telegram)"
+            )
+        return self._client.iter_messages(entity, *args, **kwargs)
 
     def iter_dialogs(self, *args: Any, **kwargs: Any) -> Any:
         return self._client.iter_dialogs(*args, **kwargs)

@@ -16,7 +16,7 @@ from src.text import content_hash
 
 log = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 MAX_SCORE_ATTEMPTS = 3
 MAX_TRIAGE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
@@ -233,6 +233,14 @@ UPDATE postings SET type_source='kind', opportunity_type=CASE kind
   WHEN 'research' THEN 'research' WHEN 'startup' THEN 'startup_role' ELSE 'other' END
 """
 
+SCHEMA_14 = """
+CREATE TABLE tg_entities (
+  handle TEXT PRIMARY KEY, channel_id INTEGER, access_hash INTEGER, title TEXT,
+  status TEXT NOT NULL CHECK(status IN ('ok','private','invalid')),
+  resolved_at TEXT, last_polled_at TEXT
+)
+"""
+
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
@@ -263,6 +271,7 @@ _MIGRATIONS = (
     SCHEMA_11,
     SCHEMA_12,
     SCHEMA_13,
+    SCHEMA_14,
 )
 
 
@@ -885,3 +894,46 @@ def prune(
 
     contacts = prune_contacts(conn, now)
     return {"http_cache": http, "robots_cache": robots, "postings": postings, "contacts": contacts}
+
+
+# ----- Telegram entity cache (KF-19, D-252) -----
+
+
+def get_tg_entity(conn: sqlite3.Connection, handle: str) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM tg_entities WHERE handle=? COLLATE NOCASE", (handle,)
+    ).fetchone()
+
+
+def tg_entities(conn: sqlite3.Connection) -> dict[str, sqlite3.Row]:
+    return {r["handle"].casefold(): r for r in conn.execute("SELECT * FROM tg_entities")}
+
+
+def set_tg_entity(
+    conn: sqlite3.Connection,
+    handle: str,
+    status: str,
+    now: datetime,
+    channel_id: int | None = None,
+    access_hash: int | None = None,
+    title: str | None = None,
+) -> None:
+    """Store a resolve result (ok keeps id and hash; private/invalid keep the old ones)."""
+    conn.execute(
+        "INSERT INTO tg_entities (handle, channel_id, access_hash, title, status, resolved_at)"
+        " VALUES (?,?,?,?,?,?) ON CONFLICT(handle) DO UPDATE SET"
+        " channel_id=COALESCE(excluded.channel_id, channel_id),"
+        " access_hash=COALESCE(excluded.access_hash, access_hash),"
+        " title=COALESCE(excluded.title, title), status=excluded.status,"
+        " resolved_at=excluded.resolved_at",
+        (handle, channel_id, access_hash, title, status, _iso(now)),
+    )
+    conn.commit()
+
+
+def touch_tg_polled(conn: sqlite3.Connection, handle: str, now: datetime) -> None:
+    conn.execute(
+        "UPDATE tg_entities SET last_polled_at=? WHERE handle=? COLLATE NOCASE",
+        (_iso(now), handle),
+    )
+    conn.commit()
