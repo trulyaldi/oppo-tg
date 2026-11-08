@@ -3955,7 +3955,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - A bucket with 4 postings is `enough=False`.
   - No LLM is called.
 
-### KF-32 [ ] CV review service with verification and cache (schema v16, D-259)
+### KF-32 [x] CV review service with verification and cache (schema v16, D-259)
 - Build:
   - `SCHEMA_16`: `cv_reviews(cv_version INTEGER NOT NULL, prompt_version TEXT NOT NULL, model TEXT NOT NULL, market_json TEXT NOT NULL, summary_json TEXT NOT NULL, report_md TEXT NOT NULL, removed INTEGER NOT NULL, questions INTEGER NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(cv_version, prompt_version))`.
   - Add `cv_review` to `OUTREACH_PURPOSES`.

@@ -1,0 +1,32 @@
+{
+ "fit_summary": [
+  "Led a team of 12 engineers at Google.",
+  "Rust and C++ projects match low-latency roles.",
+  "Education and one research internship are present."
+ ],
+ "changes": [
+  {"what": "Add MSc in Computer Science from ETH to the Education section.", "why": "Looks stronger."},
+  {"what": "Put the Experience section above Education.", "why": "Employers read recent work first."}
+ ],
+ "gaps": [
+  {"gap": "Kubernetes", "bucket": "intl", "mark": "add_if_true", "note": "Add if you used it."},
+  {"gap": "Rust", "bucket": "both", "mark": "add_if_true", "note": "Already listed."}
+ ],
+ "report": {
+  "structure": "Education, Experience, Projects, Skills.",
+  "length": "One page.",
+  "ordering": "Experience first.",
+  "bullets": [
+   {"original": "Reduced replay time by 30% with a C++ parser",
+    "suggestion": "Improved accuracy by 40% with a C++ parser"},
+   {"original": "Implemented a limit order book matching engine in Rust",
+    "suggestion": "Expert in Kubernetes and Rust matching engines"},
+   {"original": "Built a latency benchmark harness in Python for order book replay",
+    "suggestion": "Built a Python latency benchmark harness for order book replay"}
+  ],
+  "keywords": ["Python", "Kubernetes", "Rust"],
+  "kz_notes": "Mention your MSc in Computer Science from ETH.",
+  "intl_notes": "Use a one-page English CV.",
+  "formatting": "Plain text sections."
+ }
+}

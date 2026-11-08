@@ -16,7 +16,7 @@ from src.text import content_hash
 
 log = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 15
+SCHEMA_VERSION = 16
 MAX_SCORE_ATTEMPTS = 3
 MAX_TRIAGE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
@@ -249,6 +249,15 @@ CREATE TABLE tg_channel_candidates (
 )
 """
 
+SCHEMA_16 = """
+CREATE TABLE cv_reviews (
+  cv_version INTEGER NOT NULL, prompt_version TEXT NOT NULL, model TEXT NOT NULL,
+  market_json TEXT NOT NULL, summary_json TEXT NOT NULL, report_md TEXT NOT NULL,
+  removed INTEGER NOT NULL, questions INTEGER NOT NULL, created_at TEXT NOT NULL,
+  PRIMARY KEY (cv_version, prompt_version)
+)
+"""
+
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
@@ -281,6 +290,7 @@ _MIGRATIONS = (
     SCHEMA_13,
     SCHEMA_14,
     SCHEMA_15,
+    SCHEMA_16,
 )
 
 

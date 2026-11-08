@@ -213,6 +213,7 @@ def test_nothing_else_in_src_uses_cues():
             "adjust.py",
             "hh.py",
             "market.py",  # src/cv/market.py: market summary of requested skills (KF-31)
+            "review.py",  # src/cv/review.py: loads cues for the market summary (KF-32)
             "handlers.py",  # src/bot/handlers.py: /search folds terms like the cue matcher (KF-29)
             "telegram.py",  # src/discovery/telegram.py: discovery queries and job ratio (KF-22)
         ):

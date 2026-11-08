@@ -1,0 +1,32 @@
+{
+ "fit_summary": [
+  "Strong systems and Python base for quantitative developer internships.",
+  "Rust and C++ projects match systems roles.",
+  "Education and one research internship are present."
+ ],
+ "changes": [
+  {"what": "Put the Experience section above Education.", "why": "Employers read recent work first."},
+  {"what": "Add a one-line summary at the top.", "why": "Recruiters skim."},
+  {"what": "Group the Skills section by language and tool.", "why": "hh-style keyword search."},
+  {"what": "Keep the CV to one page.", "why": "International convention."},
+  {"what": "Add a Russian version for Kazakhstan applications.", "why": "Local convention."}
+ ],
+ "gaps": [
+  {"gap": "SQL window functions", "bucket": "kz", "mark": "add_if_true", "note": "Only if you have used them."},
+  {"gap": "Docker", "bucket": "intl", "mark": "worth_learning", "note": "Common in postings."},
+  {"gap": "Rust", "bucket": "both", "mark": "add_if_true", "note": "Already listed."}
+ ],
+ "report": {
+  "structure": "Education, Experience, Projects, Skills.",
+  "length": "One page is enough.",
+  "ordering": "Experience first, then Projects.",
+  "bullets": [
+   {"original": "Built a latency benchmark harness in Python for order book replay",
+    "suggestion": "Built a Python latency benchmark harness for order book replay"}
+  ],
+  "keywords": ["Python", "C++", "Rust", "SQL"],
+  "kz_notes": "A Russian CV is often expected; photo and age lines are optional local norms.",
+  "intl_notes": "Use a one-page English CV.",
+  "formatting": "Plain text sections, no tables."
+ }
+}

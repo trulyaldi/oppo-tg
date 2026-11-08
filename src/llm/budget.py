@@ -10,7 +10,7 @@ from src.clock import Clock
 TZ = ZoneInfo("Asia/Almaty")
 
 # Every purpose outreach spends calls on; its cap counts only these (D-184, D-196).
-OUTREACH_PURPOSES = ("parse_cv", "extract_contact", "tailor", "draft")
+OUTREACH_PURPOSES = ("parse_cv", "extract_contact", "tailor", "draft", "cv_review")
 
 
 class LlmBudget:
