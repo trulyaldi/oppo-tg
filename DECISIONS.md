@@ -1515,3 +1515,7 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
     - `tests/fixtures/robots_pagewatch_seeds.json`: robots status and body for every seed host and every existing pagewatch host (D-245).
   - **Content.** None of them contains personal data.
   - **Who reads them.** No test reads them until KF-04, KF-25, KF-26 and KF-27, and implementers must not fetch these again.
+
+- **D-269 KF-01 implementation.**
+  - **Sub-cap via `call_json(sub_budget=...)`.** An optional second budget is checked before every attempt, the correction retry included. The main budget still records the call, with purpose `triage_baseline`, so the sub-cap counts the same rows the scorer's does. A retry stopped by the sub-cap returns `error_kind = "budget"`, so the posting counts as `capped` and keeps its attempt count, like the first-attempt case.
+  - **No snapshot change.** `tests/fixtures/config_repo_snapshot.toml` has no `[triage]` section, so only the `config.toml` comment changed.

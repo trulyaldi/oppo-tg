@@ -94,6 +94,7 @@ class Triager:
             max_tokens=MAX_TOKENS,
             budget=self.budget,
             purpose="triage_baseline" if baseline else "triage",
+            sub_budget=self.baseline_budget if baseline else None,
         )
         if res.error_kind:
             self.last_error = {

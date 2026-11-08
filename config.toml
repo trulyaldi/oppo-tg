@@ -243,7 +243,7 @@ baseline_max_share = 0.5   # baseline postings may use at most this share of the
 enabled = true
 model = "claude-haiku-4-5"     # D-183
 max_desc_chars = 500           # description characters sent to the model
-daily_call_cap = 600           # triage calls per Asia/Almaty day, retries included; 0 = no triage
+daily_call_cap = 600           # triage calls per Asia/Almaty day, retries included; must be >= 1 while enabled (enabled = false skips triage)
 baseline_max_share = 0.5       # baseline postings may use at most this share of the cap
 exempt_sources = ["pagewatch"] # hand-curated pages skip triage
 

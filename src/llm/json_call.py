@@ -65,11 +65,16 @@ async def call_json(
     max_tokens: int,
     budget: LlmBudget,
     purpose: str,
+    sub_budget: LlmBudget | None = None,
 ) -> CallResult:
+    """`sub_budget` is an extra cap checked before every attempt, the retry included."""
     res = CallResult()
     messages: list[dict] = [{"role": "user", "content": user_text}]
     try:
         for attempt in range(2):
+            if sub_budget is not None and sub_budget.used() >= sub_budget.cap:
+                res.error_kind = "budget"
+                return res
             if not budget.reserve(purpose):
                 res.error_kind = "budget"
                 return res

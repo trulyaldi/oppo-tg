@@ -333,3 +333,33 @@ def test_pending_for_scoring_selection_by_triage_flag(conn):
     off = {r["id"] for r in db.pending_for_scoring(conn, 10, triage=False)}
     assert on == {tri.id}
     assert off == {new.id, tri.id}
+
+
+async def test_baseline_subcap_applies_to_the_retry(conn):
+    """KF-01: the correction retry may not exceed the baseline sub-cap."""
+    p, _ = add(conn, "b", baseline=True)
+    client = FakeClient(["nope", YES])
+    t = triager(conn, client, daily_call_cap=2, baseline_max_share=0.5)  # sub-cap 1
+    stats = await t.triage_pending()
+    assert len(client.triage_calls) == 1
+    assert stats["capped"] == 1
+    assert db.get_posting(conn, p.id)["status"] == "new"
+
+
+async def test_non_baseline_retry_still_allowed(conn):
+    p, _ = add(conn, "n")
+    client = FakeClient(["nope", YES])
+    await triager(conn, client, daily_call_cap=2, baseline_max_share=0.0).triage_pending()
+    assert len(client.triage_calls) == 2
+    assert db.get_posting(conn, p.id)["status"] == "triaged"
+
+
+def test_cap_zero_rejected_only_while_enabled():
+    from src.config import AppConfig
+
+    with pytest.raises(ValueError, match=r"\[triage\] daily_call_cap"):
+        AppConfig.from_dict({"triage": {"enabled": True, "daily_call_cap": 0}})
+    with pytest.raises(ValueError, match="enabled = false"):
+        TriageConfig(daily_call_cap=0)
+    assert TriageConfig(enabled=False, daily_call_cap=0).daily_call_cap == 0
+    assert AppConfig.from_dict({"triage": {"enabled": False, "daily_call_cap": 0}})

@@ -228,7 +228,7 @@ class TriageConfig:
     enabled: bool = True
     model: str = "claude-haiku-4-5"  # D-183
     max_desc_chars: int = 500
-    daily_call_cap: int = 600  # 0 means "no triage"
+    daily_call_cap: int = 600  # must be >= 1 while enabled; set enabled = false to skip
     baseline_max_share: float = 0.5
     exempt_sources: tuple[str, ...] = ("pagewatch",)
 
@@ -241,6 +241,11 @@ class TriageConfig:
         cap = self.daily_call_cap
         if isinstance(cap, bool) or not isinstance(cap, int) or cap < 0:
             raise ValueError("[triage] daily_call_cap must be a non-negative integer")
+        if self.enabled and cap == 0:
+            raise ValueError(
+                "[triage] daily_call_cap = 0 with triage enabled would stop all scoring; "
+                "set [triage] enabled = false to skip triage"
+            )
         share = self.baseline_max_share
         if isinstance(share, bool) or not isinstance(share, int | float) or not 0 <= share <= 1:
             raise ValueError("[triage] baseline_max_share must be a number between 0 and 1")

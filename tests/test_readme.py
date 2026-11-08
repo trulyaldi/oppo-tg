@@ -155,6 +155,6 @@ def test_fix47_corrected_sentences():
     assert "discovered boards, Remote OK," in text
     assert "discovered Workable boards are polled without any account" in text
     assert "Greenhouse, Lever and Ashby are only active when their config list" in text
-    assert '`[triage] daily_call_cap = 0` does not mean "no triage"' in text
-    assert "makes every posting `capped` all day" in text
+    assert "`[triage] daily_call_cap = 0` is rejected at config load" in text
+    assert "the correction retry included" in text
     assert 'labeled "errors (all time)"' in text

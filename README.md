@@ -399,9 +399,9 @@ Kazakhstan employers (`region_hint = "kz"`, D-194).
   `[triage] daily_call_cap` (600), and outreach keeps its own 40. Baseline postings may use at most
   `baseline_max_share` (0.5) of the scoring or triage cap. Reaching a cap sends one warning that
   day and is not an error.
-- `[triage] daily_call_cap = 0` does not mean "no triage". With triage enabled it makes every
-  posting `capped` all day, so nothing reaches scoring (except exempt sources). To skip triage, set
-  `[triage] enabled = false` instead (FIX-45 is open).
+- `[triage] daily_call_cap = 0` is rejected at config load while triage is enabled, because it
+  would stop all scoring. To skip triage, set `[triage] enabled = false` (0 is accepted then). The
+  baseline share applies to every attempt, the correction retry included.
 - `/stats` "Triage today" shows yes and no for today, but its `errors` figure counts every
   `triage_error` posting ever, so it is labeled "errors (all time)".
 - If every triage (or every scoring) call in a run fails, you get one throttled error notice naming

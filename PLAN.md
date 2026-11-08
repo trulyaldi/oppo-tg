@@ -3323,7 +3323,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 
 ### Part A: open fixes and robots
 
-### KF-01 [ ] Triage cap 0 is rejected; the baseline sub-cap covers retries (closes FIX-45)
+### KF-01 [x] Triage cap 0 is rejected; the baseline sub-cap covers retries (closes FIX-45)
 - Build (D-254):
   - Config validation: `[triage] daily_call_cap = 0` together with `enabled = true` raises `ValueError` naming `[triage] daily_call_cap`, with the hint "set [triage] enabled = false to skip triage". `0` stays legal when `enabled = false`.
   - Fix the comments in `config.toml` and `src/config.py`.
