@@ -131,3 +131,44 @@ def test_stats_triage_line_counts_today(conn):
     conn.commit()
     out = render_stats(conn, SETTINGS, CFG, CLOCK)
     assert "Triage today: yes 1, no 1, errors (all time) 1, calls 5/600" in out
+
+
+def _score_row(conn, pid, category, generic=0):
+    conn.execute(
+        "INSERT INTO scores (posting_id, base_score, adjusted_score, reason, model,"
+        " prompt_version, scored_at,"
+        " employer_category, reason_generic) VALUES (?,5,5,'r','m','p',?,?,?)",
+        (pid, NOW.isoformat(), category, generic),
+    )
+
+
+def test_stats_kind_region_tier_lines(conn):
+    t0 = NOW - timedelta(hours=1)
+    db.record_target_attempt(conn, "telegram_channels", "ch", t0, ok=True, tier="tg")
+    db.record_target_attempt(conn, "greenhouse", "acme", t0, ok=True, tier="tier1")
+    a = seed(conn, "telegram_channels", "1", t0, target="ch")
+    b = seed(conn, "greenhouse", "2", t0, target="acme")
+    c = seed(conn, "manual", "3", t0)
+    _score_row(conn, a, "kz_employer", 1)
+    _score_row(conn, b, "intl_other")
+    db.record_delivery(conn, a, "alert", "42", 1, t0 + timedelta(minutes=4))
+    db.record_delivery(conn, b, "fresh_alert", "42", 2, t0 + timedelta(minutes=10))
+    db.record_delivery(conn, c, "alert", "42", 3, t0 + timedelta(minutes=20))
+    assert (
+        conn.execute("SELECT latency_s FROM deliveries WHERE posting_id=?", (a,)).fetchone()[0]
+        == 240
+    )
+    out = render_stats(conn, SETTINGS, CFG, CLOCK)
+    assert "Latency alert: median 12m, p90 20m (n=2)" in out
+    assert "Latency fresh_alert: median 10m, p90 10m (n=1)" in out
+    assert "Latency tier tg: median 4m, p90 4m (n=1)" in out
+    assert "Latency tier tier1: median 10m" in out
+    assert "Latency tier manual: median 20m" in out
+    assert "Latency kz: median 4m, p90 4m (n=1)" in out
+    assert "Latency intl: median 10m, p90 10m (n=1)" in out
+    assert "Generic reasons (7 days): 1" in out
+    assert "flood" not in out.lower()
+    from src.sources.telegram_channels import set_flood
+
+    set_flood(conn, NOW, 100)
+    assert "Telegram flood wait until 15:01" in render_stats(conn, SETTINGS, CFG, CLOCK)

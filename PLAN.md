@@ -3923,7 +3923,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - Another chat is ignored.
   - Output uses the KF-15 format.
 
-### KF-30 [ ] Verify latency in /stats; add per-kind, region and tier lines (D-253)
+### KF-30 [x] Verify latency in /stats; add per-kind, region and tier lines (D-253)
 - Build:
   - Pin the existing FC-13 latency output.
   - Add:

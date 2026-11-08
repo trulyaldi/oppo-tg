@@ -26,6 +26,7 @@ from src.pipeline import manual
 from src.pipeline.filters import load_filter_cues
 from src.pipeline.run import pipeline_lock, score_pending
 from src.ranking.adjust import blocker_penalty, recompute_adjusted, region_hints
+from src.ranking.weights import bucket
 from src.sources.base import MIN_SOURCE_FAMILIES, REGISTRY, count_report, source_family
 
 log = logging.getLogger(__name__)
@@ -352,6 +353,8 @@ def render_stats(conn: sqlite3.Connection, settings: Settings, cfg: AppConfig, c
         for name in sorted(per):
             lines.append(f"  {_esc(name)}: {_median_p90(per[name])}")
 
+    lines.extend(_latency_lines(conn, since))
+
     today = now.astimezone(zone).date()
     fresh_today = sum(
         1
@@ -404,7 +407,42 @@ def render_stats(conn: sqlite3.Connection, settings: Settings, cfg: AppConfig, c
         "Source lag: "
         + (f"median {_dur(statistics.median(lags))} (n={len(lags)})" if lags else "n/a")
     )
+    generic = conn.execute(
+        "SELECT COUNT(*) FROM scores WHERE reason_generic=1 AND scored_at >= ?", (since,)
+    ).fetchone()[0]
+    lines.append(f"Generic reasons ({STATS_DAYS} days): {generic}")
+    from src.sources.telegram_channels import flood_until
+
+    until = flood_until(conn)
+    if until is not None and until > now:
+        lines.append(f"Telegram flood wait until {until.astimezone(zone):%H:%M}")
     return "\n".join(lines)
+
+
+def _latency_lines(conn: sqlite3.Connection, since: str) -> list[str]:
+    """Alert latency per kind, employer region and tier (KF-30, D-253)."""
+    rows = conn.execute(
+        "SELECT d.kind AS kind, d.latency_s AS lat, p.source AS source, ts.tier AS tier,"
+        " sc.employer_category AS cat FROM deliveries d JOIN postings p ON p.id=d.posting_id"
+        " LEFT JOIN target_state ts ON ts.source=p.source AND ts.target=p.target"
+        " LEFT JOIN scores sc ON sc.posting_id=p.id"
+        " WHERE d.kind IN ('alert','fresh_alert') AND d.sent_at >= ? AND d.latency_s IS NOT NULL",
+        (since,),
+    ).fetchall()
+    out = []
+    for kind in ("alert", "fresh_alert"):
+        out.append(f"Latency {kind}: {_median_p90([r['lat'] for r in rows if r['kind'] == kind])}")
+    for region in ("kz", "intl"):
+        vals = [r["lat"] for r in rows if bucket(r["cat"]) == region]
+        out.append(f"Latency {region}: {_median_p90(vals)}")
+    tiers: dict[str, list[float]] = {t: [] for t in (*TIERS, "manual")}
+    for r in rows:
+        tier = "manual" if r["source"] == "manual" else (r["tier"] or "unknown")
+        tiers.setdefault(tier, []).append(r["lat"])
+    for tier, vals in tiers.items():
+        if vals or tier in ("tg", "manual"):
+            out.append(f"Latency tier {tier}: {_median_p90(vals)}")
+    return out
 
 
 async def cmd_stats(
