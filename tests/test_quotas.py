@@ -23,6 +23,7 @@ SETTINGS = Settings.from_env(
 _COMPANY = {
     "kz_employer": ("Kaspi.kz", None),
     "kz_startup": ("Arbuz.kz", None),
+    "kz_program": ("Kaspi.kz", None),
     "intl_top_tier": ("Citadel", None),
     "intl_other": ("Acme Robotics", "intl"),
     "unknown": ("Mystery Corp", None),
@@ -37,12 +38,13 @@ def conn():
     return c
 
 
-def add(conn, cat, base, visa=None, remote=None):
+def add(conn, cat, base, visa=None, remote=None, fresh=False):
     company, region = _COMPANY[cat]
     pid = f"p{next(_n):04d}"
     conn.execute(
         "INSERT INTO postings (id, source, external_id, title, company, url, fingerprint,"
-        " status, first_seen_at, last_seen_at, remote) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        " status, first_seen_at, last_seen_at, remote, opportunity_type)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         (
             pid,
             "t",
@@ -52,9 +54,10 @@ def add(conn, cat, base, visa=None, remote=None):
             "https://x.example",
             "fp" + pid,
             "scored",
-            TS,
+            NOW.isoformat() if fresh else TS,
             TS,
             None if remote is None else int(remote),
+            "hackathon" if cat == "kz_program" else None,
         ),
     )
     conn.execute(
@@ -126,19 +129,49 @@ def test_quality_floor_uses_base(conn):
     assert [i.posting_id for i in items] == [ok]
 
 
-def test_bad_kz_never_outranks_good_intl(conn):
-    for kz_cat, kz_base in itertools.product(("kz_employer", "kz_startup"), (3.0, 4.0, 5.0, 5.5)):
-        for intl_cat, visa, remote, base in itertools.product(
-            ("intl_top_tier", "intl_other"), (None, True), (True, False, None), (7.5, 8.0, 9.0)
-        ):
-            c = db.connect(":memory:")
-            db.migrate(c)
-            kz_id = add(c, kz_cat, kz_base)
-            intl_id = add(c, intl_cat, base, visa, remote)
-            order = [i.posting_id for i in select_digest(c, CFG, W)]
-            if kz_id in order and intl_id in order:
-                assert order.index(intl_id) < order.index(kz_id)
+def _order(kz_cat, kz_base, kz_fresh, intl_cat, intl_base, visa, remote, intl_fresh):
+    c = db.connect(":memory:")
+    db.migrate(c)
+    kz_id = add(c, kz_cat, kz_base, fresh=kz_fresh)
+    intl_id = add(c, intl_cat, intl_base, visa, remote, fresh=intl_fresh)
+    order = [i.posting_id for i in select_digest(c, CFG, W, FixedClock(NOW))]
+    return kz_id, intl_id, order
+
+
+def test_bad_kz_never_outranks_good_intl():
+    """D-248: clearly bad KZ (base <= 5.0 fresh, <= 5.5 non-fresh) never lists above good intl."""
+    for kz_cat, kz_fresh, intl_cat, intl_fresh, visa, remote, base in itertools.product(
+        ("kz_employer", "kz_startup", "kz_program"),
+        (False, True),
+        ("intl_top_tier", "intl_other"),
+        (False, True),
+        (None, True),
+        (True, False, None),
+        (7.5, 8.0, 9.0),
+    ):
+        for kz_base in (3.0, 4.0, 5.0) if kz_fresh else (3.0, 4.0, 5.0, 5.5):
+            kz_id, intl_id, order = _order(
+                kz_cat, kz_base, kz_fresh, intl_cat, base, visa, remote, intl_fresh
+            )
             assert intl_id in order
+            if kz_id in order:
+                assert order.index(intl_id) < order.index(kz_id), (
+                    kz_cat,
+                    kz_base,
+                    kz_fresh,
+                    intl_cat,
+                    base,
+                    visa,
+                    remote,
+                    intl_fresh,
+                )
+
+
+def test_documented_exception_fresh_kz_55():
+    """D-248: a fresh KZ startup at 5.5 (7.0) lists above a non-fresh intl_other 7.5 on-site
+    with a visa barrier (7.0). Accepted: the user chose a strong KZ preference."""
+    kz_id, intl_id, order = _order("kz_startup", 5.5, True, "intl_other", 7.5, True, False, False)
+    assert order.index(kz_id) < order.index(intl_id)
 
 
 def _tmp_weights(tmp_path, old, new):
@@ -167,7 +200,7 @@ def test_yaml_edit_startup_bonus_reorders(conn, tmp_path):
     kz = add(conn, "kz_startup", 5.5)
     intl = add(conn, "intl_other", 7.5)
     assert [i.posting_id for i in select_digest(conn, CFG, W)] == [intl, kz]
-    w3 = _tmp_weights(tmp_path, "kz_startup: 1.0", "kz_startup: 3.0")
+    w3 = _tmp_weights(tmp_path, "kz_startup: 1.5", "kz_startup: 3.0")
     assert [i.posting_id for i in select_digest(conn, CFG, w3)] == [kz, intl]
 
 

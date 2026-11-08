@@ -13,6 +13,7 @@ _LABELS = {
     "intl_other": "intl",
     "kz_employer": "KZ employer",
     "kz_startup": "KZ startup",
+    "kz_program": "KZ program",
 }
 _INTL = ("intl_top_tier", "intl_other")
 
@@ -89,7 +90,7 @@ def recompute_adjusted(
     rows = conn.execute(
         "SELECT s.posting_id, s.base_score, s.employer_region, s.region_confidence,"
         " s.employer_is_startup, s.visa_barrier, p.company, p.kind, p.remote, p.source,"
-        " p.hard_blocker"
+        " p.hard_blocker, p.opportunity_type"
         " FROM scores s JOIN postings p ON p.id = s.posting_id"
         " WHERE s.weights_version IS NULL OR s.weights_version != ?",
         (version,),
@@ -104,6 +105,7 @@ def recompute_adjusted(
                 _opt_bool(r["employer_is_startup"]),
                 weights,
                 hints.get(r["source"]),
+                r["opportunity_type"],
             ).category
             adjusted, adj, detail = adjust(
                 r["base_score"],

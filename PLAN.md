@@ -3535,7 +3535,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 
 ### Part D: Kazakhstan-first ranking
 
-### KF-10 [ ] KZ-first weights and the kz_program category (D-248)
+### KF-10 [x] KZ-first weights and the kz_program category (D-248)
 - Build:
   - `Adjustments` gains `kz_program`. Defaults: kz_startup 1.5, kz_employer 1.0, kz_program 1.0, intl_top_tier 0.5, intl_other 0.0, intl_onsite_visa_barrier -0.5. `config/weights.yaml` changes the same way, and the loader still requires every key.
   - `KZ_CATEGORIES` includes `kz_program`, and `bucket()` maps it to `kz`.

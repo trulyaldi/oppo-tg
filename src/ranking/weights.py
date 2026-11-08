@@ -11,7 +11,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 BUILTIN_VERSION = "builtin"
-KZ_CATEGORIES = ("kz_employer", "kz_startup")
+KZ_CATEGORIES = ("kz_employer", "kz_startup", "kz_program")
 INTL_CATEGORIES = ("intl_top_tier", "intl_other")
 
 
@@ -24,10 +24,11 @@ class _Strict(BaseModel):
 
 
 class Adjustments(_Strict):
-    intl_top_tier: float = Field(1.0, ge=-5, le=5)
+    intl_top_tier: float = Field(0.5, ge=-5, le=5)
     intl_other: float = Field(0.0, ge=-5, le=5)
-    kz_employer: float = Field(0.5, ge=-5, le=5)
-    kz_startup: float = Field(1.0, ge=-5, le=5)
+    kz_employer: float = Field(1.0, ge=-5, le=5)
+    kz_startup: float = Field(1.5, ge=-5, le=5)
+    kz_program: float = Field(1.0, ge=-5, le=5)
     intl_onsite_visa_barrier: float = Field(-0.5, ge=-5, le=5)
 
 

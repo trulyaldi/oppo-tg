@@ -165,7 +165,7 @@ async def test_top_reranked_by_adjusted_with_flags(conn):
     m = FakeMessage()
     await cmd_top(m, conn, CLOCK, CFG)
     assert m.texts[0].startswith("\U0001f1f0\U0001f1ff <b>Job 2</b>")
-    assert "7.0/10 (base 6.0, +1.0 KZ startup)" in m.texts[0]
+    assert "7.5/10 (base 6.0, +1.5 KZ startup)" in m.texts[0]
     assert m.texts[1].startswith("\U0001f30d <b>Job 1</b>") and intl
     assert all(len(t) <= 3500 for t in m.texts)
 
@@ -181,7 +181,7 @@ async def test_top_flag_disabled_in_yaml(conn, tmp_path):
     m = FakeMessage()
     await cmd_top(m, conn, CLOCK, cfg)
     assert m.texts[0].startswith("<b>Job 2</b>")
-    assert "7.0/10 (base 6.0" in m.texts[0]
+    assert "7.5/10 (base 6.0" in m.texts[0]
 
 
 async def test_saved_lines_carry_prepare_links(conn):

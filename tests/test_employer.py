@@ -38,6 +38,36 @@ def test_watchlist_beats_llm_region():
     assert cls("Citadel", "kz", 0.99) == ("intl_top_tier", "watchlist")
 
 
+def kcls(company, otype, region="kz", conf=0.9, startup=None, kind=Kind.JOB, hint=None):
+    c = classify_employer(company, kind, region, conf, startup, W, hint, otype)
+    return c.category, c.source
+
+
+def test_kz_program_is_exclusive():
+    # a grant at a KZ startup is a program, never stacked (D-248)
+    assert kcls("Acme Robotics", "grant", startup=True) == ("kz_program", "llm")
+    assert kcls("Arbuz.kz", "hackathon") == ("kz_program", "watchlist")
+    assert kcls("Kaspi.kz", "accelerator") == ("kz_program", "watchlist")
+    assert kcls("Acme Robotics", "summer_school", region="unknown", conf=0, hint="kz") == (
+        "kz_program",
+        "hint",
+    )
+    # kind fallback when the type is unknown
+    assert kcls("Acme Robotics", None, kind=Kind.HACKATHON) == ("kz_program", "llm")
+
+
+def test_kz_non_program_types():
+    assert kcls("Arbuz.kz", "job") == ("kz_startup", "watchlist")
+    assert kcls("Kaspi.kz", "research") == ("kz_employer", "watchlist")
+    assert kcls("Acme Robotics", "startup_role", startup=False) == ("kz_startup", "llm")
+    assert kcls("Acme Robotics", "bogus") == ("kz_employer", "llm")
+
+
+def test_program_type_does_not_change_intl():
+    assert kcls("Citadel", "grant") == ("intl_top_tier", "watchlist")
+    assert kcls("Acme Robotics", "grant", region="intl", conf=0.9) == ("intl_other", "llm")
+
+
 def test_llm_fallback():
     assert cls("Acme Robotics", "kz", 0.9, True) == ("kz_startup", "llm")
     assert cls("Acme Robotics", "kz", 0.6, True) == ("unknown", "none")

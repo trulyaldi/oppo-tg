@@ -151,4 +151,4 @@ def test_deadline_alert_low_base(conn):
     pid = add_co(conn, "Arbuz.kz", 3.0, "2026-11-09")
     items = [i for i, _ in select_alerts(conn, WCFG, CLOCK)]
     assert [i.posting_id for i in items] == [pid]
-    assert items[0].score == 4.0 and items[0].flag == "\U0001f1f0\U0001f1ff"
+    assert items[0].score == 4.5 and items[0].flag == "\U0001f1f0\U0001f1ff"

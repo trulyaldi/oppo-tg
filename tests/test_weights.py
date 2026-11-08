@@ -35,10 +35,11 @@ def _edit(path: Path, fn):
 def test_snapshot_values():
     w = load_weights(SNAP / "weights.yaml")
     assert w.adjustments.model_dump() == {
-        "intl_top_tier": 1.0,
+        "intl_top_tier": 0.5,
         "intl_other": 0.0,
-        "kz_employer": 0.5,
-        "kz_startup": 1.0,
+        "kz_employer": 1.0,
+        "kz_startup": 1.5,
+        "kz_program": 1.0,
         "intl_onsite_visa_barrier": -0.5,
     }
     q = w.digest_quotas
@@ -72,6 +73,12 @@ def test_snapshot_config_points_at_fixtures():
 def test_missing_adjustment_key(wdir):
     _edit(wdir / "weights.yaml", lambda d: d["adjustments"].pop("kz_startup"))
     with pytest.raises(WeightsError, match="kz_startup"):
+        load_weights(wdir / "weights.yaml")
+
+
+def test_missing_kz_program_key(wdir):
+    _edit(wdir / "weights.yaml", lambda d: d["adjustments"].pop("kz_program"))
+    with pytest.raises(WeightsError, match="kz_program"):
         load_weights(wdir / "weights.yaml")
 
 
@@ -133,7 +140,7 @@ def test_version_changes_with_one_byte(wdir):
 
 
 def test_bucket():
-    assert bucket("kz_employer") == bucket("kz_startup") == "kz"
+    assert bucket("kz_employer") == bucket("kz_startup") == bucket("kz_program") == "kz"
     assert bucket("intl_top_tier") == bucket("intl_other") == "intl"
     assert bucket("unknown") is None and bucket(None) is None
 
