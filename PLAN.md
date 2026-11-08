@@ -4215,7 +4215,7 @@ Verified with evidence, no FIX needed:
   - The existing `test_cv_review.py`, `test_bot_cvreview.py` and `test_main_cvreview.py` tests pass.
   - `cv_review_reply_fabricated.json` still yields its current removed/question counts, or the DECISIONS entry explains the new counts.
 
-### FIX-54 [ ] The folded KF-35 sweep tests are missing: other-chat dispatcher test for every new surface, and the send-target site list
+### FIX-54 [x] The folded KF-35 sweep tests are missing: other-chat dispatcher test for every new surface, and the send-target site list
 - Severity: **blocking**, as a process item. KF-37's build text (folded from KF-35 by D-301) requires "Add a test only where one is missing", and D-301 means a non-blocking item would never land. The behaviour itself is correct: the scratchpad probe saw zero Bot calls from chat 99.
 - Where: `tests/`. Dispatcher other-chat tests exist only for `/search` (`test_bot_search.py:146`), forwards (`test_bot_add.py:232`), `/findchannels` plus `tc:` (`test_bot_findchannels.py:343`) and the older commands. There is none for `/add <text>`, `/cvreview`, a document upload or an edited message. `test_privacy_sweep.py::test_every_bot_send_targets_configured_chat` covers only `/draft`. No test lists the send call sites.
 - Build:
