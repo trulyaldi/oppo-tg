@@ -1799,3 +1799,7 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - **Failing fields.** `what` failing removes the change; `why`, gap notes and report notes failing are cleared (count unchanged for why and gap notes, as before).
   - **Counts.** `cv_review_reply_fabricated.json` and `_ok.json` keep their existing removed/question counts.
   - **Tests.** `tests/test_cv_review_numbers.py` and the fixture `cv_review_reply_market_numbers.json` (listed in `CANNED_MODEL_REPLIES`) reproduce the reviewer's cases on `cv_fake.txt`: "5 years", "42%", "95%" in kz_notes and a gap note, and "your Google internship experience" never reach `summary_json`, `report_md` or the chat chunks.
+
+## 2026-11-08 — FIX-55 (implementer)
+
+- **D-307 FIX-55: chat summary shows each change as "what — why".** `review_summary_chunks` joins the verified `what` and `why` with an em dash (the lead's format; PLAN wrote "(why)", same content) and clips the whole line to the existing 300-character `LINE_CLIP`, so the 3500-character chunk limit still holds (5 lines at 300 is 1500). A change whose `why` was cleared by verification (D-306) shows `what` alone. No new data: the report already carried the verified `why`. Test: `tests/test_cv_review_chat_why.py`.

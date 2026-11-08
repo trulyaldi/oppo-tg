@@ -185,7 +185,9 @@ def review_summary_chunks(res: ReviewResult) -> list[str]:
     lines += [_line(x) for x in fit[:3]] or ["Nothing in the fit summary could be verified."]
     lines += ["", "<b>Top changes</b>"]
     for i, c in enumerate((s.get("changes") or [])[:5], 1):
-        lines.append(f"{i}. {_line(c.get('what', ''))}")
+        why = str(c.get("why") or "").strip()
+        what = str(c.get("what", ""))
+        lines.append(f"{i}. {_line(f'{what} — {why}' if why else what)}")
     if not s.get("changes"):
         lines.append("None verified.")
     lines += ["", "<b>Gaps</b>"]

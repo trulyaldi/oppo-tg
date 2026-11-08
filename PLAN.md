@@ -4225,7 +4225,7 @@ Verified with evidence, no FIX needed:
 - Files: `tests/test_whitelist_new_handlers.py`, `tests/test_privacy_sweep.py`.
 - Acceptance: the new tests pass with no `src/` change, and every case from chat 99 records zero Bot calls.
 
-### FIX-55 [ ] CV review chat summary shows the changes without their "why"
+### FIX-55 [x] CV review chat summary shows the changes without their "why"
 - Severity: non-blocking. Deferred (D-301): listed, not fixed on this branch.
 - Where: `src/bot/outreach_handlers.py:188` prints only `c['what']`.
 - Failure: brief Part 8 asks for "the top 5 concrete changes ranked by impact (what to change and why)" in chat. The verified `why` is only in the Markdown file.
