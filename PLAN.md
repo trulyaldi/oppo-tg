@@ -3383,7 +3383,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 
 ### Part B: one cue file
 
-### KF-05 [ ] `config/cues.toml` and the cue matcher (D-257)
+### KF-05 [x] `config/cues.toml` and the cue matcher (D-257)
 - Build:
   - `config/cues.toml` with the D-257 layout. Top-level tables:
     - `types.*`: internship, job, junior, research_assistant, phd, hackathon, competition, olympiad, grant, scholarship, fellowship, summer_school, accelerator, incubator;

@@ -1534,3 +1534,17 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
 - **D-272 KF-04 implementation (robots matcher).**
   - `src/robots.py` parses groups (consecutive user-agent lines share a group), picks the `oppo-tg` group else `*` (no merging across groups), strips comments and leading whitespace, ignores empty Allow/Disallow lines, and uppercases percent escapes on both sides.
   - Longest pattern wins, Allow wins a tie, no matching rule allows. `PoliteClient._robots_allowed` calls it; caching and 4xx/5xx handling are unchanged.
+
+- **D-273 KF-05 implementation (cue file and matcher).**
+  - **Files.** `config/cues.toml`, `src/cues.py` (`load_cues`, `parse_cues_text`, `match_any`, `which`, `Cues.positive_terms/group_terms/expand/title_decision`, `CueError`). Nothing else in `src/` imports it yet (KF-06 does).
+  - **Counts (types + fields entries):** 619 total (en 271, ru 196, kk 152), far above the 150/35/35 floor; a test enforces the floor.
+  - **Matching.** A space inside a phrase matches spaces or hyphens ("back end" matches "back-end"). The `*` check follows D-257 on the whole entry: an entry of 3 characters or fewer with a `*` is a load error ("hack day*" is fine, "ai*" is not). Duplicate entries in one list are dropped at load.
+  - **False-positive review (deliberate omissions).**
+    - No bare `engineer*`, `sales*`, `quant*`, `modeling`, `старш*`, `физик*`, `academic`. Reasons: salesforce, quantity surveyor, fashion modeling, старшеклассник, физическое лицо.
+    - Seniority uses a regex for the inflected "старший" forms instead of `старш*`, so "Олимпиада для старшеклассников" is kept.
+    - Russian physics uses a regex over the inflected forms of "физика" for the same reason.
+    - `protect` includes "device driver*" so "Linux Device Driver Developer" survives the negative "driver".
+    - Bare `engineer*` is dropped from the positive cues (the old `[filters]` list had it). Engineering titles still pass through field cues (ml, data, backend, software, research, quant). KF-06 may revisit this if recall drops.
+  - **Extra table shapes.** `qualifications` and `hh` hold named sub-groups (`qualifications.docker`, `hh.internships`) so KF-31 can count each group once and KF-20 can send one request per group. `hh.max_terms_per_query` (12) is the only scalar. `locations` allows only `kz`.
+  - **`title_decision`** returns "keep" or `drop:no_positive`, `drop:seniority`, `drop:negative`. Intern and junior cues waive seniority only; protect cues waive negative only.
+  - **`expand(word)`** returns the word plus every entry of each positive group it belongs to, stems with the `*` removed and regexes skipped.

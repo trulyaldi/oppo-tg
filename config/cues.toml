@@ -1,0 +1,465 @@
+# One cue file for the whole bot (D-257, KF-05). Edit here; no code change needed.
+#
+# Layout: category -> (name) -> language lists en / ru / kk. Any list may be empty.
+#
+# Entry syntax (matching is on NFKC case-folded text with e-diaeresis folded to e):
+#   word or phrase   whole-word match at both ends; spaces in a phrase match spaces or hyphens
+#   stem*            prefix match (Russian and Kazakh inflection)
+#   re:<regex>       raw regex over the folded text (write the boundaries yourself)
+# Entries of 3 characters or fewer (ai, ml, qa, c++) are always whole-word; "ai*" is a load error.
+#
+# Positive cues are [types.*] and [fields.*]. They were reviewed for false positives:
+# bare "engineer", "sales*", "quant*", "modeling", "старш*" and "физик*" are deliberately absent
+# (salesforce, quantity, fashion modeling, старшеклассник, физическое лицо).
+
+# ---------------------------------------------------------------- opportunity types
+
+[types.internship]
+en = [
+  're:(?<!\w)intern(?:ship)?s?(?!\w)',
+  "traineeship*", "trainee*", "apprentice*", "co-op", "work placement", "placement year",
+  "summer analyst", "summer associate", "off-cycle", "industrial placement",
+]
+ru = [
+  "стажир*", "стажер*", "стажёр*", "практикант*", "студенческ* практик*",
+  "производственн* практик*", "трейни*",
+]
+kk = [
+  "тағылымдам*", "стажер*", "практикант*", "кәсіптік практика*", "өндірістік практика*",
+]
+
+[types.job]
+en = ["vacancy", "vacancies", "job opening*", "we are hiring", "now hiring"]
+ru = ["вакан*", "мы нанимаем", "приглашаем на работу"]
+kk = ["бос орын*", "вакансия*", "жұмысқа шақыр*"]
+
+[types.junior]
+en = ["junior", "graduate programme*", "graduate program*", "new grad*", "entry level", "early career"]
+ru = ["junior", "джуниор*", "начинающ* специалист*", "молод* специалист*", "выпускник*"]
+kk = ["junior", "джуниор*", "жас маман*", "түлек*"]
+
+[types.research_assistant]
+en = ["research assistant*", "research associate*", "graduate researcher*", "student researcher*", "lab assistant*"]
+ru = ["научн* сотрудник*", "лаборант*", "ассистент* исследовател*", "помощник* исследовател*"]
+kk = ["ғылыми қызметкер*", "ғылыми ассистент*", "зертхана ассистент*"]
+
+[types.phd]
+en = ["phd", "ph.d", "doctoral", "doctorate", "postdoc*", "post-doc*", "studentship*", "graduate school"]
+ru = ["phd", "аспирантур*", "аспирант*", "докторантур*", "докторант*", "постдок*", "магистратур*"]
+kk = ["phd", "докторантура*", "докторант*", "магистратура*", "магистрант*", "постдок*"]
+
+[types.hackathon]
+en = ["hackathon*", "hack day*", "hackday*", "datathon*", "codeathon*", "ideathon*", "game jam*"]
+ru = ["хакатон*", "датафон*"]
+kk = ["хакатон*", "датафон*"]
+
+[types.competition]
+en = ["competition*", "contest*", "kaggle", "case championship*", "coding challenge*", "data challenge*", "pitch competition*"]
+ru = ["конкурс*", "соревновани*", "чемпионат*", "кейс-чемпионат*", "питч-сесси*"]
+kk = ["байқау*", "жарыс*", "сайыс*", "чемпионат*", "конкурс*"]
+
+[types.olympiad]
+en = ["olympiad*", "olympics", "math olympiad*"]
+ru = ["олимпиад*"]
+kk = ["олимпиада*"]
+
+[types.grant]
+en = ["grant", "grants", "call for proposals", "call for applications", "funding call*", "research funding"]
+ru = ["грант*", "конкурс заявок", "финансирование исследований"]
+kk = ["грант*", "өтінім қабылдау*"]
+
+[types.scholarship]
+en = ["scholarship*", "bursary", "bursaries", "stipend*", "tuition waiver*", "bolashak", "financial aid"]
+ru = ["стипенди*", "болашак", "образовательн* грант*", "финансов* поддержк*"]
+kk = ["стипендия*", "шәкіртақы*", "оқу гранты*"]
+
+[types.fellowship]
+en = ["fellowship*", "research fellow*", "fellows program*", "visiting scholar*"]
+ru = ["фелловшип*", "научн* стажировк*"]
+kk = ["фелловшип*", "ғылыми тағылымдам*"]
+
+[types.summer_school]
+en = ["summer school*", "winter school*", "spring school*", "autumn school*", "summer program*", "summer research program*", "research school*"]
+ru = ["летн* школ*", "зимн* школ*", "весенн* школ*", "осенн* школ*", "летн* программ*"]
+kk = ["жазғы мектеп*", "қысқы мектеп*", "көктемгі мектеп*", "күзгі мектеп*", "жазғы бағдарлама*"]
+
+[types.accelerator]
+en = ["accelerator*", "startup program*", "startup competition*", "demo day*"]
+ru = ["акселератор*", "акселерационн* программ*", "стартап-программ*"]
+kk = ["акселератор*", "стартап-бағдарлама*"]
+
+[types.incubator]
+en = ["incubator*", "incubation program*", "venture studio*"]
+ru = ["инкубатор*", "инкубационн* программ*"]
+kk = ["инкубатор*", "инкубация бағдарламасы*"]
+
+# ---------------------------------------------------------------- fields
+
+[fields.ml]
+en = [
+  "machine learning", "ml", "deep learning", "neural network*", "mlops", "reinforcement learning",
+  "nlp", "computer vision", "llm", "llms", "statistical learning", "representation learning",
+]
+ru = [
+  "машинн* обучени*", "глубок* обучени*", "нейронн* сет*", "нейросет*", "компьютерн* зрени*",
+  "обработк* естественн* язык*", "ml", "mlops",
+]
+kk = ["машиналық оқыту*", "терең оқыту*", "нейрондық желі*", "компьютерлік көру*", "ml"]
+
+[fields.ai]
+en = ["ai", "artificial intelligence", "genai", "generative ai", "prompt engineer*", "applied scientist*"]
+ru = ["ai", "ии", "искусственн* интеллект*", "генеративн* ии", "генеративн* ai"]
+kk = ["ai", "жасанды интеллект*", "генеративті жи"]
+
+[fields.data_science]
+en = [
+  "data science", "data scientist*", "data analyst*", "data analytics", "data engineer*",
+  "data engineering", "big data", "data mining", "etl", "business intelligence",
+]
+ru = [
+  "data science", "дата сайентист*", "дата-сайентист*", "датасайентист*", "аналитик* данных",
+  "анализ* данных", "наук* о данных", "специалист* по данным", "данны*", "дата-инженер*",
+  "дата инженер*", "большие данные", "больши* данны*",
+]
+kk = [
+  "деректер*", "деректер ғылым*", "деректер талдаушы*", "деректер инженер*", "үлкен деректер*",
+  "деректерді талда*", "деректер ғалым*", "дата сайентист*", "датасайентист*",
+]
+
+[fields.quant]
+en = ["quant", "quants", "quantitative", "quantitative researcher*", "quant developer*", "financial engineering"]
+ru = ["квант*", "количественн* аналитик*", "количественн* исследовател*", "финансов* инженери*"]
+kk = ["квант*", "сандық талдаушы*", "қаржылық инженерия*"]
+
+[fields.trading]
+en = ["trading", "trader*", "algorithmic trading", "algo trading", "market making", "market maker*", "hft", "high frequency", "high-frequency"]
+ru = ["трейдер*", "трейдинг*", "алгоритмическ* торговл*", "маркет-мейкер*", "биржев*", "высокочастотн*"]
+kk = ["трейдер*", "алгоритмдік сауда*", "биржа*", "трейдинг*"]
+
+[fields.risk]
+en = ["risk analyst*", "risk model*", "risk management", "credit risk", "market risk", "operational risk", "risk quant*"]
+ru = ["риск-менеджер*", "риск менеджер*", "кредитн* риск*", "рыночн* риск*", "управлени* рисками", "риск-аналитик*"]
+kk = ["тәуекел*", "тәуекелдерді басқар*", "тәуекел менеджер*"]
+
+[fields.analytics]
+en = ["analyst*", "analytic*", "business analyst*", "product analyst*", "insights analyst*"]
+ru = ["аналитик*", "бизнес-аналитик*", "продуктов* аналитик*", "системн* аналитик*"]
+kk = ["аналитик*", "талдаушы*", "талдамалық*", "сарапшы*"]
+
+[fields.statistics]
+en = ["statistic*", "statistician*", "biostatistic*", "econometric*", "stochastic*", "probability", "bayesian"]
+ru = ["статистик*", "эконометрик*", "вероятност*", "стохастическ*", "байесов*", "биостатистик*"]
+kk = ["статистика*", "ықтималдық*", "эконометрика*", "стохастикалық*", "биостатистика*"]
+
+[fields.research]
+en = ["research*", "scientist*", "scientific", "r&d", "laboratory", "applied scientist*"]
+ru = [
+  "исследовател*", "исследовани*", "научн*", "лаборатори*", "ниокр*", "нир",
+  're:(?<!\w)учен(?:ый|ые|ого|ому|ым|ых|ая|ой)(?!\w)',
+]
+kk = ["зерттеуші*", "зерттеу*", "ғалым*", "ғылым*", "зертхана*", "ғылыми-зерттеу*"]
+
+[fields.physics]
+en = [
+  "physics", "physicist*", "astrophysic*", "biophysic*", "condensed matter", "quantum",
+  "photonic*", "optics", "plasma", "particle physics", "cosmolog*", "astronomy", "semiconductor*",
+]
+ru = [
+  're:(?<!\w)физик(?:а|и|е|у|ой|ов|ам|ами|ах)?(?!\w)',
+  "астрофизик*", "биофизик*", "фотоник*", "оптик*", "плазм*", "конденсированн*", "астроном*",
+  "полупроводник*",
+]
+kk = [
+  "физика*", "физик", "астрофизика*", "биофизика*", "кванттық*", "фотоника*", "оптика*",
+  "плазма*", "астрономия*", "жартылай өткізгіш*",
+]
+
+[fields.mathematics]
+en = ["mathematic*", "math", "maths", "algebra*", "calculus", "topology", "number theory", "differential equations", "geometry"]
+ru = ["математик*", "математическ*", "алгебр*", "геометри*", "топологи*", "теори* чисел", "дифференциальн* уравнени*", "матанализ*"]
+kk = ["математика*", "алгебра*", "геометрия*", "топология*", "сандар теориясы", "дифференциалдық теңдеу*"]
+
+[fields.computational]
+en = ["computational", "scientific computing", "hpc", "high performance computing", "parallel computing", "cuda", "cfd", "finite element*", "fem"]
+ru = ["вычислительн*", "высокопроизводительн* вычислен*", "научн* вычислен*", "параллельн* вычислен*", "метод* конечных элементов"]
+kk = ["есептеуіш*", "есептеу*", "жоғары өнімді есептеу*", "параллель есептеу*"]
+
+[fields.optimization]
+en = ["optimization", "optimisation", "numerical*", "operations research", "convex", "linear programming", "mathematical programming", "metaheuristic*"]
+ru = ["оптимизац*", "численн*", "исследовани* операций", "линейн* программировани*", "выпукл*", "метаэвристик*"]
+kk = ["оңтайландыр*", "сандық әдіс*", "сызықтық бағдарламалау*", "дөңес оңтайландыр*"]
+
+[fields.simulation]
+en = ["simulation*", "mathematical model*", "statistical model*", "predictive model*", "agent-based", "digital twin*", "system dynamics", "modeling and simulation"]
+ru = ["моделирован*", "симуляци*", "имитационн*", "цифров* двойник*", "математическ* модел*"]
+kk = ["модельдеу*", "симуляция*", "имитациялық*", "цифрлық егіз*", "сандық модельдеу*"]
+
+[fields.uq]
+en = ["uncertainty quantification", "uncertainty", "uq", "surrogate model*", "bayesian inference", "sensitivity analysis", "gaussian process*", "probabilistic"]
+ru = ["неопределенност*", "квантификаци* неопределенност*", "суррогатн* модел*", "гауссов* процесс*", "анализ* чувствительност*"]
+kk = ["белгісіздік*", "суррогат модел*", "гаусс* процесс*", "сезімталдық талдау*"]
+
+[fields.monte_carlo]
+en = ["monte carlo", "monte-carlo", "mcmc", "markov chain*", "stochastic simulation", "importance sampling"]
+ru = ["монте-карло", "монте карло", "mcmc", "цеп* маркова", "марковск*", "метод* монте-карло"]
+kk = ["монте-карло", "монте карло", "mcmc", "марков* тізбек*"]
+
+[fields.bioinformatics]
+en = ["bioinformatic*", "computational biology", "genomic*", "proteomic*", "systems biology", "cheminformatics", "drug discovery"]
+ru = ["биоинформатик*", "геномик*", "вычислительн* биологи*", "протеомик*", "хемоинформатик*"]
+kk = ["биоинформатика*", "геномика*", "есептеуіш биология*", "протеомика*"]
+
+[fields.fintech]
+en = ["fintech*", "financial technology", "digital banking", "open banking", "payment systems", "credit scoring", "fraud detection", "aml", "kyc"]
+ru = ["финтех*", "финансов* технологи*", "кредитн* скоринг*", "антифрод*", "платежн* систем*", "цифров* банк*"]
+kk = ["финтех*", "қаржылық технологи*", "кредиттік скоринг*", "төлем жүйе*", "цифрлық банк*"]
+
+[fields.software]
+en = ["software", "developer*", "programmer*", "programming", "full stack", "fullstack", "full-stack", "devops", "sre", "site reliability", "platform engineer*", "swe"]
+ru = ["разработчик*", "программист*", "программировани*", "программн* обеспечени*", "девопс*", "фулстек*", "фуллстек*", "инженер-программист*"]
+kk = ["бағдарламашы*", "бағдарламалау*", "бағдарламалық*", "әзірлеуші*", "девопс*", "фуллстек*"]
+
+[fields.backend]
+en = ["backend", "back-end", "back end", "server-side", "microservice*", "distributed systems", "systems programming"]
+ru = ["бэкенд*", "бекенд*", "бэк-энд", "бэк энд", "серверн* разработ*", "микросервис*", "распределенн* систем*"]
+kk = ["бэкенд*", "бекенд*", "микросервис*"]
+
+[fields.python]
+en = ["python", "django", "flask", "fastapi", "numpy", "pandas", "scipy"]
+ru = ["python", "питон*", "pandas", "numpy"]
+kk = ["python", "питон*"]
+
+[fields.cpp]
+en = ["c++", "cpp", "modern c++"]
+ru = ["c++", "с++", "cpp"]
+kk = ["c++", "с++", "cpp"]
+
+[fields.sql]
+en = ["sql", "postgresql", "postgres*", "mysql", "clickhouse", "database*"]
+ru = ["sql", "баз* данных", "postgresql", "clickhouse"]
+kk = ["sql", "деректер қор*", "postgresql"]
+
+[fields.pytorch]
+en = ["pytorch", "tensorflow", "keras", "scikit-learn", "sklearn", "jax", "hugging face", "huggingface"]
+ru = ["pytorch", "tensorflow", "keras", "scikit-learn"]
+kk = ["pytorch", "tensorflow"]
+
+# ---------------------------------------------------------------- Kazakhstan locations
+
+[locations.kz]
+en = [
+  "kazakhstan", "astana", "nur-sultan", "nursultan", "nur sultan", "almaty", "alma-ata", "shymkent",
+  "karaganda", "karagandy", "aktau", "atyrau", "aktobe", "pavlodar", "semey", "oskemen",
+  "ust-kamenogorsk", "kostanay", "taraz", "turkestan", "kyzylorda", "astana hub", "astanahub",
+  "kz", "central asia",
+  're:(?<!\w)remote\W{0,4}(?:kz|kazakhstan)(?!\w)',
+  're:(?<!\w)(?:kz|kazakhstan)\W{0,4}remote(?!\w)',
+]
+ru = [
+  "казахстан*", "астан*", "нур-султан*", "нур султан*", "нурсултан*", "алмат*", "алма-ат*",
+  "шымкент*", "караганд*", "актау", "атырау", "актобе", "павлодар*", "семей", "усть-каменогорск",
+  "костанай", "тараз", "туркестан", "кызылорда", "центральн* ази*",
+  're:(?<!\w)удаленн\w*.{0,12}казахстан',
+  're:(?<!\w)удаленн\w*.{0,6}(?<!\w)кз(?!\w)',
+]
+kk = [
+  "қазақстан*", "астана*", "нұр-сұлтан*", "нұр сұлтан*", "алматы*", "шымкент*", "қарағанды*",
+  "ақтау", "атырау", "ақтөбе", "павлодар*", "семей", "өскемен", "қостанай", "тараз", "түркістан",
+  "қызылорда", "орталық азия*", "қашықтан*",
+]
+
+# ---------------------------------------------------------------- filters
+
+[negative]
+en = [
+  "sales", "salesperson", "salesman", "saleswoman", "bdr", "sdr", "account executive*",
+  "account manager*", "customer success", "customer support", "support specialist*",
+  "call center", "call centre", "contact center", "telemarketer*", "recruiter*", "recruiting",
+  "recruitment", "talent acquisition", "hr manager*", "hr generalist*", "hr business partner*",
+  "human resources", "marketing", "seo", "smm", "copywriter*", "content manager*", "designer*",
+  "legal", "lawyer*", "paralegal*", "attorney*", "accountant*", "accounting", "bookkeeper*",
+  "driver", "drivers", "truck driver*", "delivery driver*", "taxi driver*", "courier*",
+  "forklift*", "warehouse*", "cashier*", "waiter*", "waitress*", "barista*", "cook", "chef",
+  "cleaner*", "security guard*", "janitor*", "receptionist*", "secretary", "office manager*",
+  "administrative assistant*", "retail", "store manager*", "cabin crew", "flight attendant*",
+  "stewardess*", "maintenance", "mechanic*", "electrician*", "plumber*", "welder*", "nurse*",
+  "data entry",
+]
+ru = [
+  "продаж*", "продавц*", "продавец*", "рекрутер*", "рекрутинг*", "подбор* персонал*",
+  "hr-менеджер*", "hr менеджер*", "менеджер* по персонал*", "маркетолог*", "маркетинг*",
+  "дизайнер*", "юрист*", "юридическ*", "бухгалтер*", "водител*", "курьер*", "колл-центр*",
+  "колл центр*", "call-центр*", "оператор call*", "оператор* колл*", "кассир*", "официант*",
+  "повар*", "уборщик*", "охранник*", "грузчик*", "кладовщик*", "секретар*", "стюард*",
+  "бортпроводник*", "кабин* экипаж*", "ритейл*", "торгов* представител*", "электрик*",
+  "сантехник*", "сварщик*", "медсестр*", "разнорабоч*", "ввод* данных", "обслуживани*",
+]
+kk = [
+  "сату*", "рекрутер*", "hr менеджер*", "hr-менеджер*", "маркетолог*", "маркетинг*", "дизайнер*",
+  "заңгер*", "заң кеңесші*", "есепші*", "бухгалтер*", "жүргізуші*", "курьер*", "колл-орталық*",
+  "колл-орталығ*", "колл орталық*", "байланыс орталығ*", "оператор call*", "кассир*", "даяшы*",
+  "аспаз*", "күзетші*", "тазалаушы*", "хатшы*", "бортсерік*", "деректерді енгізу*",
+]
+
+[seniority]
+en = [
+  "senior", "sr", "lead", "head of", "staff", "principal", "director", "vp", "vice president",
+  "chief", "team lead", "tech lead",
+]
+ru = [
+  're:(?<!\w)старш(?:ий|ая|ее|ие|его|ей|им|их|ему|ую)(?!\w)',
+  "ведущ*", "руководител*", "главн*", "директор*", "начальник*", "тимлид*", "тим-лид*", "заведующ*",
+]
+kk = ["аға", "жетекші*", "басшы*", "директор*", "бас маман*", "бас инженер*", "меңгеруші*", "төраға*", "тимлид*"]
+
+[junior]
+en = [
+  're:(?<!\w)intern(?:ship)?s?(?!\w)',
+  "junior", "graduate", "new grad", "student*", "entry", "trainee*", "apprentice*", "early career",
+]
+ru = ["стажир*", "стажер*", "junior", "джуниор*", "начинающ*", "без опыта", "студент*", "выпускник*", "практикант*"]
+kk = ["тағылымдам*", "стажер*", "junior", "джуниор*", "студент*", "түлек*", "жас маман*", "практикант*"]
+
+[protect]
+en = [
+  "quant", "quants", "quantitative", "machine learning", "deep learning", "data scientist*",
+  "data science", "research scientist*", "ml engineer*", "ai engineer*", "device driver*",
+]
+ru = ["квант*", "машинн* обучени*", "глубок* обучени*", "data scientist*", "дата сайентист*", "дата-сайентист*", "исследовател* данных"]
+kk = ["квант*", "машиналық оқыту*", "терең оқыту*", "жасанды интеллект*", "деректер ғалым*"]
+
+[spam]
+en = [
+  "crypto airdrop", "get rich", "mlm", "pyramid", "easy money", "make money fast", "passive income",
+  "guaranteed income", "binary options", "forex signals", "work from home and earn",
+  're:(?<!\w)earn\s+(?:up to\s+)?[$€£]\s?\d[\d,]*\s*(?:/|per\s+)\s*(?:day|week|hour)',
+]
+ru = [
+  "быстр* заработк*", "легк* деньг*", "пассивн* доход*", "пирамид*", "млм",
+  "заработок без вложений", "без вложени*", "гарантированн* доход*", "сетев* маркетинг*",
+  "арбитраж* трафик*", "ставк* на спорт*", "казино*",
+]
+kk = [
+  "жылдам табыс*", "оңай ақша*", "пассивті табыс*", "желілік маркетинг*", "пирамида*",
+  "қосымша табыс*", "казино*", "салымсыз табыс*",
+]
+
+[unpaid]
+en = [
+  "unpaid", "no compensation", "volunteer only", "volunteer basis", "volunteer position*",
+  "without pay", "no pay", "non-paid", "unremunerated",
+]
+ru = ["неоплачиваем*", "безвозмездн*", "без оплаты", "без зарплаты", "волонтер*", "волонтёр*", "бесплатн* стажировк*"]
+kk = ["ақысыз*", "ақы төленбейд*", "ерікті*", "волонтер*"]
+
+[hard_blockers]
+en = [
+  "citizens only", "citizenship required", "security clearance", "ts/sci", "active clearance",
+  "polygraph", "secret clearance", "top secret", "us citizens only", "u.s. citizens only",
+  "must be a us citizen", "eu citizens only", "uk citizens only", "us persons only", "itar",
+  "no visa sponsorship", "unable to sponsor", "must be authorized to work in the",
+]
+ru = [
+  "только граждане", "только для граждан", "гражданство рф", "гражданин* рф", "допуск к гостайне",
+  "допуск к государственной тайне", "оформление допуска", "требуется гражданство",
+]
+kk = ["тек азаматтар*", "тек рф азаматтар*", "рф азаматтығы*", "мемлекеттік құпия*", "құпияға рұқсат*"]
+
+[qualifications.degree_bachelor]
+en = ["bachelor*", "bsc", "undergraduate degree"]
+ru = ["бакалавр*", "высше* образовани*"]
+kk = ["бакалавр*", "жоғары білім*"]
+
+[qualifications.degree_master]
+en = ["master*", "msc", "m.sc", "graduate degree"]
+ru = ["магистр*", "магистратур*"]
+kk = ["магистр*", "магистратура*"]
+
+[qualifications.degree_phd]
+en = ["phd", "ph.d", "doctorate", "doctoral"]
+ru = ["phd", "кандидат* наук", "доктор* наук", "аспирантур*"]
+kk = ["phd", "ғылым кандидаты", "ғылым докторы", "докторантура*"]
+
+[qualifications.english]
+en = ["english", "fluent english", "ielts", "toefl", "advanced english"]
+ru = ["английск*", "ielts", "toefl"]
+kk = ["ағылшын*", "ielts", "toefl"]
+
+[qualifications.russian]
+en = ["russian"]
+ru = ["русск*", "русском языке"]
+kk = ["орыс тіл*"]
+
+[qualifications.kazakh]
+en = ["kazakh"]
+ru = ["казахск*", "казахском языке"]
+kk = ["қазақ тіл*", "мемлекеттік тіл*"]
+
+[qualifications.no_experience]
+en = ["no experience required", "no prior experience", "no experience needed"]
+ru = ["без опыта", "опыт не требуется", "без опыта работы"]
+kk = ["тәжірибесіз", "тәжірибе талап етілмейді"]
+
+[qualifications.git]
+en = ["git", "github", "gitlab"]
+ru = ["git", "github", "gitlab"]
+kk = ["git", "github"]
+
+[qualifications.docker]
+en = ["docker", "kubernetes", "k8s", "containers"]
+ru = ["docker", "kubernetes", "k8s", "контейнер*"]
+kk = ["docker", "kubernetes"]
+
+[qualifications.linux]
+en = ["linux", "unix", "bash", "shell scripting"]
+ru = ["linux", "unix", "bash", "линукс*"]
+kk = ["linux", "unix"]
+
+[qualifications.cloud]
+en = ["aws", "azure", "gcp", "google cloud", "cloud computing"]
+ru = ["aws", "azure", "gcp", "облачн*"]
+kk = ["aws", "azure", "бұлтты*"]
+
+# ---------------------------------------------------------------- hh.kz queries (KF-20)
+# One request per group: an OR query of up to max_terms_per_query plain terms (stems and
+# regexes are skipped for queries). area 40 is set in config.toml, not here.
+
+[hh]
+max_terms_per_query = 12
+
+[hh.internships]
+en = ["internship", "intern", "trainee", "junior"]
+ru = ["стажировка", "стажер", "практика", "джуниор", "начинающий специалист"]
+kk = ["тағылымдама", "стажер"]
+
+[hh.data_ml]
+en = ["machine learning", "data science", "data analyst", "data scientist", "python developer"]
+ru = ["машинное обучение", "аналитик данных", "data science", "исследователь данных", "python разработчик"]
+kk = ["машиналық оқыту", "деректер талдаушы"]
+
+[hh.quant_risk]
+en = ["quant", "quantitative analyst", "risk analyst", "trader", "fintech"]
+ru = ["квант", "риск-аналитик", "трейдер", "финтех", "количественный аналитик"]
+kk = ["трейдер", "финтех"]
+
+[hh.research]
+en = ["research assistant", "research scientist", "computational physics", "numerical optimization", "monte carlo"]
+ru = ["научный сотрудник", "лаборант", "исследователь", "физик", "математик"]
+kk = ["зерттеуші", "ғылыми қызметкер"]
+
+# ---------------------------------------------------------------- Telegram discovery (KF-22)
+
+[telegram_discovery]
+en = [
+  "kazakhstan jobs", "kazakhstan internship", "almaty jobs", "astana jobs", "kz hackathon",
+  "kazakhstan grants", "kazakhstan scholarships", "kz it jobs",
+]
+ru = [
+  "вакансии казахстан", "вакансии алматы", "вакансии астана", "стажировки казахстан",
+  "it вакансии казахстан", "хакатоны казахстан", "гранты казахстан", "стипендии казахстан",
+  "работа алматы", "работа астана",
+]
+kk = [
+  "бос орындар қазақстан", "тағылымдама қазақстан", "жұмыс қазақстан", "хакатон қазақстан",
+  "грант қазақстан", "стипендия қазақстан",
+]

@@ -1,0 +1,412 @@
+[
+ {
+  "title": "ML Intern",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "AI Engineer (Junior)",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Quant Research Intern",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Machine Learning Research Assistant",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Data Scientist",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Software Engineer Intern",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Backend Developer (Python)",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "C++ Developer",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "C# Developer",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Salesforce Developer",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Linux Device Driver Developer",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Research Scientist, Computational Physics",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "PhD Studentship in Applied Mathematics",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Summer School on Monte Carlo Methods",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Hackathon Astana",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Quantitative Researcher",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Risk Analyst Graduate Programme",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Bioinformatics Intern",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Fellowship in Uncertainty Quantification",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Data Analyst (Almaty)",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Kaggle competition: tabular data",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "International Research Internship",
+  "lang": "en",
+  "expected": "keep"
+ },
+ {
+  "title": "Maintenance Technician",
+  "lang": "en",
+  "expected": "drop"
+ },
+ {
+  "title": "Email Marketing Manager",
+  "lang": "en",
+  "expected": "drop"
+ },
+ {
+  "title": "Domain Expert",
+  "lang": "en",
+  "expected": "drop"
+ },
+ {
+  "title": "Retail Assistant",
+  "lang": "en",
+  "expected": "drop"
+ },
+ {
+  "title": "Chairperson",
+  "lang": "en",
+  "expected": "drop"
+ },
+ {
+  "title": "Air Astana cabin crew",
+  "lang": "en",
+  "expected": "drop"
+ },
+ {
+  "title": "Senior ML Engineer",
+  "lang": "en",
+  "expected": "drop:seniority"
+ },
+ {
+  "title": "Head of Data Science",
+  "lang": "en",
+  "expected": "drop:seniority"
+ },
+ {
+  "title": "Sr. Quant Analyst",
+  "lang": "en",
+  "expected": "drop:seniority"
+ },
+ {
+  "title": "Principal Research Scientist",
+  "lang": "en",
+  "expected": "drop:seniority"
+ },
+ {
+  "title": "Sales Data Analyst",
+  "lang": "en",
+  "expected": "drop:negative"
+ },
+ {
+  "title": "Marketing Analyst",
+  "lang": "en",
+  "expected": "drop:negative"
+ },
+ {
+  "title": "Truck Driver",
+  "lang": "en",
+  "expected": "drop"
+ },
+ {
+  "title": "Quantity Surveyor",
+  "lang": "en",
+  "expected": "drop"
+ },
+ {
+  "title": "Internal Auditor",
+  "lang": "en",
+  "expected": "drop"
+ },
+ {
+  "title": "Data Entry Operator",
+  "lang": "en",
+  "expected": "drop"
+ },
+ {
+  "title": "Стажер аналитик данных",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Стажёр-исследователь (ML)",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Летняя школа по физике",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Python-разработчик",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Вакансия: аналитик данных, Алматы",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Грант для молодых исследователей",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Аспирантура по математике",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Хакатон по машинному обучению",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Квантовый аналитик",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Хакатон Astana",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Стипендия Болашак",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Конкурс по искусственному интеллекту",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Олимпиада для старшеклассников",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Акселератор для финтех-стартапов",
+  "lang": "ru",
+  "expected": "keep"
+ },
+ {
+  "title": "Стажер-бухгалтер",
+  "lang": "ru",
+  "expected": "drop:negative"
+ },
+ {
+  "title": "Водитель-курьер",
+  "lang": "ru",
+  "expected": "drop"
+ },
+ {
+  "title": "Менеджер по продажам",
+  "lang": "ru",
+  "expected": "drop"
+ },
+ {
+  "title": "Старший аналитик данных",
+  "lang": "ru",
+  "expected": "drop:seniority"
+ },
+ {
+  "title": "Ведущий разработчик",
+  "lang": "ru",
+  "expected": "drop:seniority"
+ },
+ {
+  "title": "Рекрутер в IT-компанию",
+  "lang": "ru",
+  "expected": "drop"
+ },
+ {
+  "title": "Дизайнер интерфейсов",
+  "lang": "ru",
+  "expected": "drop"
+ },
+ {
+  "title": "Руководитель отдела аналитики",
+  "lang": "ru",
+  "expected": "drop:seniority"
+ },
+ {
+  "title": "Стажёр по продажам",
+  "lang": "ru",
+  "expected": "drop:negative"
+ },
+ {
+  "title": "Оператор колл-центра",
+  "lang": "ru",
+  "expected": "drop"
+ },
+ {
+  "title": "Деректер талдаушы (тағылымдама)",
+  "lang": "kk",
+  "expected": "keep"
+ },
+ {
+  "title": "Python бағдарламашы",
+  "lang": "kk",
+  "expected": "keep"
+ },
+ {
+  "title": "Жазғы мектеп: физика",
+  "lang": "kk",
+  "expected": "keep"
+ },
+ {
+  "title": "Машиналық оқыту бойынша тағылымдама",
+  "lang": "kk",
+  "expected": "keep"
+ },
+ {
+  "title": "Жасанды интеллект зерттеушісі",
+  "lang": "kk",
+  "expected": "keep"
+ },
+ {
+  "title": "Астана хакатоны",
+  "lang": "kk",
+  "expected": "keep"
+ },
+ {
+  "title": "Грант байқауы",
+  "lang": "kk",
+  "expected": "keep"
+ },
+ {
+  "title": "Математика олимпиадасы",
+  "lang": "kk",
+  "expected": "keep"
+ },
+ {
+  "title": "Бос орын: деректер ғалымы",
+  "lang": "kk",
+  "expected": "keep"
+ },
+ {
+  "title": "Акселератор бағдарламасы",
+  "lang": "kk",
+  "expected": "keep"
+ },
+ {
+  "title": "Физик-зерттеуші",
+  "lang": "kk",
+  "expected": "keep"
+ },
+ {
+  "title": "Стипендия және шәкіртақы конкурсы",
+  "lang": "kk",
+  "expected": "keep"
+ },
+ {
+  "title": "Сату менеджері",
+  "lang": "kk",
+  "expected": "drop"
+ },
+ {
+  "title": "Есепші",
+  "lang": "kk",
+  "expected": "drop"
+ },
+ {
+  "title": "Жүргізуші",
+  "lang": "kk",
+  "expected": "drop"
+ },
+ {
+  "title": "Аға әзірлеуші",
+  "lang": "kk",
+  "expected": "drop:seniority"
+ },
+ {
+  "title": "Дизайнер",
+  "lang": "kk",
+  "expected": "drop"
+ },
+ {
+  "title": "Маркетолог",
+  "lang": "kk",
+  "expected": "drop"
+ },
+ {
+  "title": "Заңгер",
+  "lang": "kk",
+  "expected": "drop"
+ },
+ {
+  "title": "Тағылымдама: сату бөлімі",
+  "lang": "kk",
+  "expected": "drop:negative"
+ }
+]
