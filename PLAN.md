@@ -3477,7 +3477,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - `"job", "kind"` over a `triage` value is ignored; an invalid value raises.
   - Older migration tests compare against `db.SCHEMA_VERSION` and pass.
 
-### KF-08 [ ] Triage v2: type, language, free-text extraction, scam flag; triage eval (D-247, D-262)
+### KF-08 [x] Triage v2: type, language, free-text extraction, scam flag; triage eval (D-247, D-262)
 - Build:
   - `TriageVerdict` (extra="forbid") gains:
     - `type` (OpportunityType, required);

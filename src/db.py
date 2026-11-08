@@ -530,13 +530,51 @@ def save_triage_result(
     model: str,
     prompt_version: str,
     now: datetime,
+    opp_type: str | None = None,
+    language: str | None = None,
 ) -> None:
     with conn:
         conn.execute(
             "INSERT OR REPLACE INTO triage_results (posting_id, content_hash, relevant, reason,"
-            " model, prompt_version, created_at) VALUES (?,?,?,?,?,?,?)",
-            (posting_id, chash, int(relevant), reason, model, prompt_version, _iso(now)),
+            " model, prompt_version, created_at, type, language) VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                posting_id,
+                chash,
+                int(relevant),
+                reason,
+                model,
+                prompt_version,
+                _iso(now),
+                opp_type,
+                language,
+            ),
         )
+
+
+def apply_triage_extraction(
+    conn: sqlite3.Connection,
+    posting_id: str,
+    opp_type: str | None,
+    language: str | None,
+    **extracted: str | None,
+) -> None:
+    """Write triage's type (source `triage`), language and, for free-text items, the ex_* fields.
+
+    `extracted` may hold ex_title, ex_company, ex_location, ex_deadline, contact_key and scam.
+    The posting's own title/description are never touched (D-262). A None type keeps the mapped one.
+    """
+    allowed = {"ex_title", "ex_company", "ex_location", "ex_deadline", "contact_key", "scam"}
+    if not set(extracted) <= allowed:
+        raise ValueError(f"unknown extraction fields: {sorted(set(extracted) - allowed)}")
+    if opp_type:
+        set_opportunity_type(conn, posting_id, opp_type, "triage")
+    sets = dict(extracted)
+    if language:
+        sets["language"] = language
+    if sets:
+        cols = ", ".join(f"{k}=?" for k in sets)
+        with conn:
+            conn.execute(f"UPDATE postings SET {cols} WHERE id=?", (*sets.values(), posting_id))
 
 
 def apply_triage_verdict(

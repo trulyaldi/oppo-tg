@@ -21,7 +21,7 @@ from src import db
 from src.clock import FixedClock
 from src.config import AppConfig, TriageConfig
 from src.logging_setup import configure_logging
-from src.models import Kind, Posting
+from src.models import Kind, OpportunityType, Posting
 from src.pipeline.filters import hard_filter, relevance_ok
 from src.scoring.prompt import prompt_version
 from src.scoring.scorer import Scorer
@@ -46,6 +46,7 @@ class EvalItem:
     expected_min: float
     expected_max: float
     note: str
+    expected_type: str | None = None
 
 
 def parse_item(d: Mapping[str, Any]) -> EvalItem:
@@ -66,7 +67,10 @@ def parse_item(d: Mapping[str, Any]) -> EvalItem:
         kind=Kind(d.get("kind", "other")),
         raw_tags=tuple(d.get("raw_tags") or ()),
     )
-    return EvalItem(posting, lo, hi, d.get("note", ""))
+    et = d.get("expected_type")
+    if et is not None:
+        et = OpportunityType(et).value  # ValueError on a typo
+    return EvalItem(posting, lo, hi, d.get("note", ""), et)
 
 
 def load_items(path: Path = LABELED) -> list[EvalItem]:
@@ -179,6 +183,8 @@ async def run_triage_eval(
                 "title": p.title,
                 "positive": positive,
                 "relevant": None if verdict is None else verdict.relevant,
+                "expected_type": it.expected_type,
+                "type": None if verdict is None or verdict.type is None else verdict.type.value,
                 "error": error,
                 "reason": None if verdict is None else verdict.reason,
             }
@@ -187,6 +193,8 @@ async def run_triage_eval(
     neg = [r for r in rows if not r["positive"]]
     kept = sum(r["relevant"] is True for r in pos)
     recall = kept / len(pos) if pos else 1.0
+    typed = [r for r in rows if r["expected_type"] is not None and r["error"] is None]
+    type_ok = sum(r["type"] == r["expected_type"] for r in typed)
     conn.close()
     return {
         "prompt_version": triage_prompt_version(),
@@ -196,6 +204,9 @@ async def run_triage_eval(
         "positives": len(pos),
         "kept": kept,
         "recall": recall,
+        "typed": len(typed),
+        "type_correct": type_ok,
+        "type_accuracy": type_ok / len(typed) if typed else None,
         "negatives": len(neg),
         "rejected": sum(r["relevant"] is False for r in neg),
         "errors": sum(r["error"] is not None for r in rows),
@@ -206,16 +217,22 @@ async def run_triage_eval(
 
 def format_triage_report(summary: Mapping[str, Any]) -> str:
     lines = []
+    ta = summary.get("type_accuracy")
+    acc = "n/a" if ta is None else f"{summary['type_correct']}/{summary['typed']} = {ta:.0%}"
     for r in summary["results"]:
         got = "error" if r["relevant"] is None else ("yes" if r["relevant"] else "no")
         want = "yes" if r["positive"] else "any"
         bad = r["positive"] and r["relevant"] is not True
-        lines.append(f"{'FAIL' if bad else 'ok'} {r['id']}: triage {got} (wanted {want})")
+        typ = ""
+        if r.get("expected_type"):
+            typ = f", type {r.get('type') or 'none'} (wanted {r['expected_type']})"
+        lines.append(f"{'FAIL' if bad else 'ok'} {r['id']}: triage {got} (wanted {want}){typ}")
     lines.append(
         f"prompt_version={summary['prompt_version']} model={summary['model']} "
         f"recall {summary['kept']}/{summary['positives']} = {summary['recall']:.0%} "
-        f"(threshold {summary['threshold']:.0%}) rejected {summary['rejected']}/"
-        f"{summary['negatives']} negatives, {summary['errors']} errors"
+        f"(threshold {summary['threshold']:.0%}) type_accuracy {acc} "
+        f"rejected {summary['rejected']}/{summary['negatives']} negatives, "
+        f"{summary['errors']} errors"
     )
     return "\n".join(lines)
 

@@ -1562,3 +1562,10 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - `upsert_posting` writes `opportunity_type` and `type_source='kind'` in the INSERT only; the update branch never touches them.
   - `db.set_opportunity_type` ranks sources kind 0, config 1, triage 2, scorer 3. A lower or equal-rank-below source is ignored (returns False); an equal or higher source overwrites. An invalid type or source raises ValueError. A row with NULL `type_source` counts as lowest.
   - The new `triage_results` columns shifted positional `INSERT ... VALUES` in two older tests (`test_stats`, `test_migration_v12`); they now name their columns. Hard-coded `== 12` version asserts in older migration tests now compare to `db.SCHEMA_VERSION`.
+
+- **D-276 KF-08 implementation (triage v2).**
+  - `TriageVerdict`: `type` and `language` keys are required (a missing key is invalid and retried). A value outside the enum becomes None with no retry (D-247), so the posting keeps its mapped type and language stays NULL. An invalid `scam` value becomes `other`, a bad `deadline` becomes None; strings are whitespace-normalised, clipped and empty becomes None.
+  - `Free-text item: yes|no` is a trusted line placed before the `<posting>` wrapper, not inside it. Free-text sources are `telegram_channels` and `manual`. For structured items any extraction keys the model returns are ignored.
+  - `db.apply_triage_extraction` writes type (source `triage`, precedence rules unchanged), language and the `ex_*`, `contact_key`, `scam` columns. `contact_key` is computed in `triage.py`; the raw contact never reaches the DB or logs. A cached verdict re-applies only type and language (the extraction columns persist on the posting).
+  - The eval's `expected_type` is optional in `parse_item` but present on all 29 items (6 new fictional: 2 ru, 2 kk, 2 Telegram free text). `type_accuracy` counts only items that reached triage without error. The live eval was not run (needs the API key).
+  - Existing triage test replies gained `type` and `language` because they are now required.

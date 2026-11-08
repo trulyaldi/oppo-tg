@@ -14,12 +14,20 @@ from src.config import ScoringConfig, TriageConfig
 from src.models import Kind, Posting
 from src.pipeline.dedupe import fingerprint
 from src.pipeline.run import score_pending
-from src.scoring.triage import Triager, build_triage_message, triage_prompt
+from src.scoring.triage import (
+    Triager,
+    build_triage_message,
+    contact_key,
+    triage_prompt,
+    triage_prompt_version,
+)
 
 NOW = datetime(2026, 11, 6, 6, 0, tzinfo=UTC)
 FIXTURES = Path(__file__).parent / "fixtures"
-YES = json.dumps({"relevant": True, "reason": "quant intern"})
-NO = json.dumps({"relevant": False, "reason": "nursing"})
+YES = json.dumps(
+    {"relevant": True, "reason": "quant intern", "type": "internship", "language": "en"}
+)
+NO = json.dumps({"relevant": False, "reason": "nursing", "type": "job", "language": "en"})
 SCORE = json.dumps({"score": 8.0, "reason": "ok", "deadline": None, "red_flags": [], "tags": []})
 
 
@@ -244,7 +252,7 @@ async def test_injection_text_stays_inside_the_untrusted_wrapper(conn):
     await triager(conn, client).triage_pending()
     (call,) = client.triage_calls
     user = call["messages"][0]["content"]
-    assert user.startswith("<posting>\n") and user.endswith("\n</posting>")
+    assert user.startswith("Free-text item: no\n<posting>\n") and user.endswith("\n</posting>")
     assert user.count("</posting>") == 1 and user.count("<posting>") == 1  # fixture tags defused
     assert "Ignore all previous instructions" in user
     system = call["system"][0]["text"]
@@ -265,10 +273,11 @@ def test_message_truncates_description_to_max_chars():
 @pytest.mark.parametrize(
     "reply",
     [
-        '{"relevant": true, "reason": "r", "score": 9}',  # extra key
-        '{"relevant": "true", "reason": "r"}',  # string, not bool
-        '{"relevant": 1, "reason": "r"}',  # int, not bool
-        '{"reason": "r"}',  # missing
+        '{"relevant": true, "reason": "r", "type": "job", "language": "en", "score": 9}',  # extra
+        '{"relevant": "true", "reason": "r", "type": "job", "language": "en"}',  # string
+        '{"relevant": 1, "reason": "r", "type": "job", "language": "en"}',  # int, not bool
+        '{"reason": "r", "type": "job", "language": "en"}',  # relevant missing
+        '{"relevant": true, "reason": "r", "language": "en"}',  # type missing
     ],
 )
 async def test_bad_shapes_are_rejected(conn, reply):
@@ -281,7 +290,7 @@ async def test_bad_shapes_are_rejected(conn, reply):
 
 async def test_long_reason_is_clipped_not_rejected(conn):
     p, _ = add(conn, "a")
-    client = FakeClient([json.dumps({"relevant": True, "reason": "x" * 300})])
+    client = FakeClient([json.dumps({**json.loads(YES), "reason": "x" * 300})])
     await triager(conn, client).triage_pending()
     row = conn.execute("SELECT reason FROM triage_results").fetchone()
     assert len(row["reason"]) == 120 and status(conn, p)[0] == "triaged"
@@ -363,3 +372,107 @@ def test_cap_zero_rejected_only_while_enabled():
         TriageConfig(daily_call_cap=0)
     assert TriageConfig(enabled=False, daily_call_cap=0).daily_call_cap == 0
     assert AppConfig.from_dict({"triage": {"enabled": False, "daily_call_cap": 0}})
+
+
+REPLIES = json.loads((FIXTURES / "triage_replies.json").read_text(encoding="utf-8"))
+RAW_CONTACT = REPLIES["ru_freetext"]["contact"]
+
+
+def add_tg(conn, ext, desc="Fictional channel post"):
+    p = Posting(
+        source="telegram_channels",
+        external_id=ext,
+        title="",
+        company="",
+        url=f"https://example.com/{ext}",
+        description=desc,
+        kind=Kind.OTHER,
+    )
+    db.upsert_posting(conn, p, fingerprint(p), NOW)
+    return p
+
+
+async def test_russian_free_text_reply_sets_type_language_and_extraction(conn, caplog):
+    caplog.set_level("DEBUG")
+    p = add_tg(conn, "ru1", "Стажировка, пишите в личку")
+    client = FakeClient([json.dumps(REPLIES["ru_freetext"])])
+    await triager(conn, client).triage_pending()
+    row = db.get_posting(conn, p.id)
+    assert row["opportunity_type"] == "internship" and row["type_source"] == "triage"
+    assert row["language"] == "ru" and row["ex_company"] == "Пример Капитал"
+    assert row["ex_deadline"] == "2026-12-20" and row["scam"] == "none"
+    assert row["ex_title"] == "Стажёр в quant-команду" and row["ex_location"] == "Алматы"
+    assert len(row["contact_key"]) == 16 and int(row["contact_key"], 16) >= 0
+    assert row["contact_key"] == contact_key("@Example_Recruiter")  # case and spaces ignored
+    assert row["title"] == "" and row["description"] == "Стажировка, пишите в личку"
+    tr = conn.execute("SELECT * FROM triage_results").fetchone()
+    assert (tr["type"], tr["language"]) == ("internship", "ru")
+    dump = json.dumps([dict(r) for r in conn.execute("SELECT * FROM postings")], default=str)
+    dump += json.dumps(dict(tr), default=str)
+    assert RAW_CONTACT not in dump and "example_recruiter" not in dump.casefold()
+    assert RAW_CONTACT not in caplog.text and "example_recruiter" not in caplog.text.casefold()
+    (call,) = client.triage_calls
+    assert call["messages"][0]["content"].startswith("Free-text item: yes\n")
+    assert call["max_tokens"] == 300
+
+
+async def test_structured_item_ignores_extraction_keys(conn):
+    p, _ = add(conn, "s")
+    reply = json.dumps({**json.loads(YES), "company": "Evil", "contact": "x@y.z", "scam": "other"})
+    await triager(conn, FakeClient([reply])).triage_pending()
+    row = db.get_posting(conn, p.id)
+    assert row["ex_company"] is None and row["contact_key"] is None and row["scam"] is None
+    assert row["language"] == "en" and row["opportunity_type"] == "internship"
+
+
+async def test_invalid_type_falls_back_without_retry(conn):
+    p, _ = add(conn, "a")  # kind internship -> mapped internship
+    client = FakeClient([json.dumps(REPLIES["bad_type"])])
+    stats = await triager(conn, client).triage_pending()
+    assert len(client.triage_calls) == 1 and stats["yes"] == 1
+    row = db.get_posting(conn, p.id)
+    assert row["opportunity_type"] == "internship" and row["type_source"] == "kind"
+    assert row["language"] is None  # invalid language is dropped too
+
+
+async def test_cached_verdict_reapplies_type_and_old_null_keeps_mapped(conn):
+    p, _ = add(conn, "a")
+    t = triager(conn, FakeClient([json.dumps({**json.loads(YES), "type": "hackathon"})]))
+    await t.triage_pending()
+    assert db.get_posting(conn, p.id)["opportunity_type"] == "hackathon"
+    with conn:
+        conn.execute("UPDATE postings SET status='new', opportunity_type='job', type_source='kind'")
+    client = FakeClient()
+    stats = await triager(conn, client).triage_pending()
+    assert stats["cached"] == 1 and client.triage_calls == []
+    row = db.get_posting(conn, p.id)
+    assert (row["opportunity_type"], row["language"]) == ("hackathon", "en")
+    # an old verdict (type NULL) leaves the mapped type alone
+    with conn:
+        conn.execute("UPDATE triage_results SET type=NULL, language=NULL")
+        conn.execute("UPDATE postings SET status='new', opportunity_type='job', language=NULL")
+    await triager(conn, FakeClient()).triage_pending()
+    assert db.get_posting(conn, p.id)["opportunity_type"] == "job"
+
+
+def test_extraction_strings_are_clipped_and_bad_values_degrade():
+    from src.scoring.triage import TriageVerdict
+
+    v = TriageVerdict.model_validate(
+        {
+            **json.loads(YES),
+            "title": "t" * 300,
+            "company": "c" * 300,
+            "location": "l" * 300,
+            "contact": "k" * 300,
+            "deadline": "soon",
+            "scam": "weird",
+        }
+    )
+    assert [len(x) for x in (v.title, v.company, v.location, v.contact)] == [120, 120, 80, 80]
+    assert v.deadline is None and v.scam == "other"
+
+
+def test_prompt_version_tracks_the_v2_prompt():
+    assert triage_prompt_version() != "afb9262e51c8"
+    assert "Free-text item" in triage_prompt() and "kk" in triage_prompt()

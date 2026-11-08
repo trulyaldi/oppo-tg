@@ -43,6 +43,25 @@ def item(title, lo, hi, kind="internship", **kw):
     )
 
 
+def test_every_labeled_item_has_an_expected_type_and_new_languages_are_covered():
+    items = ev.load_items()
+    assert all(i.expected_type for i in items) and len(items) >= 29
+    text = " ".join(i.posting.description for i in items)
+    assert any("а" <= c <= "я" for c in text)  # Cyrillic items (ru and kk)
+    assert sum(i.posting.source == "telegram_channels" for i in items) >= 2
+
+
+def test_triage_eval_reports_type_accuracy_offline():
+    items = [
+        item("Quant Intern A", 8, 10, expected_type="internship"),  # right
+        item("Quant Intern B", 7, 9, expected_type="hackathon"),  # wrong
+        item("ML Intern C", 6, 8),  # no expected type: not counted
+    ]
+    s = asyncio.run(ev.run_triage_eval(items, TriageFake(), CFG))
+    assert (s["typed"], s["type_correct"], s["type_accuracy"]) == (2, 1, 0.5)
+    assert "type_accuracy 1/2 = 50%" in ev.format_triage_report(s)
+
+
 def test_labeled_set_validates():
     items = ev.load_items()
     assert len(items) >= 20
@@ -152,7 +171,14 @@ class TriageFake:
     async def create(self, **kw):
         self.calls.append(kw)
         text = kw["messages"][0]["content"]
-        body = json.dumps({"relevant": not any(k in text for k in self.reject), "reason": "r"})
+        body = json.dumps(
+            {
+                "relevant": not any(k in text for k in self.reject),
+                "reason": "r",
+                "type": "internship",
+                "language": "en",
+            }
+        )
         return SimpleNamespace(content=[SimpleNamespace(type="text", text=body)])
 
 

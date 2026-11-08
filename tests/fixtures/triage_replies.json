@@ -1,0 +1,20 @@
+{
+ "ru_freetext": {
+  "relevant": true,
+  "reason": "quant стажировка",
+  "type": "internship",
+  "language": "ru",
+  "title": "Стажёр в quant-команду",
+  "company": "Пример Капитал",
+  "location": "Алматы",
+  "contact": "@Example_Recruiter",
+  "deadline": "2026-12-20",
+  "scam": "none"
+ },
+ "bad_type": {
+  "relevant": true,
+  "reason": "ok",
+  "type": "unicorn",
+  "language": "klingon"
+ }
+}
