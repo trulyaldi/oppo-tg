@@ -3514,7 +3514,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - The triage prompt version changed.
   - The evals runner reports `type_accuracy` from a fake client.
 
-### KF-09 [ ] Post-triage step: unpaid by type, scam filter, repost dedupe (D-246, D-262)
+### KF-09 [x] Post-triage step: unpaid by type, scam filter, repost dedupe (D-246, D-262)
 - Build:
   - `src/pipeline/post_triage.py::apply_post_triage(conn, cues, clock)` runs over `triaged` rows (and, with triage disabled or for exempt sources, over `new` rows that passed the filters), before scoring, inside the pipeline lock. In order:
     1. unpaid: the `unpaid` cues on title plus description, only when the effective type is `job` or `internship`, giving `filtered`/`unpaid`;

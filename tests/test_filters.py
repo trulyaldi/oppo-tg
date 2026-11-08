@@ -256,3 +256,9 @@ def test_bad_cue_file_fails_loudly(tmp_path):
     cfg = AppConfig.from_dict({"filters": {"cues_file": str(bad)}})
     with pytest.raises(CueError):
         hard_filter(_p("Data Intern"), cfg, TODAY)
+
+
+def test_hard_filter_no_longer_checks_unpaid():
+    """The unpaid check moved to the post-triage step (KF-09, D-246)."""
+    p = _p("Data Intern", Kind.INTERNSHIP, description="This is an unpaid internship")
+    assert hard_filter(p, CFG, TODAY) is None

@@ -15,10 +15,12 @@ import src.sources  # noqa: F401,I001  (registers the sources)
 from src import db
 from src.clock import Clock
 from src.config import TIERS, AppConfig, ScoringConfig, Settings, TriageConfig
+from src.cues import Cues, load_cues
 from src.http import PoliteClient
 from src.llm.budget import LlmBudget
 from src.pipeline.dedupe import fingerprint, mark_duplicates
 from src.pipeline.filters import apply_filters
+from src.pipeline.post_triage import apply_post_triage
 from src.pipeline.scoring_alert import report_stage_outcome
 from src.scoring.scorer import Scorer
 from src.scoring.triage import Triager
@@ -316,6 +318,7 @@ async def score_pending(
     chat_id: int | str | None = None,
     scoring_cfg: ScoringConfig | None = None,
     triage_cfg: TriageConfig | None = None,
+    cues: Cues | None = None,
 ) -> dict[str, int]:
     """Score pending postings, at most `max_calls` API calls (retries count).
 
@@ -334,6 +337,8 @@ async def score_pending(
             tstats["errors"] > 0
             and tstats["yes"] + tstats["no"] + tstats["cached"] + tstats["exempt"] == 0
         )
+    post = apply_post_triage(conn, cues or load_cues(), clock, include_new=not triage_on)
+    log.info("post-triage: %s", post)
     scorer = Scorer(
         client,
         model,

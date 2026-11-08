@@ -190,7 +190,7 @@ def test_compile_entry_kinds():
 
 def test_nothing_else_in_src_uses_cues():
     for path in (ROOT / "src").rglob("*.py"):
-        if path.name in ("cues.py", "filters.py", "config.py"):
+        if path.name in ("cues.py", "filters.py", "config.py", "post_triage.py", "run.py"):
             continue
         text = path.read_text(encoding="utf-8")
         assert "src.cues" not in text and "cues.toml" not in text, path

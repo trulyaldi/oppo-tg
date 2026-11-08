@@ -12,12 +12,6 @@
   "expect": null
  },
  {
-  "name": "unpaid internship",
-  "title": "Unpaid marketing internship",
-  "kind": "internship",
-  "expect": "unpaid"
- },
- {
   "name": "unpaid hackathon passes",
   "title": "Hack Night",
   "kind": "hackathon",

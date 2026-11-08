@@ -21,6 +21,7 @@ from src.delivery.digest import send_digest
 from src.http import build_client
 from src.lock import AlreadyRunning, InstanceLock
 from src.logging_setup import configure_logging
+from src.pipeline.filters import load_filter_cues
 from src.pipeline.run import (
     collect_all,
     collect_tier,
@@ -92,6 +93,7 @@ async def _run(command: str, settings: Settings) -> int:
                     chat_id=settings.telegram_chat_id,
                     scoring_cfg=ScoringConfig.from_cfg(cfg),
                     triage_cfg=TriageConfig.from_cfg(cfg),
+                    cues=load_filter_cues(cfg),
                 )
                 log.info("scored: %s", scored)
                 if is_total_failure(scored):
@@ -178,6 +180,7 @@ async def _serve(settings: Settings) -> None:
                 chat_id=settings.telegram_chat_id,
                 scoring_cfg=scoring_cfg,
                 triage_cfg=triage_cfg,
+                cues=load_filter_cues(cfg),
             ),
         )
 

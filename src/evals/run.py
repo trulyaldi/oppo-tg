@@ -22,7 +22,8 @@ from src.clock import FixedClock
 from src.config import AppConfig, TriageConfig
 from src.logging_setup import configure_logging
 from src.models import Kind, OpportunityType, Posting
-from src.pipeline.filters import hard_filter, relevance_ok
+from src.pipeline.filters import hard_filter, load_filter_cues, relevance_ok
+from src.pipeline.post_triage import effective_type, is_unpaid
 from src.scoring.prompt import prompt_version
 from src.scoring.scorer import Scorer
 from src.scoring.triage import Triager, triage_prompt_version
@@ -88,6 +89,16 @@ def distance_to_range(score: float, lo: float, hi: float) -> float:
     return lo - score if score < lo else score - hi if score > hi else 0.0
 
 
+def _cheap_reason(p: Any, cfg: AppConfig, today: Any, cues: Any) -> str | None:
+    """Hard filters, relevance and the unpaid check on the kind-mapped type (D-246)."""
+    reason = hard_filter(p, cfg, today, cues)
+    if reason is None and not relevance_ok(p, cfg, cues):
+        return "irrelevant"
+    if reason is None and is_unpaid(cues, p.title, p.description, effective_type(None, p.kind)):
+        return "unpaid"
+    return reason
+
+
 async def run_eval(
     items: list[EvalItem],
     client: Any,
@@ -97,13 +108,14 @@ async def run_eval(
 ) -> dict[str, Any]:
     """Hard filters, then the real Scorer. A filtered item counts as score 0."""
     today = EVAL_NOW.date()
+    cues = load_filter_cues(cfg)
     conn = db.connect(":memory:")
     db.migrate(conn)
     scorer = Scorer(client, model, conn, FixedClock(EVAL_NOW), max_calls=max(10, 3 * len(items)))
     results = []
     for it in items:
         p = it.posting
-        reason = hard_filter(p, cfg, today) or (None if relevance_ok(p, cfg) else "irrelevant")
+        reason = _cheap_reason(p, cfg, today, cues)
         score: float | None = None
         status = "scored"
         out: dict[str, Any] = {}
@@ -164,6 +176,7 @@ async def run_triage_eval(
     skipped. Negatives (labeled max < 5) report how many triage rejected, for information.
     """
     today = EVAL_NOW.date()
+    cues = load_filter_cues(cfg)
     conn = db.connect(":memory:")
     db.migrate(conn)
     tcfg = TriageConfig.from_cfg(cfg)
@@ -173,7 +186,7 @@ async def run_triage_eval(
     rows = []
     for it in items:
         p = it.posting
-        if hard_filter(p, cfg, today) or not relevance_ok(p, cfg):
+        if _cheap_reason(p, cfg, today, cues):
             continue
         verdict, error = await triager.triage_posting(p)
         positive = it.expected_min >= POSITIVE_MIN

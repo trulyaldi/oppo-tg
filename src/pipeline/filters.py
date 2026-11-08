@@ -1,4 +1,4 @@
-"""Hard filters (spam, unpaid, senior-only, stale) and the title relevance prefilter."""
+"""Hard filters (spam, senior-only, stale) and the title relevance prefilter (unpaid: D-246)."""
 
 from __future__ import annotations
 
@@ -18,7 +18,6 @@ from src.models import Kind, Posting
 LOCAL_TZ = ZoneInfo("Asia/Almaty")
 DEFAULT_MAX_AGE_DAYS = 60
 _JOB_KINDS = (Kind.JOB, Kind.INTERNSHIP)
-_NO_UNPAID_CHECK = (Kind.HACKATHON, Kind.COMPETITION, Kind.FELLOWSHIP)
 # Sources whose pages the user curates by hand: their items skip the title relevance check.
 _RELEVANCE_EXEMPT_SOURCES = ("pagewatch",)
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -60,8 +59,6 @@ def hard_filter(p: Posting, cfg: AppConfig, today: date, cues: Cues | None = Non
     haystack = f"{p.title}\n{p.description}"
     if match_any(cues["spam"], haystack):
         return "spam"
-    if p.kind not in _NO_UNPAID_CHECK and match_any(cues["unpaid"], haystack):
-        return "unpaid"
     if p.kind in _JOB_KINDS:
         reason = _DROP_REASON.get(cues.title_decision(p.title))
         if reason is not None:
