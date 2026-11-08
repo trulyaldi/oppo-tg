@@ -1738,3 +1738,49 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - **Verification status.** The new paragraph says offline only and that no live smoke has run on this branch; nothing is claimed as live. KF-38 owns the live smoke.
   - **Skill file.** D-260 said agents do not edit `.claude/skills/digest-format/SKILL.md`; the KF-36 task and the orchestrator ask for it explicitly, because a stale skill misleads later agents. It now describes the two-line item, the `Relevance N/10` line, the `via` credit on the link line and the five buttons (D-283), with the source files named as the truth.
   - **Tests.** `tests/test_readme.py` pins the new commands, cue syntax, config sections, D-235 to D-245 refs, the tier names, and that the skill describes the new layout.
+
+## 2026-11-08 — KF-37 review of feature/kz-first-fresh-cv (reviewer)
+
+- **D-304 KF-37 review verdict: NOT PASSED, 3 blocking findings (FIX-52 to FIX-54); 9 non-blocking (FIX-55 to FIX-63) listed and deferred under D-301.**
+  - **Scope.** One pass over `git diff main...HEAD` at 67250d6 (38 commits, KF-00..KF-36), checked against `docs/briefs/kz-first-fresh-cv.md` Parts 0-9, SPEC.md "KZ-first, freshness and CV review", and the KF-34/KF-35 checks that D-301 folded into KF-37. The findings with file:line, failure scenario and acceptance criteria are in PLAN.md section 13.
+  - **Blocking:**
+    - **FIX-52.** `/search` uses substring `LIKE`. "ai" matches "Email…" and every Russian "…ии" word, and "ml" matches "HTML". This breaks the brief's Part 6 rules and overrides D-297's matching bullet.
+    - **FIX-53.** The CV review verification accepts market counts and shares as evidence, and it skips number checks in `why`, notes and gap notes. Reproduced: "State that you have 5 years of Python experience", "Mention your 42% accuracy improvement" and "add your 95% accuracy result" all survive. This breaks Part 0 and Part 8, and amends D-300.
+    - **FIX-54.** The folded KF-35 sweep tests are missing: an other-chat dispatcher test for `/add`, `/cvreview`, document and edited updates, and a pinned list of send call sites. KF-37 requires them, and D-301 would otherwise never land them. The behaviour itself is correct (scratchpad probe: zero Bot calls from another chat).
+  - **Non-blocking, deferred (D-301):**
+    - FIX-55: the chat summary omits "why".
+    - FIX-56: hh group rotation stores old vacancies as non-baseline.
+    - FIX-57: the listener baselines joined channels that have no cursor. This is a KF-02 regression, bounded at up to 100 triage calls per quiet joined channel.
+    - FIX-58: `iter_dialogs` fetches private chats' top messages, and `iter_messages` accepts string handles.
+    - FIX-59: README inaccuracies.
+    - FIX-60: `/stats` has no discovery or outreach usage lines.
+    - FIX-61: a non-default `cues_file` is ignored by the region rule, the CV market summary and the post-triage fallback.
+    - FIX-62: repost dedupe uses the raw first line, and `/add` of a known posting answers "filtered (repost)".
+    - FIX-63: `market` is not a reserved wrapper tag.
+  - **Passed, with evidence:**
+    - **Suite, lint, clean venv.** `.venv/bin/python -m pytest -q`: 1572 tests, exit 0. `ruff check .`: "All checks passed!". `ruff format --check .`: 217 files formatted. Clean venv in the session scratchpad (`python3 -m venv`, `pip install -q -r requirements.txt`, `pytest -q`): 1572 tests, exit 0. The README setup steps were followed literally and work.
+    - **ToS and rate limits.**
+      - The D-235..D-245 verdicts match the code: no module or config for the skipped or out sources.
+      - Arbeitnow: tier2, 60 min floor, 1 page, "via Arbeitnow".
+      - hh: Bearer token plus an `HH-User-Agent` with the `HTTP_CONTACT` email, `area=40`, at most 4 requests per run.
+      - Robots: RFC 9309 wildcard matching (`tests/test_robots.py`).
+      - Bounds: tier1 10 min + 0..300 s, tier2 60 min + 0..3600 s, `tg` 4 min + 0..60 s, `tg_minutes >= 3`, `pause_s >= 3`, channels and resolves per poll 1..30.
+      - FloodWait: `ceil(s × 1.1)` gates every Telethon path (`test_run_targets_flood_wait_stops_run_and_keeps_cursors`, `test_flood_wait_blocks_every_request_until_it_ends`).
+      - `ReadOnlyTelegram` allows only Search, GetFullChannel and GetHistory, and only NewMessage events. No join or write call exists (`tests/test_telegram_ro.py`).
+    - **Personal data.**
+      - New log lines carry only ids, counts, handles and exception class names.
+      - Caplog tests cover the KF-22, KF-24 and KF-32 flows.
+      - The contact is stored only as `contact_key` (sha256[:16]).
+      - `git check-ignore` covers `data/oppo.db`, `data/*.session`, `data/discovered_boards.toml`, `*.session` and `.env`.
+      - No secrets or real personal data are in the diff.
+    - **Prompt injection.** The triage, scorer, feedback-example and CV inputs are wrapped. `TriageVerdict` is `extra="forbid"`, `ScoreResult` is pydantic-validated (reason at most 110 characters, at most 3 flags), and the CV review output is verified (gaps aside, see FIX-53). `/add` fetches nothing.
+    - **Cost caps.**
+      - Every triage, scoring, discovery and CV-review call reserves before it is made, retries included.
+      - Pinned by `test_main_exit.py::test_cap_only_run_exits_zero_and_warns_not_fails`, `::test_triage_total_failure_alerts_by_stage_and_exits_nonzero`, `::test_collect_total_failure_alerts_and_exits_nonzero`, `test_scoring_alert.py::test_cap_alone_never_alerts_any_stage`, `test_llm_budget.py::test_kf21_discovery_cap_warns_once_per_day_and_is_isolated` and `test_bot_findchannels.py::test_none_found_and_cap_warns_once`.
+    - **Whitelist.**
+      - The outer `WhitelistMiddleware` sits on `dp.update`.
+      - Probe from chat 99: zero Bot calls for `/add`, `/cvreview`, `/cvreview refresh`, `/boards`, `/findchannels`, `/stats` and `/channels`. Each one answered from chat 42.
+      - Every `send_message`/`send_document` targets `TELEGRAM_CHAT_ID` or the whitelisted chat.
+    - **Message formats.** Line 1 is at most 220 characters, the item at most 3500, the reason is clipped before escaping, callback data is checked against 64 bytes (`tc:add:` plus 32 characters = 39 bytes), and the snapshots pass.
+    - **Snapshot ownership (D-250).** It matches per commit. The one exception is KF-25's `weights_snapshot/watchlists/kz_employers.yaml` change, recorded in D-293 and accepted.
+  - **Next.** Fix FIX-52, FIX-53 and FIX-54 (one commit each), then one re-review (D-301). KF-37 stays `[ ]` until the re-review records no blocking issues.

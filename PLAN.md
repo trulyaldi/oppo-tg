@@ -4124,3 +4124,178 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - The DECISIONS entry has the figures above.
   - The README verification status matches it.
   - The suite and lint are green.
+
+## 13. Review fixes (kz-first-fresh-cv review)
+
+Filed 2026-11-08 by the reviewer (KF-37, one pass under D-301) for branch `feature/kz-first-fresh-cv` (`git diff main...HEAD` at 67250d6, KF-00..KF-36), checked against `docs/briefs/kz-first-fresh-cv.md` Parts 0-9 and SPEC.md "KZ-first, freshness and CV review (added 2026-11-08)". Verdict and evidence: D-304.
+
+- FIX-52 to FIX-54 are **blocking**. Fix them one commit each, mark `[x]` in the same commit, add a DECISIONS entry where a choice is made, use fakes and fixtures only, and keep the suite and ruff green. Then one re-review (D-301).
+- FIX-55 to FIX-63 are **non-blocking**. Per D-301 they are listed for the KF-38 final report and **not fixed on this branch**. The build loop skips them. They stay `[ ]` so a later branch can pick them up.
+
+Verified with evidence, no FIX needed:
+- **Suite, lint, clean venv.** `.venv/bin/python -m pytest -q`: 1572 tests, exit 0. `ruff check .`: "All checks passed!". `ruff format --check .`: "217 files already formatted". A clean venv in the session scratchpad (`python3 -m venv`, `pip install -r requirements.txt`, `pytest -q`): 1572 tests, exit 0.
+- **Source verdicts.** D-235..D-245 match the code. There is no module or config entry for enbek.kz, Astana Hub, Remotive, We Work Remotely, SmartRecruiters, Recruitee, Personio, YC or Kaggle. Arbeitnow is in tier2 with `min_poll_minutes = 60`, a 3600 s cache, page 1 by default (`max_pages` validated 1..2), and only arbeitnow.com URLs. It renders "via Arbeitnow".
+- **hh.** It has `Authorization: Bearer` and an `HH-User-Agent` from `HTTP_CONTACT`. It is disabled while `HTTP_CONTACT` has no `@`. `area=40`, at most 4 requests per run, and stems and regexes are never sent.
+- **Robots.** `src/robots.py` implements RFC 9309 longest match, with `*` and `$`, allow winning ties, a case-insensitive agent and percent-case normalisation (`tests/test_robots.py`, including enbek and Remotive). The pagewatch seeds are checked offline against `robots_pagewatch_seeds.json`.
+- **Tiers and bounds.**
+  - The scheduler defaults are tier1 10 min + 0..300 s, tier2 60 min + 0..3600 s, tier3 60 min, and `tg` 4 min + 0..60 s. APScheduler jitter only delays.
+  - `tg_minutes < 3` is rejected. `max_channels_per_poll` and `max_resolves_per_poll` are validated 1..30, and `pause_s` at least 3.
+  - hh has a 10 min floor.
+- **FloodWait.** `tg_flood_until = now + ceil(s × 1.1)` is honoured by polling, the listener and discovery. A flood stops the run with the cursors kept (`test_run_targets_flood_wait_stops_run_and_keeps_cursors`, `test_flood_wait_blocks_every_request_until_it_ends`).
+- **No join or write call.** Every client is wrapped in `ReadOnlyTelegram`. The only raw requests allowed are SearchRequest, GetFullChannelRequest and GetHistoryRequest, and the only event allowed is NewMessage. `JoinChannelRequest` and `auto_join` appear only in the config rejection message. Polling reads only `InputPeerChannel` peers resolved from public handles, and users and basic groups are refused (`tests/test_telegram_ro.py`). FIX-58 covers the remaining gaps.
+- **Personal data.**
+  - New log lines carry only ids, counts, handles and exception class names (grep of every added `log.`/`print(`).
+  - Caplog tests exist for KF-22 (`test_hostile_samples_are_stored_raw_clipped_and_not_logged`), KF-24 (`test_no_text_in_logs`) and KF-32 (`test_cv_text_not_logged`).
+  - The contact is stored only as `contact_key` (sha256[:16]). There is no raw contact column.
+  - `git check-ignore` covers `data/oppo.db`, `data/*.session`, `data/discovered_boards.toml`, `*.session` and `.env`.
+  - The diff contains no key, token, real email or phone number. `.env` and `.env.example` are untouched.
+- **Prompt injection.**
+  - Triage wraps the posting in `<posting>`, with only the trusted "Free-text item" line outside it. `TriageVerdict` is `extra="forbid"` with a StrictBool.
+  - The scorer's user message and the feedback examples are wrapped, and `ScoreResult` is validated by pydantic, with the reason clipped to 110 and at most 3 flags.
+  - The CV review wraps the CV in `<cv>` and verifies the output.
+  - `/add` and forwards go through the same triage and scorer, and nothing is fetched.
+- **Cost caps.**
+  - `call_json` reserves before every attempt, and the triage baseline sub-cap is checked before the retry too.
+  - The scorer reserves before both attempts.
+  - Discovery reserves `tg_search`/`tg_sample` before each Telethon call.
+  - The CV review uses the outreach budget (`cv_review` is in `OUTREACH_PURPOSES`).
+  - Pinned by `test_main_exit.py::test_cap_only_run_exits_zero_and_warns_not_fails`, `::test_triage_total_failure_alerts_by_stage_and_exits_nonzero`, `::test_collect_total_failure_alerts_and_exits_nonzero`, `test_scoring_alert.py::test_cap_alone_never_alerts_any_stage`, `test_llm_budget.py::test_kf21_discovery_cap_warns_once_per_day_and_is_isolated` and `test_bot_findchannels.py::test_none_found_and_cap_warns_once`.
+- **Whitelist.**
+  - `WhitelistMiddleware` is an outer middleware on `dp.update` and drops callbacks without a message.
+  - A scratchpad probe (not committed) fed `/add`, `/cvreview`, `/cvreview refresh`, `/boards`, `/findchannels`, `/stats` and `/channels` from chat 99: zero Bot calls. From chat 42 each one replied. FIX-54 adds the committed test.
+  - Every `send_message`/`send_document` in `src/` targets `settings.telegram_chat_id` or the whitelisted message's chat (grep).
+- **Message formats.**
+  - Line 1 is at most 220 characters after escaping. The item is at most 3500 characters, and the raw reason is clipped before escaping.
+  - `fb:`/`pr:`/`tc:` callback data is checked against 64 bytes (a 32-character handle gives 39 bytes).
+  - Hostile titles and samples are HTML-escaped, and the render snapshots pass.
+- **Snapshot ownership (D-250).** `git show --stat` per commit matches the table, with one exception. KF-25 also changed `tests/fixtures/weights_snapshot/watchlists/kz_employers.yaml` (owners KF-10 and KF-12), to mirror the ISSAI and Science Fund watchlist additions. That change is recorded in D-293 and is accepted as documented.
+
+### FIX-52 [ ] /search matches short tokens and stems inside other words
+- Severity: **blocking**. It breaks the brief's Part 6 rule: short tokens must use word-boundary matching, and "email", "maintenance" and "domain" must not match "ai". The brief makes search parsing a consumer of the same cue rules. This overrides the substring choice in D-297.
+- Where: `src/bot/handlers.py:158-215` (`search_terms`, `cmd_search`). `cmd_search` ORs `fold_text(...) LIKE '%term%'` over every expanded term.
+- Failure (reproduced in the scratchpad with the `tests/test_bot_search.py` helpers):
+  - `/search ai` returns "Email marketing specialist".
+  - The `fields.ai` expansion adds `ии`, so `/search ai` also returns "Бухгалтер в отдел компании". Nearly every Russian posting contains "…ии".
+  - `/search ml` returns "Frontend (HTML, CSS)".
+  - For the user's core interests (AI/ML), `/search` returns noise.
+- Build: match with the cue rules from `src/cues.py` (`match_any` semantics):
+  - entries of 3 characters or fewer match whole words only;
+  - `stem*` entries keep prefix matching at a word start;
+  - phrases match as phrases.
+  
+  A SQL `LIKE` prefilter followed by a Python `match_any` post-filter over the folded haystack is fine, as long as the top-5 ordering by adjusted score still holds after the filter. Record the choice in DECISIONS (it supersedes the D-297 matching bullet).
+- Files: `src/bot/handlers.py`, possibly `src/cues.py`, `tests/test_bot_search.py`.
+- Acceptance:
+  - `/search ai` does not return "Email marketing specialist", a description with "domain maintenance", or "Бухгалтер в отдел компании".
+  - `/search ml` does not return "Frontend (HTML, CSS)".
+  - `/search ai` still returns "AI Research Intern" and "Стажёр ИИ".
+  - `/search стажировка` still returns "ML Intern" (`test_russian_word_finds_english_intern`).
+  - All existing `test_bot_search.py` tests pass, and the 30-term cap and `%`/`_` literal handling still hold.
+
+### FIX-53 [ ] CV review verification lets invented numbers and claims into the chat summary and the report
+- Severity: **blocking**. It breaks Part 0 ("Never invent or inflate anything about me. Every claim in CV advice ... must trace to my CV text") and the Part 8 verification step. This overrides D-300 on number checks.
+- Where: `src/cv/review.py:144` (`advice_n` = CV + market text + vocabulary, used as evidence), `:158-161` (`changes[].what`/`why`), `:165-184` (gap text never checked; notes checked with `numbers=False`) and `:186-193` (report notes, `numbers=False`).
+- Failure, reproduced with `verify_review` on `tests/fixtures/cv_fake.txt` and a market text "KZ employers (12 postings): ml 5 (42%); python 7 (58%)":
+  - `changes[].what` "State that you have 5 years of Python experience" passes, because "5" is a market count. It then appears as a numbered top change in chat.
+  - "Mention your 42% accuracy improvement" passes, because 42 is a market share.
+  - `report.kz_notes` "add your 95% accuracy result" passes. No number check runs there, and 95 is in neither the CV nor the market.
+  - A `worth_learning` gap note "add your 95% accuracy result" passes.
+  - The gap text "your Google internship experience" is kept unverified.
+- Build:
+  - Numbers in every free-text field (`fit_summary`, `changes[].what`/`why`, gap `gap`/`note`, every report note, bullet suggestions) are checked against the **CV text only**.
+  - Market text (counts, shares, labels) never counts as evidence for a number or a claim about the candidate. It may only license naming a market skill group as a gap.
+  - Allow advice-format numbers through a small explicit allowlist (for example "one page", "1 page", "2 pages", "3-5 bullets"), not by skipping the check.
+  - Run gap text through the entity/inflation checks too. A gap that asserts something about the candidate ("your X experience") is removed or rephrased as a question.
+  - Failing fields are removed, or turned into questions as the bullets already are.
+  - Record the change in DECISIONS (it amends D-300).
+- Files: `src/cv/review.py`, `tests/test_cv_review.py`, and a new fabrication-trap fixture (for example `tests/fixtures/cv_review_reply_market_numbers.json`).
+- Acceptance:
+  - With `cv_fake.txt` and the market text above, none of these strings appears in `summary_json`, in `report_md` or in the chat chunks: "5 years", "42%", "95%", "Google internship".
+  - "Keep it to one page" and "Move SKILLS above PROJECTS" still pass.
+  - The existing `test_cv_review.py`, `test_bot_cvreview.py` and `test_main_cvreview.py` tests pass.
+  - `cv_review_reply_fabricated.json` still yields its current removed/question counts, or the DECISIONS entry explains the new counts.
+
+### FIX-54 [ ] The folded KF-35 sweep tests are missing: other-chat dispatcher test for every new surface, and the send-target site list
+- Severity: **blocking**, as a process item. KF-37's build text (folded from KF-35 by D-301) requires "Add a test only where one is missing", and D-301 means a non-blocking item would never land. The behaviour itself is correct: the scratchpad probe saw zero Bot calls from chat 99.
+- Where: `tests/`. Dispatcher other-chat tests exist only for `/search` (`test_bot_search.py:146`), forwards (`test_bot_add.py:232`), `/findchannels` plus `tc:` (`test_bot_findchannels.py:343`) and the older commands. There is none for `/add <text>`, `/cvreview`, a document upload or an edited message. `test_privacy_sweep.py::test_every_bot_send_targets_configured_chat` covers only `/draft`. No test lists the send call sites.
+- Build:
+  - Add `tests/test_whitelist_new_handlers.py`: one parametrized dispatcher test (the patched `Bot.__call__` pattern) over `/add text https://x.example/1`, a forwarded channel post, `/search x`, `/findchannels`, `tc:add:somechannel`, `tc:ign:somechannel`, `/cvreview`, `/cvreview refresh`, `/boards`, `/channels`, `/stats`, a document upload and an `edited_message`. From chat 99 each gives zero Bot calls and no DB write to `postings`, `tg_channels` or `cv_reviews`.
+  - Add a grep-based test that lists every `send_message(`, `send_document(` and `answer_document(` call site in `src/` and pins them to the known set: `digest.py`, `alerts.py`, `scoring_alert.py`, `telegram_budget.py`, `telegram_flow.py`, `hh.py`, `main.py` `_ChatTarget`, and `outreach_handlers.py` `answer_document`. A new site then fails until reviewed.
+  - Add a dispatcher test that the weekly discovery and the `/findchannels` cap warning send only to `TELEGRAM_CHAT_ID`.
+- Files: `tests/test_whitelist_new_handlers.py`, `tests/test_privacy_sweep.py`.
+- Acceptance: the new tests pass with no `src/` change, and every case from chat 99 records zero Bot calls.
+
+### FIX-55 [ ] CV review chat summary shows the changes without their "why"
+- Severity: non-blocking. Deferred (D-301): listed, not fixed on this branch.
+- Where: `src/bot/outreach_handlers.py:188` prints only `c['what']`.
+- Failure: brief Part 8 asks for "the top 5 concrete changes ranked by impact (what to change and why)" in chat. The verified `why` is only in the Markdown file.
+- Acceptance: each chat change line is "N. what (why)", clipped to 300 characters, when `why` survives verification. The length test still passes.
+
+### FIX-56 [ ] hh query-group rotation makes old vacancies non-baseline
+- Severity: non-blocking. Deferred (D-301).
+- Where: `src/sources/hh.py:156` (`_run_queries`, 6 groups, 4 per run) with the single empty-key hh target (`src/sources/base.py:156`), and baseline per target in `src/pipeline/run.py:167,196`.
+- Failure:
+  - Run 1 queries groups 1-4 and baselines the hh target.
+  - Run 2 queries groups 5-6 for the first time, returning up to 100 vacancies each from the last 14 days. They are stored with `baseline=0` and `first_seen_at=now`.
+  - So they are fresh-alert eligible (capped at 6 a day), ordinary alerts at base >= 9 or a deadline within 7 days (uncapped), and they spend the non-baseline triage and scoring budget.
+  - The same happens whenever the user edits `[hh] groups`.
+- Acceptance: a group's first query is stored as baseline, for example with a per-group baselined state key or one target per group. A test over 2 runs with 6 groups shows the run-2 items from new groups with `baseline=1` and no alert.
+
+### FIX-57 [ ] The live listener baselines joined channels that have no cursor (KF-02 regression)
+- Severity: non-blocking. Deferred (D-301).
+- Where: `src/sources/telegram_live.py:182-193` (`_record_state`) marks every live channel baselined, but sets no `telegram_channels:last_id:<handle>` cursor.
+- Failure:
+  - The user adds a channel already joined. It goes live at once and is never polled, so its cursor stays 0.
+  - If the listener drops before that channel posts, the `tg` poll reads up to 100 historical messages (`BATCH`) as non-baseline.
+  - Cost bound: up to 100 non-baseline triage calls per quiet joined channel on one poll, plus scoring for the relevant ones.
+  - Old posts become fresh-alert and alert eligible.
+- Acceptance: either `_record_state` baselines only channels that already have a cursor, or it sets the cursor to the newest message id at subscribe through an allowlisted read. A test shows a joined channel with no cursor, after a listener stop, polled with `baseline=1` and no alert.
+
+### FIX-58 [ ] Telethon read-only gaps: `iter_dialogs` fetches private chats' top messages; string handles bypass the peer check
+- Severity: non-blocking. Deferred (D-301). Both predate this branch or have no caller. KF-18 allowlisted `iter_dialogs` on purpose, and only usernames are used.
+- Where: `src/sources/telegram_live.py:155` and `src/sources/telegram_ro.py:80` (`iter_dialogs` is unrestricted). `messages.getDialogs` returns each dialog's top message, private chats included. That conflicts with the letter of Part 0 ("never read private chats"), though nothing is stored or logged. Also `src/sources/telegram_ro.py:68-78`: `iter_messages` accepts any handle-shaped string, and a user's username would read that DM history. No caller passes a string today.
+- Acceptance:
+  - Membership is checked per configured handle through the resolved channel entity's `left` flag (`channels.GetFullChannelRequest` or `get_entity`), and `iter_dialogs` is removed from the wrapper.
+  - `iter_messages` accepts only `InputPeerChannel`/`Channel`.
+  - The tests are updated.
+
+### FIX-59 [ ] README inaccuracies
+- Severity: non-blocking. Deferred (D-301).
+- Where and failure:
+  - `README.md:142-145` says "When an adjustment applies, the item shows `adjusted/10 (base X, ...)`". The two-line format (D-260, `src/delivery/format.py`) shows only "Relevance base/10", and no adjusted score is rendered.
+  - `README.md:268-269`: the `[[sources.pagewatch.pages]]` key list omits the new optional `type` (it is mentioned only in "Sources checked").
+  - `README.md:438`: the `/stats` description omits the KF-30 latency lines (by kind, region and tier), "Generic reasons" and the flood-wait line.
+  - `README.md:586-592`: the "Running" command list omits `cvreview` and `discover`.
+  
+  The README setup steps (`python3 -m venv .venv`, `pip install -r requirements.txt`, the three checks) were followed literally in a clean venv and work.
+- Acceptance: the four passages match the code, and `tests/test_readme.py` pins "Relevance" and the absence of `adjusted/10`.
+
+### FIX-60 [ ] /stats lacks the Telegram discovery and outreach usage lines
+- Severity: non-blocking. Deferred (D-301). This is a KF-34 folded item.
+- Where: `src/bot/handlers.py:368-381` shows scoring and triage only.
+- Failure: the user cannot see `tg_search`+`tg_sample` usage against `[telegram_discovery] daily_call_cap`, or outreach usage (including `cv_review`) against `daily_llm_call_cap`.
+- Acceptance: "Discovery calls today: n/30" and "Outreach calls today: n/40" lines, with `stats_expected.txt` updated in that commit.
+
+### FIX-61 [ ] A non-default `[filters] cues_file` is ignored by some readers, and cue edits do not reclassify regions
+- Severity: non-blocking. Deferred (D-301). It matters only if the user points `cues_file` elsewhere or edits `locations.kz`.
+- Where:
+  - `src/ranking/adjust.py:104` and `src/ranking/employer.py:103` (`load_cues()` default path for the D-249 rule; `/add`, `/search`, digest and alerts call `recompute_adjusted` without cues);
+  - `src/cv/review.py:336` (market summary);
+  - `src/pipeline/run.py:351` (post-triage fallback);
+  - `src/ranking/adjust.py:93`: `weights_version` gets a fixed `+ll`, not a cue-file hash, so editing `locations.kz` never re-runs classification on scored rows.
+- Acceptance: every reader takes `load_filter_cues(cfg)`, and the weights version includes a hash of the `locations.kz` group. A test shows that a changed location cue reclassifies an existing row.
+
+### FIX-62 [ ] Repost dedupe keys on the raw first line for Telegram posts; /add of a known posting answers "filtered (repost)"
+- Severity: non-blocking. Deferred (D-301).
+- Where:
+  - `src/pipeline/post_triage.py:94-98` prefers `row["title"]` (the message's first line from `parse_message`) over the triage `ex_title`, so the same vacancy reposted with a different first line is not deduplicated across channels (brief Part 4).
+  - `src/pipeline/post_triage.py:51-57` with `src/bot/handlers.py` `_not_scored_text`: a manual `/add` of a posting already collected becomes `duplicate` and the reply is "Not scored: filtered (repost)", not the existing scored item.
+- Acceptance:
+  - For `telegram_channels` and `manual`, the key prefers `ex_title`/`ex_company`.
+  - A manual repost replies with the original's rendered item.
+  - Tests cover both.
+
+### FIX-63 [ ] The `<market>` wrapper tag is not a reserved tag
+- Severity: non-blocking. Deferred (D-301). The risk is low: the market text is built from cue labels and counts, and the CV is the user's own text inside `<cv>`.
+- Where: `src/cv/review.py:339-341` wraps with `wrap_untrusted("market", ...)`, but `src/llm/untrusted.py:7` `RESERVED_TAGS` lacks `market`, so a `<market>`/`</market>` inside the CV text is not neutralised.
+- Acceptance: `market` is added to `RESERVED_TAGS`, with a test that a CV containing `</market>` reaches the model as `‹/market>`.
