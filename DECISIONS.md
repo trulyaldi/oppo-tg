@@ -1530,3 +1530,7 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
 - **D-271 KF-03 implementation (Retry-After HTTP-date, global slot order; closes FIX-46).**
   - `_parse_retry_after(value, now)` takes delta-seconds first, then an HTTP-date via `email.utils.parsedate_to_datetime`, measured from the injected clock (system time only when the client has no clock). A past date gives 0, an unparseable value gives None. A naive date is treated as UTC.
   - `HostLimiter.slot` takes the host lock, sleeps for spacing, then takes the global semaphore. Lock order stays host then global, so there is no deadlock.
+
+- **D-272 KF-04 implementation (robots matcher).**
+  - `src/robots.py` parses groups (consecutive user-agent lines share a group), picks the `oppo-tg` group else `*` (no merging across groups), strips comments and leading whitespace, ignores empty Allow/Disallow lines, and uppercases percent escapes on both sides.
+  - Longest pattern wins, Allow wins a tie, no matching rule allows. `PoliteClient._robots_allowed` calls it; caching and 4xx/5xx handling are unchanged.

@@ -3363,7 +3363,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - With `max_concurrent_requests=1`, a request to host B is not delayed by host A's spacing sleep (fake monotonic and sleep).
   - The existing limiter tests pass.
 
-### KF-04 [ ] Wildcard-aware robots.txt matching (D-267)
+### KF-04 [x] Wildcard-aware robots.txt matching (D-267)
 - Build:
   - New `src/robots.py`: `parse(body) -> Rules` and `allowed(rules, agent, path_with_query) -> bool`, per RFC 9309:
     - group selection: the group whose user-agent token matches `oppo-tg` (case-insensitive), else `*`;

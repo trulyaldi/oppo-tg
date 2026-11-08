@@ -13,10 +13,10 @@ from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from typing import Any
 from urllib.parse import urlsplit
-from urllib.robotparser import RobotFileParser
 
 import httpx
 
+from src import robots
 from src.config import DEFAULT_HTTP_CONTACT, PolitenessConfig
 from src.politeness import HostLimiter
 
@@ -280,12 +280,10 @@ class PoliteClient:
                 )
         if allowed_all:
             return True
-        rp = RobotFileParser()
-        rp.parse(body.splitlines())
         target = parts.path or "/"
         if parts.query:
             target += "?" + parts.query
-        return rp.can_fetch(ROBOTS_AGENT, target)
+        return robots.allowed(robots.parse(body), ROBOTS_AGENT, target)
 
     async def fetch(
         self,
