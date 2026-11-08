@@ -23,6 +23,53 @@ class Kind(StrEnum):
     OTHER = "other"
 
 
+class OpportunityType(StrEnum):
+    JOB = "job"
+    INTERNSHIP = "internship"
+    RESEARCH = "research"
+    FELLOWSHIP = "fellowship"
+    SCHOLARSHIP = "scholarship"
+    GRANT = "grant"
+    HACKATHON = "hackathon"
+    COMPETITION = "competition"
+    ACCELERATOR = "accelerator"
+    SUMMER_SCHOOL = "summer_school"
+    STARTUP_ROLE = "startup_role"
+    OTHER = "other"
+
+
+PROGRAM_TYPES = frozenset(
+    {
+        OpportunityType.GRANT,
+        OpportunityType.SCHOLARSHIP,
+        OpportunityType.FELLOWSHIP,
+        OpportunityType.HACKATHON,
+        OpportunityType.COMPETITION,
+        OpportunityType.ACCELERATOR,
+        OpportunityType.SUMMER_SCHOOL,
+    }
+)
+
+_KIND_TO_TYPE = {
+    Kind.JOB: OpportunityType.JOB,
+    Kind.INTERNSHIP: OpportunityType.INTERNSHIP,
+    Kind.HACKATHON: OpportunityType.HACKATHON,
+    Kind.COMPETITION: OpportunityType.COMPETITION,
+    Kind.FELLOWSHIP: OpportunityType.FELLOWSHIP,
+    Kind.RESEARCH: OpportunityType.RESEARCH,
+    Kind.STARTUP: OpportunityType.STARTUP_ROLE,
+    Kind.OTHER: OpportunityType.OTHER,
+}
+
+
+def kind_to_type(kind: Kind | str) -> OpportunityType:
+    """Map the source's coarse kind to an opportunity type (D-247); unknown gives `other`."""
+    try:
+        return _KIND_TO_TYPE[Kind(kind)]
+    except ValueError:
+        return OpportunityType.OTHER
+
+
 MAX_DESCRIPTION_CHARS = 8000
 
 

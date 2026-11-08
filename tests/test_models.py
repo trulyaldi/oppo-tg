@@ -44,3 +44,18 @@ def test_score_ok(s):
 def test_score_bad(s):
     with pytest.raises(ValidationError):
         ScoreResult(score=s, reason="r")
+
+
+def test_opportunity_types_and_kind_map():
+    from src.models import PROGRAM_TYPES, Kind, OpportunityType, kind_to_type
+
+    assert len(OpportunityType) == 12
+    assert {t.value for t in PROGRAM_TYPES} == {
+        "grant", "scholarship", "fellowship", "hackathon", "competition", "accelerator",
+        "summer_school",
+    }  # fmt: skip
+    assert kind_to_type(Kind.STARTUP) is OpportunityType.STARTUP_ROLE
+    assert kind_to_type("research") is OpportunityType.RESEARCH
+    assert kind_to_type("weird") is OpportunityType.OTHER
+    for k in Kind:
+        assert kind_to_type(k) in OpportunityType

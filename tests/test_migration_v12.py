@@ -22,16 +22,17 @@ def test_v11_to_v12_adds_triage_and_is_idempotent(tmp_path):
     c.close()
     conn = db.connect(path)
     db.migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION == 12
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION
     row = conn.execute("SELECT * FROM postings WHERE id='p1'").fetchone()
     assert row["triage_attempts"] == 0 and row["status"] == "scored"
     conn.execute(
-        "INSERT INTO triage_results VALUES ('p1','h',1,'r','m','v',?)",
+        "INSERT INTO triage_results (posting_id, content_hash, relevant, reason, model,"
+        " prompt_version, created_at) VALUES ('p1','h',1,'r','m','v',?)",
         (TS,),
     )
     conn.commit()
     db.migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 12
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION
     assert conn.execute("SELECT COUNT(*) FROM triage_results").fetchone()[0] == 1
     conn.execute("DELETE FROM postings WHERE id='p1'")  # cascade, with foreign keys on
     conn.commit()

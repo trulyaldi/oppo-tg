@@ -3459,7 +3459,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 
 ### Part C: opportunity types
 
-### KF-07 [ ] Schema v13: opportunity type, language, extraction columns, scorer contract columns (D-247, D-265)
+### KF-07 [x] Schema v13: opportunity type, language, extraction columns, scorer contract columns (D-247, D-265)
 - Build:
   - `OpportunityType` StrEnum in `src/models.py` with the 12 values, plus `PROGRAM_TYPES` and `kind_to_type(kind)` (D-247 map).
   - `SCHEMA_13`:

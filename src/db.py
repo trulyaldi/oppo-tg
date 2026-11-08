@@ -10,12 +10,12 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-from src.models import Posting, ScoreResult
+from src.models import OpportunityType, Posting, ScoreResult, kind_to_type
 from src.text import content_hash
 
 log = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 MAX_SCORE_ATTEMPTS = 3
 MAX_TRIAGE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
@@ -210,6 +210,28 @@ CREATE TABLE triage_results (
 ALTER TABLE postings ADD COLUMN triage_attempts INTEGER NOT NULL DEFAULT 0
 """
 
+SCHEMA_13 = """
+ALTER TABLE postings ADD COLUMN opportunity_type TEXT;
+ALTER TABLE postings ADD COLUMN type_source TEXT;
+ALTER TABLE postings ADD COLUMN language TEXT;
+ALTER TABLE postings ADD COLUMN ex_title TEXT;
+ALTER TABLE postings ADD COLUMN ex_company TEXT;
+ALTER TABLE postings ADD COLUMN ex_location TEXT;
+ALTER TABLE postings ADD COLUMN ex_deadline TEXT;
+ALTER TABLE postings ADD COLUMN contact_key TEXT;
+ALTER TABLE postings ADD COLUMN scam TEXT;
+ALTER TABLE postings ADD COLUMN repost_key TEXT;
+ALTER TABLE scores ADD COLUMN contract INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE scores ADD COLUMN reason_generic INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE triage_results ADD COLUMN type TEXT;
+ALTER TABLE triage_results ADD COLUMN language TEXT;
+CREATE INDEX idx_postings_repost_key ON postings(repost_key);
+UPDATE postings SET type_source='kind', opportunity_type=CASE kind
+  WHEN 'job' THEN 'job' WHEN 'internship' THEN 'internship' WHEN 'hackathon' THEN 'hackathon'
+  WHEN 'competition' THEN 'competition' WHEN 'fellowship' THEN 'fellowship'
+  WHEN 'research' THEN 'research' WHEN 'startup' THEN 'startup_role' ELSE 'other' END
+"""
+
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
@@ -239,6 +261,7 @@ _MIGRATIONS = (
     SCHEMA_10,
     SCHEMA_11,
     SCHEMA_12,
+    SCHEMA_13,
 )
 
 
@@ -307,8 +330,9 @@ def upsert_posting(
     cur = conn.execute(
         "INSERT OR IGNORE INTO postings (id, source, external_id, title, company, url, location,"
         " remote, description, posted_at, deadline, kind, raw_tags, fingerprint,"
-        " first_seen_at, last_seen_at, target, source_published_at, content_hash, baseline)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        " first_seen_at, last_seen_at, target, source_published_at, content_hash, baseline,"
+        " opportunity_type, type_source)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (
             p.id,
             p.source,
@@ -330,6 +354,8 @@ def upsert_posting(
             published,
             chash,
             int(baseline),
+            kind_to_type(p.kind).value,
+            "kind",
         ),
     )
     if cur.rowcount == 1:
@@ -464,6 +490,35 @@ def get_triage_result(conn: sqlite3.Connection, posting_id: str, chash: str) -> 
     return conn.execute(
         "SELECT * FROM triage_results WHERE posting_id=? AND content_hash=?", (posting_id, chash)
     ).fetchone()
+
+
+_TYPE_RANK = {"kind": 0, "config": 1, "triage": 2, "scorer": 3}
+
+
+def set_opportunity_type(
+    conn: sqlite3.Connection, posting_id: str, opp_type: str, source: str
+) -> bool:
+    """Set the type unless a higher-precedence source already did (scorer > triage > config > kind).
+
+    Raises ValueError on an invalid type or source. Returns True when the row was changed.
+    """
+    try:
+        value = OpportunityType(opp_type).value
+    except ValueError:
+        raise ValueError(f"invalid opportunity type: {opp_type!r}") from None
+    if source not in _TYPE_RANK:
+        raise ValueError(f"invalid type source: {source!r}")
+    row = conn.execute("SELECT type_source FROM postings WHERE id=?", (posting_id,)).fetchone()
+    if row is None:
+        return False
+    if _TYPE_RANK.get(row["type_source"], -1) > _TYPE_RANK[source]:
+        return False
+    with conn:
+        conn.execute(
+            "UPDATE postings SET opportunity_type=?, type_source=? WHERE id=?",
+            (value, source, posting_id),
+        )
+    return True
 
 
 def save_triage_result(

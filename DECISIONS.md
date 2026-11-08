@@ -1556,3 +1556,9 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - `hard_blocker` returns the first matching cue entry in file order ("citizens only" before "us citizens only"); the old code returned the first configured keyword.
   - `AppConfig.from_dict` rejects the seven moved keys with "<key> moved to config/cues.toml" (`MOVED_FILTER_KEYS`). `max_age_days`, `hard_blocker_action` and `hard_blocker_penalty` stay in `[filters]`.
   - `test_cues.test_nothing_else_in_src_uses_cues` now also allows `filters.py` and `config.py`. `test_evals_runner` triage test uses "Fake Intern D" because "Nurse" is now a negative cue and was filtered before triage.
+
+- **D-275 KF-07 implementation (schema v13).**
+  - `OpportunityType`, `PROGRAM_TYPES`, `kind_to_type` live in `src/models.py`; an unknown kind maps to `other`.
+  - `upsert_posting` writes `opportunity_type` and `type_source='kind'` in the INSERT only; the update branch never touches them.
+  - `db.set_opportunity_type` ranks sources kind 0, config 1, triage 2, scorer 3. A lower or equal-rank-below source is ignored (returns False); an equal or higher source overwrites. An invalid type or source raises ValueError. A row with NULL `type_source` counts as lowest.
+  - The new `triage_results` columns shifted positional `INSERT ... VALUES` in two older tests (`test_stats`, `test_migration_v12`); they now name their columns. Hard-coded `== 12` version asserts in older migration tests now compare to `db.SCHEMA_VERSION`.

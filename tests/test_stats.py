@@ -119,7 +119,8 @@ def test_stats_triage_line_counts_today(conn):
         (p3, 1, NOW - timedelta(days=2)),  # not today
     ):
         conn.execute(
-            "INSERT INTO triage_results VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO triage_results (posting_id, content_hash, relevant, reason, model,"
+            " prompt_version, created_at) VALUES (?,?,?,?,?,?,?)",
             (pid, "h", rel, "r", "m", "v", at.isoformat()),
         )
     conn.execute("UPDATE postings SET status='triage_error' WHERE id=?", (p3,))
