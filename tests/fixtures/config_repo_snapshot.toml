@@ -204,6 +204,83 @@ company = "Science Fund"
 kind = "other"
 type = "grant"
 
+[[sources.pagewatch.pages]]
+url = "https://summerstudents.desy.de/"
+name = "DESY Summer Students"
+company = "DESY"
+kind = "other"
+type = "summer_school"
+
+[[sources.pagewatch.pages]]
+url = "https://www.daad.de/rise/en/rise-worldwide/"
+name = "DAAD RISE Worldwide"
+company = "DAAD RISE Worldwide"
+kind = "research"
+type = "research"
+
+[[sources.pagewatch.pages]]
+url = "https://www.mitacs.ca/our-programs/globalink-research-internship-students/"
+name = "Mitacs Globalink Research Internship"
+company = "Mitacs Globalink"
+kind = "research"
+type = "research"
+
+[[sources.pagewatch.pages]]
+url = "https://summerofcode.withgoogle.com/"
+name = "Google Summer of Code"
+company = "Google Summer of Code"
+kind = "internship"
+type = "internship"
+
+[[sources.pagewatch.pages]]
+url = "https://www.oxfordml.school/"
+name = "Oxford ML Summer School"
+company = "Oxford ML Summer School"
+kind = "other"
+type = "summer_school"
+
+[[sources.pagewatch.pages]]
+url = "https://www.eeml.eu/"
+name = "EEML Summer School"
+company = "EEML"
+kind = "other"
+type = "summer_school"
+
+[[sources.pagewatch.pages]]
+url = "https://www.m2lschool.org/"
+name = "M2L School"
+company = "M2L School"
+kind = "other"
+type = "summer_school"
+
+[[sources.pagewatch.pages]]
+url = "https://prosperity.imc.com/"
+name = "IMC Prosperity"
+company = "IMC"
+kind = "competition"
+type = "competition"
+
+[[sources.pagewatch.pages]]
+url = "https://www.janestreet.com/join-jane-street/programs-and-events/"
+name = "Jane Street Programs and Events"
+company = "Jane Street"
+kind = "internship"
+type = "internship"
+
+[[sources.pagewatch.pages]]
+url = "https://deepmind.google/careers/"
+name = "Google DeepMind Careers"
+company = "Google DeepMind"
+kind = "job"
+type = "job"
+
+[[sources.pagewatch.pages]]
+url = "https://www.mpg.de/jobboard"
+name = "Max Planck Society Job Board"
+company = "Max Planck Society"
+kind = "research"
+type = "research"
+
 [sources.devpost]
 # Disabled: Devpost ToS forbids automated access (D-50)
 enabled = false

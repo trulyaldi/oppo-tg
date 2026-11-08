@@ -3852,7 +3852,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - The 12 KZ URLs equal the D-245 list.
   - A Halyk pagewatch posting classifies `kz_employer`, and a Science Fund posting typed `grant` classifies `kz_program`.
 
-### KF-26 [ ] Vetted international fellowship, school, research and competition pages (D-245)
+### KF-26 [x] Vetted international fellowship, school, research and competition pages (D-245)
 - Build:
   - Add the 11 international pages from D-245 with their `type`. Their hosts are already in the robots fixture.
   - Add the companies to `intl_top_tier.yaml` only if they are already top-tier: IMC, Jane Street and Google DeepMind are present. Leave the others unlisted (intl_other through the LLM).

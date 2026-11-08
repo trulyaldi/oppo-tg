@@ -203,6 +203,40 @@ D245_KZ = {
 }
 
 
+D245_INTL = {
+    "https://summerstudents.desy.de/",
+    "https://www.daad.de/rise/en/rise-worldwide/",
+    "https://www.mitacs.ca/our-programs/globalink-research-internship-students/",
+    "https://summerofcode.withgoogle.com/",
+    "https://www.oxfordml.school/",
+    "https://www.eeml.eu/",
+    "https://www.m2lschool.org/",
+    "https://prosperity.imc.com/",
+    "https://www.janestreet.com/join-jane-street/programs-and-events/",
+    "https://deepmind.google/careers/",
+    "https://www.mpg.de/jobboard",
+}
+D245_EXISTING = {
+    "https://www.imc.com/eu/careers/",
+    "https://www.optiver.com/join-us/jobs/",
+    "https://www.janestreet.com/join-jane-street/internships/",
+    "https://home.cern/summer-student-programme",
+}
+D245_SKIPPED = (
+    "kaust.edu.sa",
+    "lablab",
+    "hackjunction",
+    "hackzurich",
+    "telecom.kz",
+    "kmg.kz",
+    "twosigma",
+    "simonsfoundation",
+    "citadel",
+    "hudsonrivertrading",
+    "g-research",
+)
+
+
 def _repo_pages():
     return tomllib.loads((ROOT / "config.toml").read_text())["sources"]["pagewatch"]["pages"]
 
@@ -211,7 +245,7 @@ def test_repo_pages_have_valid_types_and_kz_urls_match_d245():
     from src.models import OpportunityType
 
     pages = _repo_pages()
-    assert len(pages) == 19
+    assert len(pages) == 30
     for p in pages:
         assert OpportunityType(p["type"])
     urls = {p["url"] for p in pages}
@@ -280,3 +314,15 @@ def test_kz_pagewatch_classification():
         "kz_employer"
     )
     assert cat("EPAM Kazakhstan", "internship") == "unknown"
+
+
+def test_configured_url_set_is_exactly_d245_plus_existing():
+    pages = _repo_pages()
+    urls = [p["url"] for p in pages]
+    assert len(urls) == len(set(urls))
+    existing = {u for u in urls if u not in D245_KZ | D245_INTL}
+    assert len(existing) == 7
+    assert existing >= D245_EXISTING
+    assert set(urls) == D245_KZ | D245_INTL | existing
+    for u in urls:
+        assert not any(frag in u for frag in D245_SKIPPED), u

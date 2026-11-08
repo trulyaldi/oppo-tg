@@ -1679,3 +1679,8 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - **kind vs type for new pages.** `kind` must be a valid `Kind`, which has no summer_school or grant, so the NU summer schools page and Science Fund use kind `other` and carry the real value in `type`.
   - **Pages.** The 12 KZ pages are exactly the D-245 list (EPAM Kazakhstan campus included, company "EPAM Kazakhstan"). EPAM is not added to `kz_employers` (intl by the HQ rule), so it stays unknown to the watchlist. ISSAI and Science Fund are added to `kz_employers.yaml` (startup false), with the weights snapshot copy and the count test (15 to 17) updated.
   - **Robots test** checks every configured URL against `robots_pagewatch_seeds.json` with `src/robots.py` and the `oppo-tg` agent; no network.
+
+- **D-294 KF-26: the 11 vetted international pagewatch pages.**
+  - **Pages.** Exactly the D-245 international list, no skipped URL. `kind` must be a valid `Kind`, which has no summer_school: DESY, Oxford ML, EEML and M2L use kind `other` with the real value in `type` (same rule as D-293). IMC Prosperity uses kind and type `competition`; Google Summer of Code is `internship`; DAAD RISE, Mitacs and Max Planck are `research`; DeepMind is `job`.
+  - **Companies.** Names follow the D-245 labels. IMC, Jane Street and "Google DeepMind" already match `intl_top_tier.yaml`, so that file is unchanged. DESY, DAAD, Mitacs, GSoC, Oxford ML, EEML, M2L and Max Planck stay unlisted (intl_other through the LLM).
+  - **Tests.** An exact-set test (11 + 12 KZ + 7 existing, 30 total) and a check that no skipped D-245 host appears. The existing robots-fixture test already covers every configured URL; all new hosts are in the fixture.
