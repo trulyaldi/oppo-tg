@@ -88,7 +88,9 @@ def test_apply_filters_sets_status():
     assert got["Hack Night"] == ("new", None)
 
 
-@pytest.mark.parametrize("title", ["Senior Internal Tools Engineer", "Head of International Sales"])
+@pytest.mark.parametrize(
+    "title", ["Senior Internal Tools Engineer", "Head of International Data Science"]
+)
 def test_internal_does_not_exempt_senior_only(title):
     assert hard_filter(_p(title), CFG, TODAY) == "senior_only"
 
@@ -209,7 +211,6 @@ def test_published_at_never_affects_stale_filter():
 
 def _ai_ml_cfg():
     cfg = AppConfig.load(Path(__file__).parent / "fixtures" / "config_repo_snapshot.toml")
-    cfg.filters["positive_title_keywords"] = ["ai", "ml"]
     return cfg
 
 
@@ -226,3 +227,32 @@ def test_ai_ml_substring_rejected(title):
 )
 def test_ai_ml_whole_word_accepted(title):
     assert relevance_ok(_p(title), _ai_ml_cfg())
+
+
+def test_engineer_titles_keep_recall():
+    # D-274: bare engineer* restored so engineering titles pass the prefilter as before.
+    for title in ("Software Engineer", "Infrastructure Engineer", "Инженер по данным"):
+        assert relevance_ok(_p(title), CFG), title
+
+
+def test_hard_blocker_phrases_from_cue_file():
+    from src.pipeline.filters import hard_blocker
+
+    assert hard_blocker(_p("Quant", description="US citizens only"), CFG) == "citizens only"
+    assert hard_blocker(_p("Quant", description="Huge clearance sale"), CFG) is None
+
+
+def test_moved_keyword_key_rejected():
+    for key in ("spam_keywords", "positive_title_keywords", "protect_title_keywords"):
+        with pytest.raises(ValueError, match=f"{key} moved to config/cues.toml"):
+            AppConfig.from_dict({"filters": {key: ["x"]}})
+
+
+def test_bad_cue_file_fails_loudly(tmp_path):
+    from src.cues import CueError
+
+    bad = tmp_path / "cues.toml"
+    bad.write_text('[negative]\nen = ["ai*"]\n', encoding="utf-8")
+    cfg = AppConfig.from_dict({"filters": {"cues_file": str(bad)}})
+    with pytest.raises(CueError):
+        hard_filter(_p("Data Intern"), cfg, TODAY)

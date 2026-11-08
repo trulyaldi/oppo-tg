@@ -199,7 +199,8 @@ in `src/config.py`; this table is checked against it by a test.
 - `[sources.jobicy]`: `industries` slugs and optional `tags`.
 - `[sources.telegram_channels] channels`: public channel handles, for example `["some_channel"]`.
   Empty by default: you must fill it in, and it only works after the Telethon login below.
-- `[filters]`: title keywords, spam, unpaid and senior-only keywords, `max_age_days`.
+- `[filters]`: `cues_file` (default `config/cues.toml`, which holds the title, spam, unpaid,
+  seniority, negative, protect and hard-blocker keyword lists, D-257), `max_age_days`.
 - `[thresholds]`: `digest_min_score`, `alert_score`,
   `alert_deadline_days`, `alert_deadline_min_score`. The digest size comes from `digest_quotas` in
   `config/weights.yaml`.
@@ -410,13 +411,13 @@ Kazakhstan employers (`region_hint = "kz"`, D-194).
 
 ### Hard blockers
 
-`[filters] hard_blocker_keywords` (citizens only, security clearance, polygraph, ...) are searched
+The `[hard_blockers]` cues in `config/cues.toml` (citizens only, security clearance, polygraph, ...) are searched
 in the title and description. By default (`hard_blocker_action = "lower"`) the posting stays in
 the digest and /top with a "Hard blocker" flag, its adjusted score is reduced by
 `hard_blocker_penalty` (2.0), and it is never sent as an alert (SPEC says to flag, not filter,
 work-authorization requirements). `"filter"` drops it before triage instead (D-195, D-222).
-Also new in `[filters]`: `negative_title_keywords` (with `protect_title_keywords` as exceptions)
-and `sr` as a seniority keyword.
+The `[negative]` cues (with `[protect]` as exceptions) and `sr` as a seniority cue live in the
+same file. A leftover `[filters]` keyword key fails at load with "<key> moved to config/cues.toml".
 
 ### Sources left out of this round
 

@@ -145,7 +145,7 @@ def test_main_pins_sdk_loggers_even_with_anthropic_log_debug(tmp_path, monkeypat
 class TriageFake:
     """Triage replies: relevant=false for titles containing a marker, else true."""
 
-    def __init__(self, reject=("Nurse",)):
+    def __init__(self, reject=("Fake",)):
         self.reject, self.calls = reject, []
         self.messages = self
 
@@ -161,7 +161,7 @@ def test_triage_eval_reports_recall_offline():
         item("Quant Intern A", 8, 10),  # positive, kept
         item("Quant Intern B", 7, 9),  # positive, kept
         item("ML Intern C", 6, 8),  # positive, kept
-        item("Nurse Intern D", 0, 2),  # negative, rejected
+        item("Fake Intern D", 0, 2),  # negative, rejected
         item("Unpaid Intern", 7, 9, description="This is an unpaid internship"),  # filtered first
     ]
     client = TriageFake()

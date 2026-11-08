@@ -30,7 +30,7 @@ def make(sources, handler=None, filters=None):
     cfg = AppConfig.from_dict(
         {
             "sources": sources,
-            "filters": filters or {"positive_title_keywords": ["a"]},
+            "filters": filters or {},
         }
     )
     conn = dbm.connect(":memory:")

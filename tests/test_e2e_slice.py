@@ -66,8 +66,6 @@ async def test_end_to_end_slice():
                 }
             },
             "filters": {
-                "positive_title_keywords": ["intern", "research", "ai", "ml"],
-                "senior_only_keywords": ["senior"],
                 "max_age_days": 60,
             },
         }

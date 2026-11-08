@@ -6,6 +6,6 @@ boards = ["examplecorp"]
 enabled = false
 
 [filters]
-positive_title_keywords = ["intern", "quant"]
+cues_file = "config/cues.toml"
 
 [thresholds]

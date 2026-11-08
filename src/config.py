@@ -355,6 +355,18 @@ class DiscoveryConfig:
         return cls(**data)
 
 
+# Keyword lists that moved from [filters] to the cue file (D-257).
+MOVED_FILTER_KEYS = (
+    "positive_title_keywords",
+    "spam_keywords",
+    "unpaid_keywords",
+    "senior_only_keywords",
+    "hard_blocker_keywords",
+    "negative_title_keywords",
+    "protect_title_keywords",
+)
+
+
 @dataclass(frozen=True)
 class AppConfig:
     sources: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -384,9 +396,13 @@ class AppConfig:
         ScoringConfig.from_mapping(scoring)  # fail fast at load
         triage = dict(data.get("triage", {}))
         TriageConfig.from_mapping(triage)  # fail fast at load
+        filters = dict(data.get("filters", {}))
+        for key in MOVED_FILTER_KEYS:
+            if key in filters:
+                raise ValueError(f"{key} moved to config/cues.toml")
         return cls(
             sources=sources,
-            filters=dict(data.get("filters", {})),
+            filters=filters,
             thresholds=Thresholds(**th),
             ranking=dict(data.get("ranking", {})),
             outreach=outreach,

@@ -138,7 +138,7 @@ def test_coverage_and_freshness_readme():
         "[discovery]",
         "[triage]",
         "[scoring]",
-        "hard_blocker_keywords",
+        "config/cues.toml",
         "COLLECT_CRON_HOURS` is ignored",
         "hand-written",
         "join the channels yourself",

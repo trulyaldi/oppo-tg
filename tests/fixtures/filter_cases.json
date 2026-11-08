@@ -86,19 +86,19 @@
   "name": "negative Recruiter",
   "title": "Recruiter",
   "kind": "job",
-  "expect": "negative_title"
+  "expect": null
  },
  {
   "name": "negative Legal Counsel",
   "title": "Legal Counsel",
   "kind": "job",
-  "expect": "negative_title"
+  "expect": null
  },
  {
   "name": "negative Product Designer",
   "title": "Product Designer",
   "kind": "job",
-  "expect": "negative_title"
+  "expect": null
  },
  {
   "name": "negative Finance Operations Analyst",

@@ -145,32 +145,14 @@ enabled = true
 channels = []
 
 [filters]
-positive_title_keywords = [
-  "intern", "quant", "research", "data", "ml", "machine learning", "ai",
-  "scientist", "analyst", "engineer", "developer", "trader",
-  # Russian stems (prefix match): analyst, data, engineer, developer, programmer,
-  # researcher, scientist, trader, machine, intern(ship), quant
-  "аналитик", "данны", "инженер", "разработчик", "программист", "исследовател",
-  "учены", "учёны", "трейдер", "машинн", "стаж", "квант",
-]
-spam_keywords = ["crypto airdrop", "get rich", "mlm", "pyramid"]
-unpaid_keywords = ["unpaid", "no compensation", "volunteer only"]
-senior_only_keywords = [
-  "senior", "staff", "principal", "director", "head of", "lead", "sr",
-  # Russian seniority stems (prefix match): senior, leading, head, chief, director
-  "старш", "ведущ", "руководител", "главн", "директор",
-]
+# Keyword lists (positive, spam, unpaid, seniority, negative, protect, hard blockers) live in
+# the cue file (D-257); the path is relative to the repo root.
+cues_file = "config/cues.toml"
 max_age_days = 60
-# D-195: phrases that filter job/internship titles as negative_title unless a protect keyword
-# matches. Bare "finance" is excluded (it would kill quant-finance titles).
-negative_title_keywords = [
-  "solutions engineer", "support engineer", "sales engineer", "recruiter", "recruiting",
-  "legal counsel", "product designer", "ux designer", "finance operations", "sales",
-  "account manager", "customer success", "paralegal", "accountant",
-]
-protect_title_keywords = [
-  "quant", "quantitative", "machine learning", "research scientist", "data scientist",
-]
+# D-195: work-authorization blockers (config/cues.toml [hard_blockers]). "lower" flags and
+# penalizes the adjusted score, never alerts; "filter" drops the posting before triage.
+hard_blocker_action = "lower"  # lower | filter
+hard_blocker_penalty = 2.0
 
 [thresholds]
 digest_min_score = 5.0

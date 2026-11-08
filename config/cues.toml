@@ -215,8 +215,8 @@ ru = ["финтех*", "финансов* технологи*", "кредитн*
 kk = ["финтех*", "қаржылық технологи*", "кредиттік скоринг*", "төлем жүйе*", "цифрлық банк*"]
 
 [fields.software]
-en = ["software", "developer*", "programmer*", "programming", "full stack", "fullstack", "full-stack", "devops", "sre", "site reliability", "platform engineer*", "swe"]
-ru = ["разработчик*", "программист*", "программировани*", "программн* обеспечени*", "девопс*", "фулстек*", "фуллстек*", "инженер-программист*"]
+en = ["software", "developer*", "programmer*", "programming", "full stack", "fullstack", "full-stack", "devops", "sre", "site reliability", "platform engineer*", "swe", "engineer*"]
+ru = ["разработчик*", "программист*", "программировани*", "программн* обеспечени*", "девопс*", "фулстек*", "фуллстек*", "инженер-программист*", "инженер*"]
 kk = ["бағдарламашы*", "бағдарламалау*", "бағдарламалық*", "әзірлеуші*", "девопс*", "фуллстек*"]
 
 [fields.backend]
@@ -283,7 +283,8 @@ en = [
   "cleaner*", "security guard*", "janitor*", "receptionist*", "secretary", "office manager*",
   "administrative assistant*", "retail", "store manager*", "cabin crew", "flight attendant*",
   "stewardess*", "maintenance", "mechanic*", "electrician*", "plumber*", "welder*", "nurse*",
-  "data entry",
+  "data entry", "support engineer*", "solutions engineer*", "sales engineer*",
+  "legal counsel*", "finance operations",
 ]
 ru = [
   "продаж*", "продавц*", "продавец*", "рекрутер*", "рекрутинг*", "подбор* персонал*",

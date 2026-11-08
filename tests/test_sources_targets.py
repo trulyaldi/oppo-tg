@@ -22,7 +22,7 @@ def _setup(boards, statuses):
     cfg = AppConfig.from_dict(
         {
             "sources": {"greenhouse": {"enabled": True, "boards": boards}},
-            "filters": {"positive_title_keywords": ["a"]},
+            "filters": {},
         }
     )
     conn = dbm.connect(":memory:")

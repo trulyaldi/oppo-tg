@@ -100,7 +100,7 @@ async def test_tier1_board_304_bumps_last_seen_and_inserts_nothing():
     cfg = AppConfig.from_dict(
         {
             "sources": {"greenhouse": {"enabled": True, "boards": ["a"]}},
-            "filters": {"positive_title_keywords": ["a"]},
+            "filters": {},
         }
     )
 

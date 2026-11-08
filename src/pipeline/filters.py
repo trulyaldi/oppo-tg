@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from src import db
 from src.clock import Clock
 from src.config import AppConfig
+from src.cues import Cues, load_cues, match_any, which
 from src.models import Kind, Posting
-from src.text import INTERN_RE
 
 LOCAL_TZ = ZoneInfo("Asia/Almaty")
 DEFAULT_MAX_AGE_DAYS = 60
@@ -21,36 +21,24 @@ _JOB_KINDS = (Kind.JOB, Kind.INTERNSHIP)
 _NO_UNPAID_CHECK = (Kind.HACKATHON, Kind.COMPETITION, Kind.FELLOWSHIP)
 # Sources whose pages the user curates by hand: their items skip the title relevance check.
 _RELEVANCE_EXEMPT_SOURCES = ("pagewatch",)
-# PLAN 1.8 junior markers that waive senior_only (intern is handled by INTERN_RE).
-# Russian trainee forms only (стажер/стажёр/стажировка); bare 'стаж' means experience (D-82).
-_JUNIOR_RE = re.compile(
-    r"\b(?:junior|graduate|new grad|student|entry|trainee)\b|\bстаж(?:ер|ёр|ир)", re.I
-)
-_EARN_SPAM = re.compile(
-    r"\bearn\s+(?:up to\s+)?[$€£]\s?\d[\d,]*\s*(?:/|per\s+)\s*(?:day|week|hour)", re.I
-)
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+_DROP_REASON = {"drop:seniority": "senior_only", "drop:negative": "negative_title"}
 
 
-def _kw_match(keyword: str, text: str, prefix: bool) -> bool:
-    if keyword.casefold() == "intern":
-        return INTERN_RE.search(text) is not None
-    pat = r"\b" + re.escape(keyword.casefold()) + (r"\w*" if prefix else r"\b")
-    return re.search(pat, text.casefold()) is not None
+def load_filter_cues(cfg: AppConfig) -> Cues:
+    """The cue file named by [filters] cues_file (relative to the repo root); a bad file raises."""
+    raw = cfg.filters.get("cues_file")
+    if raw is None:
+        return load_cues()
+    path = Path(str(raw))
+    return load_cues(path if path.is_absolute() else _REPO_ROOT / path)
 
 
-def _any_kw(keywords: list[str], text: str) -> bool:
-    # Short keywords (ml, ai) must match whole words; longer ones match as prefixes
-    # so that "intern" covers "internship" and "engineer" covers "engineering".
-    return any(_kw_match(k, text, prefix=len(k) > 3) for k in keywords)
-
-
-def hard_blocker(p: Posting, cfg: AppConfig) -> str | None:
-    """First configured work-authorization phrase found in title or description (D-195)."""
-    haystack = f"{p.title}\n{p.description}"
-    for kw in cfg.filters.get("hard_blocker_keywords", []):
-        if _kw_match(str(kw), haystack, prefix=False):
-            return str(kw)
-    return None
+def hard_blocker(p: Posting, cfg: AppConfig, cues: Cues | None = None) -> str | None:
+    """First work-authorization phrase of the cue file found in title or description (D-195)."""
+    cues = cues or load_filter_cues(cfg)
+    found = which(cues["hard_blockers"], f"{p.title}\n{p.description}")
+    return found[0] if found else None
 
 
 def hard_blocker_action(cfg: AppConfig) -> str:
@@ -65,30 +53,22 @@ def hard_blocker_penalty(cfg: AppConfig) -> float:
         return 2.0
 
 
-def hard_filter(p: Posting, cfg: AppConfig, today: date) -> str | None:
+def hard_filter(p: Posting, cfg: AppConfig, today: date, cues: Cues | None = None) -> str | None:
     """Return a filter reason, or None if the posting passes."""
     f: dict[str, Any] = cfg.filters
+    cues = cues or load_filter_cues(cfg)
     haystack = f"{p.title}\n{p.description}"
-    if _any_kw(list(f.get("spam_keywords", [])), haystack) or _EARN_SPAM.search(haystack):
+    if match_any(cues["spam"], haystack):
         return "spam"
-    if p.kind not in _NO_UNPAID_CHECK and _any_kw(list(f.get("unpaid_keywords", [])), haystack):
+    if p.kind not in _NO_UNPAID_CHECK and match_any(cues["unpaid"], haystack):
         return "unpaid"
-    if (
-        p.kind in _JOB_KINDS
-        and not INTERN_RE.search(p.title)
-        and not _JUNIOR_RE.search(p.title)
-        and _any_kw(list(f.get("senior_only_keywords", [])), p.title)
-    ):
-        return "senior_only"
-    if (
-        p.kind in _JOB_KINDS
-        and _any_kw(list(f.get("negative_title_keywords", [])), p.title)
-        and not _any_kw(list(f.get("protect_title_keywords", [])), p.title)
-    ):
-        return "negative_title"
+    if p.kind in _JOB_KINDS:
+        reason = _DROP_REASON.get(cues.title_decision(p.title))
+        if reason is not None:
+            return reason
     if p.deadline is not None and p.deadline < today:
         return "stale"
-    if hard_blocker_action(cfg) == "filter" and hard_blocker(p, cfg):
+    if hard_blocker_action(cfg) == "filter" and hard_blocker(p, cfg, cues):
         return "hard_blocker"
     max_age = int(f.get("max_age_days", DEFAULT_MAX_AGE_DAYS))
     if p.posted_at is not None:
@@ -100,11 +80,12 @@ def hard_filter(p: Posting, cfg: AppConfig, today: date) -> str | None:
     return None
 
 
-def relevance_ok(p: Posting, cfg: AppConfig) -> bool:
-    """JOB/INTERNSHIP titles must match a positive keyword; other kinds always pass."""
+def relevance_ok(p: Posting, cfg: AppConfig, cues: Cues | None = None) -> bool:
+    """JOB/INTERNSHIP titles must match a positive cue; other kinds always pass."""
     if p.kind not in _JOB_KINDS or p.source in _RELEVANCE_EXEMPT_SOURCES:
         return True
-    return _any_kw(list(cfg.filters.get("positive_title_keywords", [])), p.title)
+    cues = cues or load_filter_cues(cfg)
+    return cues.is_positive(p.title)
 
 
 def _row_to_posting(row: sqlite3.Row) -> Posting:
@@ -127,14 +108,15 @@ def _row_to_posting(row: sqlite3.Row) -> Posting:
 def apply_filters(conn: sqlite3.Connection, cfg: AppConfig, clock: Clock) -> dict[str, int]:
     """Set status 'filtered' + reason on failing 'new' postings; returns counts by reason."""
     today = clock.now().astimezone(LOCAL_TZ).date()
+    cues = load_filter_cues(cfg)
     counts: dict[str, int] = {}
     for row in conn.execute("SELECT * FROM postings WHERE status='new'").fetchall():
         p = _row_to_posting(row)
-        reason = hard_filter(p, cfg, today)
-        if reason is None and not relevance_ok(p, cfg):
+        reason = hard_filter(p, cfg, today, cues)
+        if reason is None and not relevance_ok(p, cfg, cues):
             reason = "irrelevant"
         if reason is None and hard_blocker_action(cfg) == "lower":
-            phrase = hard_blocker(p, cfg)
+            phrase = hard_blocker(p, cfg, cues)
             if phrase != row["hard_blocker"]:
                 conn.execute("UPDATE postings SET hard_blocker=? WHERE id=?", (phrase, row["id"]))
                 conn.commit()

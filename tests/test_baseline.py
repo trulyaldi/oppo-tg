@@ -28,7 +28,7 @@ class Env:
         self.cfg = AppConfig.from_dict(
             {
                 "sources": {"greenhouse": {"enabled": True, "boards": boards}},
-                "filters": {"positive_title_keywords": ["a"]},
+                "filters": {},
             }
         )
         self.conn = dbm.connect(":memory:")
@@ -141,7 +141,7 @@ async def test_new_board_baselines_only_itself():
     env.cfg = AppConfig.from_dict(
         {
             "sources": {"greenhouse": {"enabled": True, "boards": ["a", "b"]}},
-            "filters": {"positive_title_keywords": ["a"]},
+            "filters": {},
         }
     )
     env.extra["a"] = [new_job()]

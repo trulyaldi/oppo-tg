@@ -14,10 +14,7 @@ from src.pipeline.filters import apply_filters
 
 NOW = datetime(2026, 11, 5, 19, 30, tzinfo=UTC)
 CLOCK = FixedClock(NOW)
-FILTERS = {
-    "positive_title_keywords": ["quant", "engineer", "intern"],
-    "hard_blocker_keywords": ["citizens only", "security clearance"],
-}
+FILTERS: dict = {}
 
 
 def cfg(**extra):

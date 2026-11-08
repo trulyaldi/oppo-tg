@@ -3436,7 +3436,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - Each load-error case raises with the entry text.
   - Nothing else in `src/` reads the file yet, and every other test is unchanged.
 
-### KF-06 [ ] The pre-filter reads the cue file; `[filters]` keyword lists move out (D-257)
+### KF-06 [x] The pre-filter reads the cue file; `[filters]` keyword lists move out (D-257)
 - Build:
   - `[filters] cues_file = "config/cues.toml"`, resolved relative to the repo root like `weights_file`.
   - `src/pipeline/filters.py` takes `spam`, `seniority`, `junior`, `negative`, `protect`, `hard_blockers`, the positive title terms and (until KF-09) `unpaid` from `Cues`. It loads them once per `apply_filters` call, and a bad cue file fails loudly with the load error.
