@@ -1,0 +1,39 @@
+{
+ "generic": [
+  "Good match for your profile",
+  "Strong fit",
+  "Great opportunity for you",
+  "Relevant role and a solid background match",
+  "Good fit",
+  "This role fits your skills",
+  "Excellent match",
+  "Interesting opportunity",
+  "Strong match for the candidate",
+  "Relevant to your interests",
+  "Perfect role for your background",
+  "A very good fit overall",
+  "Matches your profile well",
+  "Decent opportunity, worth a look",
+  "Great fit for your skills and experience",
+  "Seems like a good match",
+  ""
+ ],
+ "concrete": [
+  "PyTorch and numerical optimization match; Almaty on-site",
+  "Sales role with no ML or math; needs 5 years of experience",
+  "Quant trading internship at IMC; probability and Python, Amsterdam",
+  "Needs EU work authorization; on-site Berlin only",
+  "Kazakh fintech startup hiring ML interns in Astana",
+  "Hackathon on LLM agents, prize pool, online; deadline soon",
+  "Scholarship for master's study abroad; requires IELTS 7",
+  "Frontend React job, no math or ML content",
+  "Research internship on reinforcement learning at KAIST",
+  "Unpaid marketing internship, unrelated to quant or ML",
+  "Summer school on stochastic calculus in Vienna, funded",
+  "Backend Go role at Almaty bank; no research angle",
+  "YC startup seeking founding ML engineer, remote worldwide",
+  "Grant for open-source math tooling; fits Python and numerics",
+  "Requires security clearance and US citizenship",
+  "Nazarbayev University lab: optimization and PDE research assistant"
+ ]
+}

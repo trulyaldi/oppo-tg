@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from src.models import OpportunityType, Posting, ScoreResult, kind_to_type
+from src.scoring.reason import clip_reason, is_generic
 from src.text import content_hash
 
 log = logging.getLogger(__name__)
@@ -610,8 +611,9 @@ def save_score(
         conn.execute(
             "INSERT OR REPLACE INTO scores (posting_id, base_score, adjusted_score, reason,"
             " deadline, red_flags, tags, model, prompt_version, scored_at, weights_version,"
-            " employer_region, region_confidence, employer_is_startup, visa_barrier)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,NULL,?,?,?,?)",
+            " employer_region, region_confidence, employer_is_startup, visa_barrier,"
+            " contract, reason_generic)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,NULL,?,?,?,?,2,?)",
             (
                 posting_id,
                 result.score,
@@ -627,12 +629,15 @@ def save_score(
                 result.region_confidence,
                 None if result.employer_is_startup is None else int(result.employer_is_startup),
                 None if result.visa_barrier is None else int(result.visa_barrier),
+                int(is_generic(result.reason)),
             ),
         )
         conn.execute(
             "UPDATE postings SET status='scored', score_attempts=score_attempts+1 WHERE id=?",
             (posting_id,),
         )
+    if "type" in result.model_fields_set:  # a missing or invalid type keeps the triage type
+        set_opportunity_type(conn, posting_id, result.type.value, "scorer")
 
 
 def record_score_error(conn: sqlite3.Connection, posting_id: str) -> None:
@@ -760,7 +765,8 @@ def recent_feedback_examples(
     """Active reactions of `action`, newest first, with title/company/tags/score."""
     rows = conn.execute(
         "SELECT p.id, p.title, p.company, p.kind, p.raw_tags, s.base_score AS score,"
-        " s.tags AS tags, r.updated_at AS reacted_at FROM reactions r"
+        " s.tags AS tags, s.reason AS reason,"
+        " r.updated_at AS reacted_at FROM reactions r"
         " JOIN postings p ON p.id=r.posting_id LEFT JOIN scores s ON s.posting_id=p.id"
         " WHERE r.action=? AND r.active=1 ORDER BY r.updated_at DESC, r.rowid DESC LIMIT ?",
         (action, limit),
@@ -772,6 +778,7 @@ def recent_feedback_examples(
             "company": r["company"],
             "kind": r["kind"],
             "tags": json.loads(r["tags"] or r["raw_tags"] or "[]"),
+            "reason": clip_reason(r["reason"] or ""),
             "score": r["score"],
             "reacted_at": r["reacted_at"],
         }

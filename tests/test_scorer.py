@@ -71,7 +71,7 @@ async def test_valid_saved(conn):
     assert row["base_score"] == 8.5 and row["model"] == "test-model" and row["prompt_version"]
     assert status(conn, pid)["status"] == "scored"
     kw = client.calls[0]
-    assert kw["max_tokens"] == 400 and kw["model"] == "test-model"
+    assert kw["max_tokens"] == 250 and kw["model"] == "test-model"
     assert "temperature" not in kw  # removed from the current SDK/models (D-83)
     assert kw["system"][0]["cache_control"] == {"type": "ephemeral"}
 
@@ -310,3 +310,72 @@ def test_rubric_clarifies_goal3_is_not_kz_hq_credit():
     text = (Path(sp.__file__).parent / "rubric.md").read_text()
     assert "not extra credit for a Kazakhstan headquarters" in text
     assert len(sp.prompt_version()) == 12  # hash of profile.md + rubric.md, bumps by itself
+
+
+# --- scorer contract v2 (KF-14, D-251) ---------------------------------------
+
+V2 = json.loads(
+    (__import__("pathlib").Path(__file__).parent / "fixtures" / "score_responses.json").read_text()
+)
+
+
+def test_max_tokens_is_250():
+    from src.scoring.scorer import MAX_TOKENS
+
+    assert MAX_TOKENS == 250
+
+
+async def test_v2_saved_with_contract_generic_and_scorer_type(conn):
+    (pid,) = add(conn, 1)
+    db.set_opportunity_type(conn, pid, "job", "triage")
+    reply = json.dumps(
+        {"score": 7, "reason": "Good match for your profile", "type": "summer_school"}
+    )
+    await scorer(conn, FakeClient([reply])).score_pending(10)
+    s = conn.execute("SELECT * FROM scores WHERE posting_id=?", (pid,)).fetchone()
+    assert s["contract"] == 2 and s["reason_generic"] == 1
+    row = conn.execute("SELECT opportunity_type, type_source FROM postings WHERE id=?", (pid,))
+    assert tuple(row.fetchone()) == ("summer_school", "scorer")
+
+
+async def test_long_reason_stored_clipped_and_concrete_not_flagged(conn):
+    add(conn, 1)
+    await scorer(conn, FakeClient([V2["long_reason"]["text"]])).score_pending(10)
+    s = conn.execute("SELECT reason, reason_generic FROM scores").fetchone()
+    assert len(s["reason"]) <= 110 and s["reason"].endswith("…") and s["reason_generic"] == 0
+
+
+async def test_missing_type_keeps_triage_type(conn):
+    (pid,) = add(conn, 1)
+    db.set_opportunity_type(conn, pid, "research", "triage")
+    await scorer(conn, FakeClient([V2["v1_shaped"]["text"]])).score_pending(10)
+    row = conn.execute("SELECT opportunity_type FROM postings WHERE id=?", (pid,)).fetchone()
+    assert row["opportunity_type"] == "research"
+    assert conn.execute("SELECT contract FROM scores").fetchone()["contract"] == 2
+
+
+class StopReasonClient(FakeClient):
+    async def create(self, **kw):
+        r = await super().create(**kw)
+        if len(self.calls) == 1:
+            r.stop_reason = "max_tokens"
+        return r
+
+
+async def test_max_tokens_truncation_logs_id_only_and_retries(conn, caplog):
+    (pid,) = add(conn, 1)
+    client = StopReasonClient(['{"score": 8, "reason": "Quant intern at IM', GOOD])
+    with caplog.at_level("WARNING"):
+        await scorer(conn, client).score_pending(10)
+    assert len(client.calls) == 2 and status(conn, pid)["status"] == "scored"
+    msgs = [r.getMessage() for r in caplog.records if "max_tokens" in r.getMessage()]
+    assert msgs and pid in msgs[0] and "Quant intern" not in msgs[0]
+
+
+async def test_scored_v1_rows_are_not_reselected(conn):
+    (pid,) = add(conn, 1)
+    await scorer(conn, FakeClient([GOOD])).score_pending(10)
+    conn.execute("UPDATE scores SET contract=1")
+    conn.commit()
+    assert db.pending_for_scoring(conn, 10) == []
+    assert status(conn, pid)["status"] == "scored"

@@ -1,18 +1,88 @@
 {
-  "ok": [
-    {"name": "plain", "text": "{\"score\": 8.5, \"reason\": \"Strong quant match\", \"deadline\": \"2026-12-01\", \"red_flags\": [\"visa\"], \"tags\": [\"quant\"]}", "score": 8.5, "deadline": "2026-12-01"},
-    {"name": "fenced", "text": "```json\n{\"score\": 7, \"reason\": \"ok\", \"deadline\": null, \"red_flags\": [], \"tags\": []}\n```", "score": 7.0, "deadline": null},
-    {"name": "string_score", "text": "{\"score\": \"8.5\", \"reason\": \"ok\", \"deadline\": null, \"red_flags\": [], \"tags\": []}", "score": 8.5, "deadline": null},
-    {"name": "multiline_reason", "text": "{\"score\": 5, \"reason\": \"line one\\n  line two\", \"deadline\": null, \"red_flags\": [], \"tags\": []}", "score": 5.0, "deadline": null}
-  ],
-  "bad": [
-    {"name": "score_too_high", "text": "{\"score\": 12, \"reason\": \"x\", \"deadline\": null, \"red_flags\": [], \"tags\": []}"},
-    {"name": "missing_reason", "text": "{\"score\": 5, \"deadline\": null, \"red_flags\": [], \"tags\": []}"},
-    {"name": "bad_deadline", "text": "{\"score\": 5, \"reason\": \"x\", \"deadline\": \"next week\", \"red_flags\": [], \"tags\": []}"},
-    {"name": "trailing_prose", "text": "{\"score\": 5, \"reason\": \"x\", \"deadline\": null, \"red_flags\": [], \"tags\": []}\nHope this helps!"},
-    {"name": "not_json", "text": "I think it is a good fit."},
-    {"name": "array", "text": "[1, 2]"}
-  ],
-  "new_format": {"text": "{\"score\": 8, \"reason\": \"ok\", \"deadline\": null, \"red_flags\": [], \"tags\": [], \"employer_region\": \"kz\", \"region_confidence\": 0.9, \"employer_is_startup\": true, \"visa_barrier\": false}", "employer_region": "kz", "region_confidence": 0.9, "employer_is_startup": true, "visa_barrier": false},
-  "bad_new": [{"name": "region_europe", "text": "{\"score\": 8, \"reason\": \"ok\", \"employer_region\": \"europe\"}"}, {"name": "confidence_high", "text": "{\"score\": 8, \"reason\": \"ok\", \"region_confidence\": 1.5}"}]
+ "ok": [
+  {
+   "name": "v2_plain",
+   "text": "{\"score\": 8.5, \"reason\": \"PyTorch and numerical optimization match; Almaty on-site\", \"type\": \"internship\", \"deadline\": \"2026-12-01\", \"red_flags\": [\"visa\"], \"employer_region\": \"kz\", \"region_confidence\": 0.9, \"employer_is_startup\": true, \"visa_barrier\": false}",
+   "score": 8.5,
+   "deadline": "2026-12-01"
+  },
+  {
+   "name": "fenced",
+   "text": "```json\n{\"score\": 7, \"reason\": \"ok\", \"type\": \"job\", \"deadline\": null, \"red_flags\": []}\n```",
+   "score": 7.0,
+   "deadline": null
+  },
+  {
+   "name": "string_score",
+   "text": "{\"score\": \"8.5\", \"reason\": \"ok\", \"type\": \"job\", \"deadline\": null, \"red_flags\": []}",
+   "score": 8.5,
+   "deadline": null
+  },
+  {
+   "name": "multiline_reason",
+   "text": "{\"score\": 5, \"reason\": \"line one\\n  line two\", \"type\": \"other\", \"deadline\": null, \"red_flags\": []}",
+   "score": 5.0,
+   "deadline": null
+  }
+ ],
+ "bad": [
+  {
+   "name": "score_too_high",
+   "text": "{\"score\": 12, \"reason\": \"x\", \"deadline\": null, \"red_flags\": [], \"tags\": []}"
+  },
+  {
+   "name": "missing_reason",
+   "text": "{\"score\": 5, \"deadline\": null, \"red_flags\": [], \"tags\": []}"
+  },
+  {
+   "name": "bad_deadline",
+   "text": "{\"score\": 5, \"reason\": \"x\", \"deadline\": \"next week\", \"red_flags\": [], \"tags\": []}"
+  },
+  {
+   "name": "trailing_prose",
+   "text": "{\"score\": 5, \"reason\": \"x\", \"deadline\": null, \"red_flags\": [], \"tags\": []}\nHope this helps!"
+  },
+  {
+   "name": "not_json",
+   "text": "I think it is a good fit."
+  },
+  {
+   "name": "array",
+   "text": "[1, 2]"
+  }
+ ],
+ "new_format": {
+  "text": "{\"score\": 8, \"reason\": \"ok\", \"type\": \"hackathon\", \"deadline\": null, \"red_flags\": [], \"employer_region\": \"kz\", \"region_confidence\": 0.9, \"employer_is_startup\": true, \"visa_barrier\": false}",
+  "type": "hackathon",
+  "employer_region": "kz",
+  "region_confidence": 0.9,
+  "employer_is_startup": true,
+  "visa_barrier": false
+ },
+ "bad_new": [
+  {
+   "name": "region_europe",
+   "text": "{\"score\": 8, \"reason\": \"ok\", \"employer_region\": \"europe\"}"
+  },
+  {
+   "name": "confidence_high",
+   "text": "{\"score\": 8, \"reason\": \"ok\", \"region_confidence\": 1.5}"
+  }
+ ],
+ "v1_shaped": {
+  "text": "{\"score\": 8.5, \"reason\": \"Strong quant match\", \"deadline\": \"2026-12-01\", \"red_flags\": [\"visa\"], \"tags\": [\"quant\"]}",
+  "score": 8.5,
+  "tags": [
+   "quant"
+  ]
+ },
+ "long_reason": {
+  "text": "{\"score\": 7, \"reason\": \"Matches numerical optimization, PyTorch and probability work Matches numerical optimization, PyTorch and probability work Matches numerical optimization, PyTorch and probability work Matches numerical optimization, PyTorch and probability work Matches numerical optimization, PyTorch and probability work Matches numerical optimization, PyTorch and probability work\", \"type\": \"research\", \"deadline\": null, \"red_flags\": [\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"b\", \"c\", \"d\"]}"
+ },
+ "generic_reason": {
+  "text": "{\"score\": 6, \"reason\": \"Good match for your profile\", \"type\": \"job\", \"deadline\": null, \"red_flags\": []}"
+ },
+ "invalid_type": {
+  "text": "{\"score\": 6, \"reason\": \"Quant research with probability focus\", \"type\": \"gig\", \"deadline\": null, \"red_flags\": []}"
+ }
 }

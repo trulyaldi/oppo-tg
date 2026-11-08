@@ -6,10 +6,12 @@ import hashlib
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from src.scoring.reason import FLAG_MAX, clip_reason, clip_text
 
 
 class Kind(StrEnum):
@@ -104,6 +106,7 @@ class Posting:
 class ScoreResult(BaseModel):
     score: float = Field(ge=0, le=10)
     reason: str
+    type: OpportunityType = OpportunityType.OTHER
     deadline: date | None = None
     red_flags: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
@@ -111,3 +114,25 @@ class ScoreResult(BaseModel):
     region_confidence: float = Field(0.0, ge=0, le=1)
     employer_is_startup: bool | None = None
     visa_barrier: bool | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_invalid_type(cls, data: Any) -> Any:
+        """A missing or invalid type is not a parse failure (D-251). It stays `other` and is
+        left out of model_fields_set, so the scorer does not override the triage type."""
+        if isinstance(data, dict) and "type" in data:
+            try:
+                OpportunityType(data["type"])
+            except ValueError:
+                data = {k: v for k, v in data.items() if k != "type"}
+        return data
+
+    @field_validator("reason")
+    @classmethod
+    def _clip_reason(cls, v: str) -> str:
+        return clip_reason(v)
+
+    @field_validator("red_flags")
+    @classmethod
+    def _clip_flags(cls, v: list[str]) -> list[str]:
+        return [clip_text(f, FLAG_MAX) for f in v[:3]]

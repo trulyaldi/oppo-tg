@@ -227,3 +227,25 @@ def test_triage_main_flag_writes_separate_report(tmp_path, capsys):
     assert "recall 1/1" in capsys.readouterr().out
     rc = ev.main(["--triage"], env, lambda key: TriageFake(("Quant",)), p, out, tout)
     assert rc == 1
+
+
+def test_scoring_eval_reports_generic_rate_and_type_accuracy():
+    class Typed(FakeClient):
+        async def create(self, **kw):
+            text = kw["messages"][0]["content"]
+            if "Generic" in text:
+                reason, typ = "Good match for your profile", "job"
+            else:
+                reason, typ = "PyTorch and optimization match; Almaty on-site", "internship"
+            body = json.dumps({"score": 8, "reason": reason, "type": typ, "red_flags": []})
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text=body)])
+
+    items = [
+        item("Quant Intern A", 7, 9, expected_type="internship"),
+        item("Quant Intern Generic", 7, 9, expected_type="research"),
+    ]
+    s = asyncio.run(ev.run_eval(items, Typed(), "m", CFG, threshold=0.5))
+    assert (s["scored"], s["generic_reasons"], s["generic_rate"]) == (2, 1, 0.5)
+    assert (s["typed"], s["type_correct"], s["type_accuracy"]) == (2, 1, 0.5)
+    report = ev.format_report(s)
+    assert "generic reasons 1/2 = 50%" in report and "type accuracy 1/2 = 50%" in report

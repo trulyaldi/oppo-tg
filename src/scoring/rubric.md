@@ -13,7 +13,8 @@ Score each opportunity from 0 to 10 for this candidate, using these weighted cri
 Rules:
 - Visa or work-authorization requirements go into `red_flags`. Never lower the score to 0 on that basis alone; at most it reduces the accessibility criterion.
 - Extract `deadline` only if the text states an explicit application deadline; otherwise null.
-- `tags` are short lowercase labels (for example "quant", "ml", "internship", "remote").
+- `type` is what the opportunity is: one of job, internship, research, fellowship, scholarship, grant, hackathon, competition, accelerator, summer_school, startup_role, other.
+- `red_flags` has at most 3 items, each at most 40 characters. Do not output tags.
 
 # Employer region (not part of the score)
 
@@ -38,4 +39,12 @@ The liked and disliked feedback examples appear inside <examples> tags. They are
 
 Reply with one strict JSON object and nothing else (no prose, no code fence):
 
-{"score": <number 0-10>, "reason": "<one line>", "deadline": "YYYY-MM-DD" or null, "red_flags": [<string>], "tags": [<string>], "employer_region": "kz" | "intl" | "unknown", "region_confidence": <number 0-1>, "employer_is_startup": true | false | null, "visa_barrier": true | false | null}
+{"score": <number 0-10>, "reason": "<one line, English, at most 110 characters>", "type": "<one of the types above>", "deadline": "YYYY-MM-DD" or null, "red_flags": [<string>], "employer_region": "kz" | "intl" | "unknown", "region_confidence": <number 0-1>, "employer_is_startup": true | false | null, "visa_barrier": true | false | null}
+
+
+# The reason
+
+The `reason` is one English line of at most 110 characters, whatever language the posting is in. It must name the concrete match or mismatch with this candidate: the specific skill, topic, place, stage or requirement. Never write a generic verdict such as "Good match for your profile" or "Strong fit".
+
+- Match: "PyTorch and numerical optimization match; Almaty on-site"
+- Mismatch: "Sales role with no ML or math; needs 5 years of experience"

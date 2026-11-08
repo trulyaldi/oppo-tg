@@ -25,6 +25,7 @@ from src.models import Kind, OpportunityType, Posting
 from src.pipeline.filters import hard_filter, load_filter_cues, relevance_ok
 from src.pipeline.post_triage import effective_type, is_unpaid
 from src.scoring.prompt import prompt_version
+from src.scoring.reason import is_generic
 from src.scoring.scorer import Scorer
 from src.scoring.triage import Triager, triage_prompt_version
 
@@ -127,7 +128,12 @@ async def run_eval(
                 status = "score_error"
             else:
                 score = res.score
-                out = {"reason": res.reason, "red_flags": res.red_flags, "tags": res.tags}
+                out = {
+                    "reason": res.reason,
+                    "reason_generic": is_generic(res.reason),
+                    "red_flags": res.red_flags,
+                    "type": res.type.value,
+                }
         passed = score is not None and it.expected_min <= score <= it.expected_max
         results.append(
             {
@@ -141,10 +147,15 @@ async def run_eval(
                 if score is None
                 else distance_to_range(score, it.expected_min, it.expected_max),
                 "note": it.note,
+                "expected_type": it.expected_type,
                 **out,
             }
         )
     n = len(results)
+    scored = [r for r in results if "reason_generic" in r]
+    n_generic = sum(r["reason_generic"] for r in scored)
+    typed = [r for r in scored if r["expected_type"] is not None]
+    type_ok = sum(r["type"] == r["expected_type"] for r in typed)
     n_pass = sum(r["pass"] for r in results)
     errs = [r["error"] if r["error"] is not None else 10.0 for r in results]
     rate = n_pass / n if n else 0.0
@@ -158,6 +169,12 @@ async def run_eval(
         "passed": n_pass,
         "pass_rate": rate,
         "mean_abs_error": sum(errs) / n if n else 0.0,
+        "scored": len(scored),
+        "generic_reasons": n_generic,
+        "generic_rate": n_generic / len(scored) if scored else None,
+        "typed": len(typed),
+        "type_correct": type_ok,
+        "type_accuracy": type_ok / len(typed) if typed else None,
         "ok": rate >= threshold,
         "results": results,
     }
@@ -261,6 +278,13 @@ def format_report(summary: Mapping[str, Any]) -> str:
         f"prompt_version={summary['prompt_version']} model={summary['model']} "
         f"pass {summary['passed']}/{summary['total']} = {summary['pass_rate']:.0%} "
         f"(threshold {summary['threshold']:.0%}) mean_abs_error={summary['mean_abs_error']:.2f}"
+    )
+    gr, ta = summary.get("generic_rate"), summary.get("type_accuracy")
+    lines.append(
+        "generic reasons "
+        + ("n/a" if gr is None else f"{summary['generic_reasons']}/{summary['scored']} = {gr:.0%}")
+        + " (target at most 5%); type accuracy "
+        + ("n/a" if ta is None else f"{summary['type_correct']}/{summary['typed']} = {ta:.0%}")
     )
     return "\n".join(lines)
 

@@ -90,3 +90,20 @@ def test_injection_in_posting_and_examples_is_defused():
     assert blocks[1]["text"].lower().count("</examples>") == 1
     assert "</cv" not in blocks[1]["text"].lower()
     assert "<examples>" in blocks[1]["text"]
+
+
+def test_feedback_examples_use_clipped_reason_not_tags():
+    long = "word " * 60
+    ex = {
+        "like": [{"title": "Quant Intern", "company": "IMC", "tags": ["quant"], "reason": long}],
+        "dislike": [{"title": "Sales Rep", "company": "Acme", "tags": ["zzz"], "reason": ""}],
+    }
+    text = build_system_blocks(ex)[1]["text"]
+    assert "zzz" not in text and "quant)" not in text
+    line = next(ln for ln in text.splitlines() if ln.startswith("- Quant Intern"))
+    reason = line.split("): ", 1)[1]
+    assert len(reason) <= 110 and reason.endswith("…")
+
+
+def test_prompt_version_changed_by_kf14():
+    assert prompt_version() != "d08e378779a9"

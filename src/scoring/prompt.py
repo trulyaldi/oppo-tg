@@ -9,6 +9,7 @@ from typing import Any
 
 from src.llm.untrusted import wrap_untrusted
 from src.models import Posting
+from src.scoring.reason import clip_reason
 
 HERE = Path(__file__).parent
 MAX_DESC = 4000
@@ -29,7 +30,7 @@ def build_system_blocks(
 ) -> list[dict]:
     """Static block (profile + rubric, cached) plus an optional feedback block.
 
-    `examples` maps "like"/"dislike" to dicts with title, company, tags.
+    `examples` maps "like"/"dislike" to dicts with title, company and the stored reason (D-251).
     """
     d = base_dir or HERE
     static = _read(d / "profile.md") + "\n\n" + _read(d / "rubric.md")
@@ -40,10 +41,10 @@ def build_system_blocks(
         if items:
             lines = []
             for e in items:
-                tags = ", ".join(_one_line(t) for t in e.get("tags") or [])
+                reason = clip_reason(e.get("reason") or "")
                 lines.append(
                     f"- {_one_line(e.get('title'))} ({_one_line(e.get('company'))})"
-                    + (f": {tags}" if tags else "")
+                    + (f": {reason}" if reason else "")
                 )
             sections.append(f"## {heading}\n" + wrap_untrusted("examples", "\n".join(lines)))
     if sections:

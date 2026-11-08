@@ -1597,3 +1597,11 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - `select_alerts` picks the threshold with `bucket(item.employer_category)`; kz uses `kz_fresh_alert_score`, everything else (intl, unknown) uses `intl_fresh_alert_score`. Category is the one recomputed by `recompute_adjusted` just before.
   - Old-key check lives in `AppConfig.from_dict` (not `Thresholds`) so the message can name both new keys before the unknown-key check.
   - Existing fresh tests moved to intl-range scores (8.x) and gained a `region` argument on `add`; tests that disable fresh alerts set both keys to 10.0. README paragraph updated.
+
+- **D-282 KF-14 implementation (scorer contract v2).**
+  - **Clipping lives in the model.** `ScoreResult` validators call `reason.clip_reason` (110, word boundary, "…") and clip each red flag to 40 (first 3 kept). A single over-long token is hard-cut so the 110 limit always holds.
+  - **Missing or invalid `type`.** A before-validator drops an invalid `type`, so it stays `other` and is absent from `model_fields_set`. `save_score` calls `set_opportunity_type(..., "scorer")` only when `type` was actually given, so a v1-shaped reply or a typo never overrides the triage type with `other`. An explicit `other` does override.
+  - **`is_generic`.** Tokenises on letters and digits, drops the D-251 stopword and generic-phrase list, and flags fewer than 3 content words. Negations ("no") stay content words. Fixtures: `tests/fixtures/reasons.json` (17 generic, 16 concrete).
+  - **Rubric.** Contract now lists `type`, drops `tags`, and adds a "The reason" section with one match and one mismatch example. `prompt_version()` changes (old value `d08e378779a9`). The live eval was not run (no key in the build); run `python -m src.evals.run` and record the generic rate (target at most 5%) and type accuracy.
+  - **Truncation.** `MAX_TOKENS = 250`. `stop_reason == "max_tokens"` logs a warning with the posting id only; the truncated JSON then fails to parse and takes the existing single retry.
+  - **Feedback examples** carry the stored reason (clipped to 110) instead of tags; the `tags` key stays in the dict for other callers. Old rows keep `contract=1` and are never re-selected, because only `new`, `triaged` and `score_error` postings are pending.

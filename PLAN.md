@@ -3603,7 +3603,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 
 ### Part E: scorer contract and item format
 
-### KF-14 [ ] Scorer contract v2, the reason validator and the scoring eval (D-251)
+### KF-14 [x] Scorer contract v2, the reason validator and the scoring eval (D-251)
 - Build:
   - `ScoreResult`:
     - `reason` is cleaned (one line) and truncated by `src/scoring/reason.py::clip_reason` to at most 110 characters at a word boundary, ending with "…";

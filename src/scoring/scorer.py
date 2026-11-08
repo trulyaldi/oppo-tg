@@ -19,7 +19,7 @@ from src.scoring.prompt import build_system_blocks, build_user_message, prompt_v
 
 log = logging.getLogger(__name__)
 
-MAX_TOKENS = 400
+MAX_TOKENS = 250  # worst case ~160 tokens (D-251); the rest is headroom
 CONCURRENCY = 4
 TZ = ZoneInfo("Asia/Almaty")
 CORRECTION = (
@@ -97,7 +97,13 @@ class Scorer:
         if not self.budget.reserve("score_baseline" if baseline else "score"):
             raise BudgetExhausted("daily")
 
-    async def _call(self, system: list[dict], messages: list[dict], baseline: bool = False) -> str:
+    async def _call(
+        self,
+        system: list[dict],
+        messages: list[dict],
+        baseline: bool = False,
+        posting_id: str = "?",
+    ) -> str:
         self._reserve_daily(baseline)
         self.calls += 1  # reserved before awaiting, so concurrent tasks respect the cap
         response = await self.client.messages.create(
@@ -106,6 +112,8 @@ class Scorer:
             system=system,
             messages=messages,
         )
+        if getattr(response, "stop_reason", None) == "max_tokens":
+            log.warning("score reply hit max_tokens for %s", posting_id)
         return _text(response)
 
     async def score(
@@ -133,7 +141,7 @@ class Scorer:
             messages: list[dict] = [{"role": "user", "content": build_user_message(posting, today)}]
             if not self.budget_left:
                 return None
-            raw = await self._call(system, messages, baseline)
+            raw = await self._call(system, messages, baseline, posting.id)
             try:
                 return parse_score_response(raw)
             except ScoreParseError as e:
@@ -144,7 +152,7 @@ class Scorer:
                 {"role": "assistant", "content": raw or "(empty reply)"},
                 {"role": "user", "content": CORRECTION.format(error=str(first_error)[:300])},
             ]
-            return parse_score_response(await self._call(system, messages, baseline))
+            return parse_score_response(await self._call(system, messages, baseline, posting.id))
         except BudgetExhausted:
             raise
         except ScoreParseError:
