@@ -17,7 +17,7 @@ import src.sources  # noqa: F401  (registers the sources for /sources)
 from src import db
 from src.clock import Clock
 from src.config import TIERS, AppConfig, ScoringConfig, Settings, TriageConfig
-from src.cues import fold
+from src.cues import compile_entry, fold
 from src.delivery.digest import item_from_row, load_weights_checked
 from src.delivery.format import SOURCE_ATTRIBUTION, feedback_keyboard, render_item
 from src.llm.budget import LlmBudget
@@ -156,11 +156,17 @@ NOTHING_FOUND = "Nothing found."
 
 
 def search_terms(cues: Any, args: str) -> list[str]:
-    """Query words, each expanded to its cue group (D-261), de-duplicated, at most 30 terms."""
+    """Query words, each expanded to its cue group (D-261), as raw cue entries: `stem*` keeps
+    its star. De-duplicated, at most 30 terms. A typed word of 4 or more characters matches as a
+    prefix, a shorter one as a whole word (FIX-52, D-305)."""
     out: list[str] = []
     seen: set[str] = set()
     for word in args.split():
-        for term in cues.expand(word):
+        typed = fold(word).replace("*", "")
+        if not typed:
+            continue
+        own = typed + "*" if len(typed) > _SEARCH_SHORT else typed
+        for term in [own, *cues.expand_entries(word)]:
             key = fold(term)
             if key and key not in seen:
                 seen.add(key)
@@ -168,8 +174,14 @@ def search_terms(cues: Any, args: str) -> list[str]:
     return out[:SEARCH_MAX_TERMS]
 
 
-def _like_escape(term: str) -> str:
-    return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+_SEARCH_SHORT = 3
+
+
+def _search_hit(patterns: list[Any], row: sqlite3.Row) -> bool:
+    """Cue-rule match (whole word, `stem*` prefix, phrases) over title, company, ex_title and
+    description, folded like the cues."""
+    keys = ("title", "company", "ex_title", "description")
+    return any(p.search(fold("\n".join(str(row[k] or "") for k in keys))) for p in patterns)
 
 
 async def cmd_search(
@@ -187,12 +199,6 @@ async def cmd_search(
         return
     weights = load_weights_checked(c)[0]
     recompute_adjusted(conn, weights, region_hints(c), blocker_penalty(c))
-    conn.create_function("fold_text", 1, lambda v: fold(v) if v else "", deterministic=True)
-    hay = (
-        "fold_text(p.title) || char(10) || fold_text(p.company) || char(10) ||"
-        " fold_text(p.ex_title) || char(10) || fold_text(p.description)"
-    )
-    where = " OR ".join(f"{hay} LIKE ? ESCAPE '\\'" for _ in terms)
     since = (clock.now() - timedelta(days=SEARCH_DAYS)).isoformat()
     rows = conn.execute(
         "SELECT p.*, s.base_score AS base_score, s.adjusted_score AS adjusted_score,"
@@ -201,10 +207,12 @@ async def cmd_search(
         " s.deadline AS llm_deadline, s.red_flags AS red_flags,"
         " s.visa_barrier AS visa_barrier, s.contract AS contract"
         " FROM postings p JOIN scores s ON s.posting_id=p.id"
-        f" WHERE p.first_seen_at >= ? AND ({where})"
-        " ORDER BY s.adjusted_score DESC, p.rowid LIMIT ?",
-        (since, *[f"%{_like_escape(t)}%" for t in terms], SEARCH_LIMIT),
+        " WHERE p.first_seen_at >= ?"
+        " ORDER BY s.adjusted_score DESC, p.rowid",
+        (since,),
     ).fetchall()
+    patterns = [compile_entry(t).pattern for t in terms]
+    rows = [r for r in rows if _search_hit(patterns, r)][:SEARCH_LIMIT]
     if not rows:
         await _say(message, NOTHING_FOUND)
         return

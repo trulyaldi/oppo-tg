@@ -4170,7 +4170,7 @@ Verified with evidence, no FIX needed:
   - Hostile titles and samples are HTML-escaped, and the render snapshots pass.
 - **Snapshot ownership (D-250).** `git show --stat` per commit matches the table, with one exception. KF-25 also changed `tests/fixtures/weights_snapshot/watchlists/kz_employers.yaml` (owners KF-10 and KF-12), to mirror the ISSAI and Science Fund watchlist additions. That change is recorded in D-293 and is accepted as documented.
 
-### FIX-52 [ ] /search matches short tokens and stems inside other words
+### FIX-52 [x] /search matches short tokens and stems inside other words
 - Severity: **blocking**. It breaks the brief's Part 6 rule: short tokens must use word-boundary matching, and "email", "maintenance" and "domain" must not match "ai". The brief makes search parsing a consumer of the same cue rules. This overrides the substring choice in D-297.
 - Where: `src/bot/handlers.py:158-215` (`search_terms`, `cmd_search`). `cmd_search` ORs `fold_text(...) LIKE '%term%'` over every expanded term.
 - Failure (reproduced in the scratchpad with the `tests/test_bot_search.py` helpers):

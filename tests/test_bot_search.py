@@ -156,3 +156,26 @@ async def test_dispatcher_owner_only(conn, monkeypatch, chat_id, expect):
     await dp.feed_update(bot, upd(chat_id, "/search"))
     await bot.session.close()
     assert len(sent) == expect
+
+
+async def test_short_tokens_match_whole_words_only(conn):
+    """FIX-52: 'ai' and 'ml' do not match inside Email, HTML or Russian words (D-305)."""
+    add(conn, 11, "Email marketing specialist", description="domain maintenance")
+    add(conn, 12, "Бухгалтер в отдел компании", company="ТОО Ромашка")
+    add(conn, 13, "Frontend (HTML, CSS)", company="Web")
+    add(conn, 14, "AI engineer", company="Lab")
+    add(conn, 15, "ML Intern", company="Lab")
+    ai = await search(conn, "ai")
+    assert len(ai.sent) == 1 and "AI engineer" in ai.texts[0]
+    ml = await search(conn, "ml")
+    assert len(ml.sent) == 1 and "ML Intern" in ml.texts[0]
+
+
+async def test_stem_and_prefix_matching_still_work(conn):
+    add(conn, 21, "ML Intern", company="Lab")
+    add(conn, 22, "Стажировка аналитик", company="ТОО")
+    add(conn, 23, "Accountant", company="Firm")
+    m = await search(conn, "стажировка")
+    assert any("ML Intern" in t for t in m.texts)
+    assert any("Стажировка" in t for t in m.texts)
+    assert not any("Accountant" in t for t in m.texts)

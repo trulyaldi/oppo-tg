@@ -179,6 +179,20 @@ class Cues:
                     out.append(term)
         return out
 
+    def expand_entries(self, word: str) -> list[str]:
+        """Like `expand`, but entries keep their raw syntax (`stem*`, phrases) so that a caller
+        can compile them with `compile_entry` and match with the cue rules (FIX-52)."""
+        out: list[str] = []
+        seen: set[str] = set()
+        for g in self.positive_groups():
+            if not match_any(g, word):
+                continue
+            for e in g.all_entries():
+                if e.kind != "re" and fold(e.raw) not in seen:
+                    seen.add(fold(e.raw))
+                    out.append(e.raw)
+        return out
+
     def is_positive(self, text: str) -> bool:
         return any(match_any(g, text) for g in self.positive_groups())
 
