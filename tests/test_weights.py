@@ -43,7 +43,7 @@ def test_snapshot_values():
         "intl_onsite_visa_barrier": -0.5,
     }
     q = w.digest_quotas
-    assert (q.kz, q.intl, q.best_remaining) == (4, 4, 2)
+    assert (q.kz, q.intl, q.best_remaining) == (6, 3, 1)
     assert w.region_min_confidence == 0.7
     assert len(w.intl_top_tier) == 14
     assert len(w.kz_employers) == 15

@@ -91,35 +91,69 @@ def test_pick_pure():
     assert pick_with_quotas(items, q, lambda x: bucket_of[x[0]]) == [("u", 9), ("k", 8), ("i", 7)]
 
 
-def test_quotas_four_four_two(conn):
-    for b in (6.0, 6.5, 7.0, 7.5, 8.0, 6.2):
-        add(conn, "kz_employer", b)
-        add(conn, "intl_other", b)
+def test_default_quotas_are_six_three_one():
+    q = Quotas()
+    assert (q.kz, q.intl, q.best_remaining, q.total) == (6, 3, 1, 10)
+    assert (W.digest_quotas.kz, W.digest_quotas.intl, W.digest_quotas.best_remaining) == (6, 3, 1)
+
+
+def test_pick_pure_six_three_one():
+    q = Quotas()
+    items = [("i", 20 - n) for n in range(8)] + [("k", 10 - n) for n in range(8)]
+    got = pick_with_quotas(items, q, lambda x: "kz_employer" if x[0] == "k" else "intl_other")
+    assert len(got) == 10
+    assert [x[0] for x in got].count("k") == 6
+    assert [x[0] for x in got].count("i") == 4  # 3 forced + best remaining (an intl 4th)
+    assert got == sorted(got, key=items.index)
+
+
+def test_quotas_six_three_one(conn):
+    for n in range(8):
+        add(conn, "kz_employer", 6.0 + n * 0.1)
+        add(conn, "intl_other", 8.0 + n * 0.1)
     items = select_digest(conn, CFG, W)
     assert len(items) == 10
     assert [i.score for i in items] == sorted((i.score for i in items), reverse=True)
-    assert sum(c == "kz_employer" for c in cats(items)) >= 4
-    assert sum(c == "intl_other" for c in cats(items)) >= 4
+    # 6 KZ + 3 intl forced; the best remaining slot is the strongest leftover (intl 8.x)
+    assert cats(items).count("kz_employer") == 6
+    assert cats(items).count("intl_other") == 4
+
+
+def test_quotas_six_three_one_best_remaining_kz(conn):
+    for n in range(8):
+        add(conn, "kz_employer", 8.0 + n * 0.1)
+        add(conn, "intl_other", 6.0 + n * 0.1)
+    items = select_digest(conn, CFG, W)
+    assert cats(items).count("kz_employer") == 7
+    assert cats(items).count("intl_other") == 3
 
 
 def test_fall_through(conn):
     add(conn, "kz_employer", 7.0)
+    add(conn, "kz_employer", 7.1)
     for k in range(12):
         add(conn, "intl_other", 6.0 + k * 0.1)
     items = select_digest(conn, CFG, W)
-    assert cats(items).count("kz_employer") == 1 and cats(items).count("intl_other") == 9
+    assert cats(items).count("kz_employer") == 2 and cats(items).count("intl_other") == 8
+
+
+def test_fall_through_no_intl(conn):
+    for k in range(12):
+        add(conn, "kz_employer", 6.0 + k * 0.1)
+    items = select_digest(conn, CFG, W)
+    assert cats(items).count("kz_employer") == 10 and len(items) == 10
 
 
 def test_unknown_only_via_free_slots(conn):
     for _ in range(3):
         add(conn, "unknown", 9.5)
-    for _ in range(5):
+    for _ in range(8):
         add(conn, "kz_employer", 6.0)
         add(conn, "intl_other", 6.0)
     items = select_digest(conn, CFG, W)
-    # 4+4 forced, then 2 free slots go to the best remaining: the unknown 9.5s.
-    assert cats(items).count("unknown") == 2
-    assert cats(items).count("kz_employer") == 4 and cats(items).count("intl_other") == 4
+    # 6+3 forced, then the single free slot goes to the best remaining: an unknown 9.5.
+    assert cats(items).count("unknown") == 1
+    assert cats(items).count("kz_employer") == 6 and cats(items).count("intl_other") == 3
 
 
 def test_quality_floor_uses_base(conn):
@@ -192,7 +226,7 @@ def test_yaml_edit_quota_zero(conn, tmp_path):
     for _ in range(6):
         add(conn, "intl_other", 8.0)
     w0 = _tmp_weights(
-        tmp_path, "{kz: 4, intl: 4, best_remaining: 2}", "{kz: 0, intl: 4, best_remaining: 6}"
+        tmp_path, "{kz: 6, intl: 3, best_remaining: 1}", "{kz: 0, intl: 4, best_remaining: 6}"
     )
     items = select_digest(conn, CFG, w0)
     # no forced KZ: KZ items only enter through best-remaining slots, after the 8.0 intl ones

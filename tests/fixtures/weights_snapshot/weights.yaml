@@ -7,7 +7,7 @@ adjustments:                 # additive, applied in code to the LLM base score, 
   kz_program: 1.0     # exclusive: grants, hackathons etc. never stack with kz_employer/kz_startup (D-248)
   intl_onsite_visa_barrier: -0.5   # modifier: stacks with intl_top_tier and intl_other only
 region_min_confidence: 0.7   # LLM region guesses below this are ignored (category unknown, adjustment 0)
-digest_quotas: {kz: 4, intl: 4, best_remaining: 2}   # digest size = sum (10)
+digest_quotas: {kz: 6, intl: 3, best_remaining: 1}   # digest size = sum (10)
 flags: {kz: "🇰🇿", intl: "🌍"}                       # shown before the title; "" disables
 watchlists:                   # paths relative to this file
   intl_top_tier: watchlists/intl_top_tier.yaml

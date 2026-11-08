@@ -3572,7 +3572,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - An LLM "intl" at 0.9 wins.
   - `detect_language` handles the three fixture texts.
 
-### KF-12 [ ] Digest quotas 6/3/1 with fall-through
+### KF-12 [x] Digest quotas 6/3/1 with fall-through
 - Build:
   - `config/weights.yaml` and the `Quotas` defaults become `{kz: 6, intl: 3, best_remaining: 1}`.
   - Update the weights snapshot.

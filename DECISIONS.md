@@ -1587,3 +1587,8 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
   - `classify_employer` gets trailing parameters `language`, `location`, `cues`. The `lang_loc` step runs after the hint and before unknown; it reuses `_kz()` so programs and startups keep the KF-10 logic. Cues default to `load_cues()` (group `locations.kz`, all languages).
   - `recompute_adjusted` uses `postings.language`, else `detect_language(title + description)`, and `location` plus `ex_location` joined. It takes an optional `cues` argument and loads the default lazily, only when rows need recompute. The version string always ends in `+ll`, so existing rows recompute once.
   - `detect_language` counts letters only. Empty or letterless text is `en`. Kazakh letters win over the Cyrillic ratio.
+
+- **D-280 KF-12 implementation (digest quotas 6/3/1).**
+  - Defaults changed in `config/weights.yaml`, the `Quotas` model and the weights snapshot. `pick_with_quotas` is unchanged: the fall-through logic already handles short buckets, and the digest size stays 10 (the sum).
+  - The best-remaining slot goes to the strongest leftover of any bucket, so 8 KZ plus 8 intl gives 6/4 or 7/3 depending on which side scores higher; both tests pin that.
+  - `tests/test_weights.py::test_snapshot_values` also pinned 4/4/2, so it was updated to 6/3/1 (it reads the snapshot owned by this task).

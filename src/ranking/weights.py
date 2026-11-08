@@ -33,9 +33,9 @@ class Adjustments(_Strict):
 
 
 class Quotas(_Strict):
-    kz: int = Field(4, ge=0)
-    intl: int = Field(4, ge=0)
-    best_remaining: int = Field(2, ge=0)
+    kz: int = Field(6, ge=0)
+    intl: int = Field(3, ge=0)
+    best_remaining: int = Field(1, ge=0)
 
     @property
     def total(self) -> int:
