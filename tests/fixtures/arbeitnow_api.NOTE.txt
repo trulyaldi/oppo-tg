@@ -1,0 +1,5 @@
+Real response, captured once by the planner on 2026-11-08 (D-238): one GET of
+https://www.arbeitnow.com/api/job-board-api (page 1, 300 jobs) with the honest planner User-Agent.
+Trimmed to 4 jobs; each description cut to its first 700 characters (still HTML-entity-encoded,
+as the API sends it). Jobs whose descriptions contained an email address or phone number were
+skipped. `links` and `meta` are unchanged. Not read by any test until KF-27.

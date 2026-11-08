@@ -1077,3 +1077,441 @@ The planner checked each source once on 2026-11-07 using WebFetch/WebSearch. No 
   - **hh and Telegram.** hh did not run (no source run row; it is credential-gated and I did not look for credentials). Telegram Bot API delivery worked (digest sent). The Telethon live listener and `telegram_channels` did not run (`once` does not start them); no polling session was started.
   - **NOT exercised live.** Workable (no configured accounts, no discovered Workable boards polled), hh, Telethon live listener and channel history, fresh alerts and their latency, the triage eval and scoring eval, the long-running scheduler and tiered cadence, the web search (cut, FC-22), /prepare, /contacts, /draft, button callbacks, systemd unit.
 
+
+## 2026-11-08 — kz-first-fresh-cv planning (planner)
+
+Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is in `docs/briefs/kz-first-fresh-cv.md`, and the plan is PLAN.md section 12 (KF-01 to KF-38). Source and page checks were made on 2026-11-08 with an honest planner User-Agent (`oppo-tg-planner/0.1 (personal job-alert bot; ...)`), one request per URL, plus one repeat fetch for page stability. No `.env` was read.
+
+- **D-233 Starting state (audit, 2026-11-08).**
+  - **Branches.**
+    - `feature/coverage-and-freshness` exists; its tip is `main` (9eb48fe), 0 commits ahead, so it is fully merged.
+    - `feature/outreach-and-weights` exists at 1bcbb78, 0 commits ahead of `main`, so it is fully merged.
+    - `feature/telegram-discovery` and `feature/linkedin-safe-ingestion` never existed: no local or remote branch, and no commit message mentions them.
+    - Pieces the brief needs from them are built here: channel discovery, forwarded messages and `/add` (KF-21 to KF-24). LinkedIn stays human-assisted only (SPEC Contacts, D-104). Nothing fetches or automates LinkedIn, and this branch adds no LinkedIn ingestion.
+  - **Tests and lint.** At the start, `pytest -q` is green and `ruff check` / `ruff format --check` are clean.
+  - **Correction to the handover.** Not every PLAN.md task is checked. FIX-44, FIX-45, FIX-46, FIX-49, FIX-50 and FIX-51 (section 11) are still `[ ]`; FC-32 closed them as known limits (PLAN 10, FC-32 status line).
+    - Several become more likely on this branch:
+      - FIX-44: hh moves to tier1 with more queries, so a partial first fetch is likelier.
+      - FIX-46: tier1 polls more often.
+      - FIX-45: Part 9 caps.
+    - They are folded into section 12: FIX-45 in KF-01, FIX-44 in KF-02, FIX-46 in KF-03, FIX-49 in KF-28 and FIX-51 in KF-16. FIX-50 is closed by this planning commit (D-264).
+  - **Already built (verified by reading the code; KF tasks verify and close gaps, they do not rebuild):**
+    - `first_seen_at` and baseline mode (D-188, D-203);
+    - tiered polling with jitter (D-186, D-207), the per-host limiter and persistent backoff (D-187, D-205), and conditional requests (D-206);
+    - fresh alerts at 7.5 with at most 5 a day (D-189, D-208), delivery latency, and `/stats` with median and p90 per source (D-210);
+    - haiku triage with caps and the all-fail exit code (D-196, D-223, D-224);
+    - board discovery, `data/discovered_boards.toml` and the 20 per day cap, plus `/boards` (D-190, D-212 to D-214);
+    - Workable and Remote OK (D-215, D-216);
+    - hard blockers and negative titles (D-195, D-221, D-222);
+    - Telegram channel polling plus the live listener (D-193, D-217, D-218, D-227);
+    - employer-region weighting and quotas (`src/ranking`, D-91 to D-97) and the KZ hint (D-194, D-220);
+    - CV upload and parse (`src/cv`, D-120 to D-122);
+    - `/prepare`, `/draft` and the verifier (`src/outreach/verify.py`), and the outreach daily cap.
+  - **Gaps found while reading:**
+    - `src/sources/telegram_live.py` still contains `_join` (JoinChannelRequest) behind `auto_join` (D-218). The brief forbids joining outright (D-256).
+    - `src/http.py` checks robots with `urllib.robotparser`. It does prefix matching only and ignores Google-style `*` and `$` rules, so a rule like `Disallow: /*/search/*` (enbek.kz) or `Disallow: /api/*` (Remotive) would read as allowed. KF-04 fixes this.
+    - There is no `/add` command and no search command.
+    - Pagewatch pages carry only a `Kind`, which has no summer_school, grant or accelerator value.
+
+- **D-234 Plan shape and order (section 12).**
+  - **Order.**
+    1. Close the open FIXes that this branch makes worse (KF-01 to KF-04).
+    2. The cue file, because the pre-filter, hh, discovery and search all read it (KF-05, KF-06).
+    3. Opportunity types (schema v13, triage v2, the post-triage step).
+    4. KZ-first ranking.
+    5. The scorer contract and the new item format, which together give an end-to-end slice of the new behaviour.
+    6. Freshness and Telegram.
+    7. KZ sources, then international sources.
+    8. Search and stats.
+    9. CV review.
+    10. Caps and the handler sweep, then README, review and smoke.
+  - **Size.** 38 tasks, each one commit.
+  - **Verify tasks.** "Verify + close gaps" tasks (KF-02, KF-28, KF-30, KF-34) start by pinning the existing behaviour with a test, and only then change code.
+
+- **D-235 enbek.kz: SKIPPED (robots).**
+  - **robots.txt** (`https://www.enbek.kz/robots.txt`, `User-agent: *`) includes `Disallow: /*/search/*` and `Disallow: /*/%D0%B2%D0%B0%D0%BA%D0%B0%D0%BD%D1%81%D0%B8%D0%B8/*` (".../вакансии/...").
+  - **The listing is disallowed.** The vacancy listing the home page links to is `/ru/search/vacancy` (also `/ru/search/vac`), which the first rule covers.
+  - **No public API.** A web search (2026-11-08) found no public API or developer documentation for enbek.kz.
+  - **No workaround.** We will not reach vacancies through the sitemap or by walking individual `/ru/vacancy/...` pages, because that would get around the listing disallow.
+  - **Terms.** Not read; robots decides.
+  - **Coverage.** Kazakhstan vacancies stay covered by hh (area 40) and Telegram channels.
+
+- **D-236 Astana Hub (astanahub.com): SKIPPED (honest UA blocked).**
+  - **Blocked.** `https://astanahub.com/`, `/ru/` and `/en/` answer HTTP 403 with a Cloudflare "Attention Required!" page to our honest User-Agent. `robots.txt` itself answered 200.
+  - **Robots.** It also disallows `/api/` and `/search/`.
+  - **Decision.** The section 0 rule says a site that blocks our honest UA is dropped and the block is never evaded. Re-checking is a user action.
+
+- **D-237 Remotive: OUT (unchanged from D-177).** `https://remotive.com/robots.txt` still has `User-agent: *` / `Disallow: /api/*`. The API (`/api/remote-jobs`) is on the main site host, so the D-31 API-host exception does not apply.
+
+- **D-238 Arbeitnow: IN (re-evaluated; D-179 terms unchanged, D-202 had cut it for scope only).**
+  - **robots.txt.** `User-agent: *` / `Disallow:` / `Disallow: /*?__hstc`, so `/api/job-board-api` is allowed.
+  - **Terms** (https://www.arbeitnow.com/terms, read 2026-11-08):
+    - s.2: "Permission is granted to temporarily download one copy of the materials ... for personal, non-commercial transitory viewing only."
+    - s.11: "You also agree to providing a link back to Arbeitnow.com on your platform. We may revoke the permission to use API at any time."
+  - **API `meta.terms`:** "This is a free public API for jobs, please do not abuse. I would appreciate linking back to the site. By using the API, you agree to the terms of service present on Arbeitnow.com". `meta.info`: "Jobs are updated every hour and order by the `created_at` timestamp."
+  - **Our use.** The bot is personal and non-commercial. Items link to the Arbeitnow job URL, render "via Arbeitnow", and are polled at most hourly.
+  - **Real shape** (one GET, 2026-11-08):
+    - top level `data`, `links`, `meta`;
+    - 300 jobs per page;
+    - job keys `slug, company_name, title, description` (an HTML fragment, entity-encoded), `remote` (bool), `url, tags` (list), `job_types` (list), `location`, `created_at` (epoch seconds, int).
+  - **Headers.** `x-ratelimit-limit: 50`, `last-modified` present, Cloudflare cached.
+  - **Fixture.** The planner committed a trimmed 4-job copy as `tests/fixtures/arbeitnow_api.json`, with `arbeitnow_api.NOTE.txt`. Jobs with emails or phone numbers were skipped, so the implementer does not need a live call.
+  - **Note.** The board is Germany-centric, so expect few matches. It is added because the brief asks for it and the terms allow it.
+
+- **D-239 We Work Remotely RSS: OUT (unchanged from D-180).**
+  - `robots.txt` allows `/` and the feeds.
+  - `https://weworkremotely.com/terms-of-service` and `/api-terms-and-guidelines` still answer HTTP 403 to the honest UA, so the terms cannot be read.
+  - The D-180 excerpt ("scraping, copying, saving, or storing our data is strictly prohibited") also rules out storing postings.
+
+- **D-240 SmartRecruiters: OUT (unchanged from D-174).**
+  - `https://api.smartrecruiters.com/robots.txt` is `User-agent: LinkedInBot / Allow: /v1/companies/` then `User-agent: * / Disallow: /`.
+  - developers.smartrecruiters.com (Posting API, read 2026-11-08): "Public Posting API supports both API Key and OAuth 2.0 Client Credentials authentication". The API is for "customers to build fully customizable career sites".
+
+- **D-241 Recruitee: OUT (unchanged from D-175).** docs.recruitee.com/reference/authentication-1 (read 2026-11-08): "Deadline for introducing the token to calls is 10 February 2027" and "Calls without the authorization header will return the 401 Unauthorized error". The token is created by each company, and we have none.
+
+- **D-242 Personio: OUT (unchanged from D-176).** `www.personio.com/legal-notice/` and `/terms-of-use/` again answered HTTP 429 on 2026-11-08, so the terms are unreadable. Tenant robots (`personio.jobs.personio.de`) is reachable, but robots alone is not enough under section 0.
+
+- **D-243 hh.ru token type and User-Agent (re-confirmed 2026-11-08 from `https://api.hh.ru/openapi/specification/public`).**
+  - **User-Agent.** "В запросе необходимо передавать заголовок `User-Agent`, но если ваша реализация http клиента не позволяет, можно отправить `HH-User-Agent`. Если не отправлен ни один заголовок, то ответом будет `400 Bad Request`."
+  - **Format.** The `HH-User-Agent` parameter is described as "Название приложения и контактная почта разработчика" (app name and developer contact email), example `MyApp/1.0 (my-app-feedback@example.com)`.
+  - **Token.** OAuth2 `clientCredentials` (application token): "Токен приложения необходимо сгенерировать 1 раз ... При этом ранее выданный токен отзывается." User tokens carry `expires_in: 1209600`.
+  - **Unchanged.** D-182 stands: `HH_ACCESS_TOKEN` must be an application token.
+  - **Trap 10 is already satisfied.** The header is built from `HTTP_CONTACT` (D-219), never hardcoded. No `HH_USER_AGENT` variable is added: agents cannot edit `.env.example` (D-03), and `ENV_VARS` and the README table are pinned by tests.
+  - **New in KF-20.** hh is disabled, with a clear reason, when `HTTP_CONTACT` contains no `@`, because hh asks for a contact email.
+
+- **D-244 Telethon and Telegram API facts used by the plan (read 2026-11-08).**
+  - **Entities** (docs.telethon.dev/en/stable/concepts/entities.html):
+    - "You should always favour `client.get_input_entity()` over `client.get_entity()`". `get_entity` always makes an API call; `get_input_entity` uses the cache when possible.
+    - Every entity seen is "cached in the `.session` file (an SQLite database)". A username not yet cached "may make a request" (ResolveUsername).
+  - **Resolve limits.** The docs state no ResolveUsername rate limit. `core.telegram.org/method/contacts.resolveUsername` lists only 400 errors (USERNAME_INVALID, USERNAME_NOT_OCCUPIED, ...). We put no number on it and simply resolve rarely: once per handle, cached with id and access_hash (D-252).
+  - **iter_messages** (docs.telethon.dev client reference):
+    - `min_id`: "All the messages with a lower (older) ID or equal to this will be excluded".
+    - `wait_time`: "Wait time (in seconds) between different GetHistoryRequest ... Use this parameter to avoid hitting the FloodWaitError"; the flood limit "seems to be around 30 seconds per 10 requests".
+  - **flood_sleep_threshold:** "The threshold below which the library should automatically sleep on flood wait ... errors". Longer waits raise `FloodWaitError` (`e.seconds`).
+  - **messages.getHistory** (core.telegram.org): error `406 CHANNEL_PRIVATE` "You haven't joined this channel/supergroup".
+    - Reading a public channel without joining is not stated in the docs. The existing polling (D-193) already relies on it.
+    - The plan treats CHANNEL_PRIVATE as "not readable without joining": the channel is marked `private` and dropped from polling, and the user is told in `/channels`.
+    - Confirmed live only in the KF-38 smoke test, and only when the user has Telethon credentials.
+  - **contacts.search** (core.telegram.org):
+    - "Returns users found by username substring". Parameters `q`, `limit`; errors `QUERY_TOO_SHORT` and `SEARCH_QUERY_EMPTY`.
+    - "Only users can use this method", so it needs the user's Telethon session, not the bot.
+    - It returns `contacts.found#b3134d9d my_results:Vector<Peer> results:Vector<Peer> chats:Vector<Chat> users:Vector<User>`, where `chats` is "Found chats" (core.telegram.org/constructor/contacts.found). Channels arrive in `chats`; KF-22 keeps broadcast channels that have a username.
+    - Discovery queries therefore exclude short cues (fewer than 4 characters). The cue file lists transliterated tokens too (`vakansii`, `rabota`, `jobs_kz`), because usernames are Latin.
+  - **FAQ.** "The best advice we can give you is to not abuse the API, like calling many requests really quickly." The library should be used only on well-established accounts.
+
+- **D-245 Pagewatch seed vetting (2026-11-08).**
+  - **Method.** For each exact URL: fetch robots.txt, then one GET with the honest UA, then a second GET about 20 s later, comparing the hash of the script-stripped visible text.
+  - **Wildcard rules checked by hand.** `urllib.robotparser` ignores `*`/`$` (D-233), so each vetted host's wildcard lines were read manually. None matches a vetted path; they cover query strings, PDFs, Tilda forms and login pages.
+  - **Final URLs.** Redirect targets are configured directly.
+  - **KZ employers and programs, ADDED:**
+    - `https://job.kaspi.kz/` (Kaspi.kz, job)
+    - `https://halykbank.kz/about/career` (Halyk Bank, job)
+    - `https://kolesa.group/career/job` (Kolesa Group, job)
+    - `https://btsdigital.kz/ru/career` (BTS Digital, job)
+    - `https://career.forte.kz/` (ForteBank, job)
+    - `https://campus.epam.kz/ru` (EPAM Kazakhstan, internship; region intl by the HQ rule)
+    - `https://nu.edu.kz/about/work-at-nu/jobs-at-nu/` (Nazarbayev University, research)
+    - `https://nu.edu.kz/students/academic-mobility-and-career/summer-schools/` (Nazarbayev University, summer_school)
+    - `https://nu.edu.kz/students/academic-mobility-and-career/jobs-and-mentoring/` (Nazarbayev University, internship)
+    - `https://issai.nu.edu.kz/` (ISSAI, research)
+    - `https://research.nu.edu.kz/` (Nazarbayev University, research)
+    - `https://science-fund.kz/` (Science Fund, grant)
+
+    All have robots allowed, HTTP 200, and an identical hash on two fetches.
+  - **KZ, SKIPPED:**
+    - Kazakhtelecom `https://telecom.kz/ru/career`: the page is a JS app with 1 visible word after stripping scripts.
+    - KazMunayGas `https://kmg.kz/ru/career/`: robots allowed and stable, but oil and gas is low relevance for an ML/quant student and would add noise.
+    - Kcell and Beeline KZ: no public career page found (guessed paths 404, homepages link none; vacancies are on hh).
+    - Freedom (ffin.kz redirects to fbroker.kz; bankffin.kz/ru/career 404).
+    - Jusan and Chocofamily: TLS certificate verification failed.
+    - Arbuz `job.arbuz.kz`: HTTP 525.
+    - QazInnovations: robots unreachable, treated as disallowed.
+    - Tech Garden: robots 522.
+    - Bolashak: the page fetch failed.
+    - Air Astana: 6 visible words (JS).
+    - Astana IT University homepage: not a careers or announcement page.
+    - EPAM global `/careers/locations/kazakhstan`: robots 403.
+    - Astana Hub: D-236.
+    - enbek: D-235.
+  - **International, ADDED:**
+    - `https://summerstudents.desy.de/` (DESY, summer_school)
+    - `https://www.daad.de/rise/en/rise-worldwide/` (DAAD RISE Worldwide, research)
+    - `https://www.mitacs.ca/our-programs/globalink-research-internship-students/` (Mitacs Globalink, research)
+    - `https://summerofcode.withgoogle.com/` (Google Summer of Code, internship)
+    - `https://www.oxfordml.school/` (Oxford ML Summer School, summer_school)
+    - `https://www.eeml.eu/` (EEML, summer_school)
+    - `https://www.m2lschool.org/` (M2L School, summer_school)
+    - `https://prosperity.imc.com/` (IMC Prosperity, competition)
+    - `https://www.janestreet.com/join-jane-street/programs-and-events/` (Jane Street, internship)
+    - `https://deepmind.google/careers/` (Google DeepMind, job)
+    - `https://www.mpg.de/jobboard` (Max Planck Society, research)
+
+    The existing seven pages (IMC, Optiver, Jane Street internships, CERN, Summer@EPFL, ETH SSRF, OIST) stay, with types added.
+  - **International, SKIPPED:**
+    - KAUST `admissions.kaust.edu.sa/study/internships`: the hash changed between two fetches 20 s apart, so it would raise a false change every hour.
+    - lablab.ai: cross-host redirect to `lablab.build:443`.
+    - HackJunction: 1 visible word.
+    - HackZurich: 51 words, no event text.
+    - Returned 404: CERN openlab summer, ISTA ISTernship, ICTP opportunities, G-Research early careers, Weizmann Kupcinet-Getz, EPFL summer research program, Correlation One.
+    - Returned 403: Citadel students, HRT campus, IAS PCMI, Perimeter undergraduate.
+    - Two Sigma: robots 403.
+    - Simons Foundation grants: not student-level.
+  - **Hackathons.** International hackathon pages are mostly JS or blocked. Hackathons stay covered by the `mlh` source.
+  - **Terms.** Per-site terms of use were deliberately not read for the seeds:
+    - pagewatch is an existing source, not a new one (section 0's terms rule is for new sources);
+    - these are public career and announcement pages meant for applicants;
+    - pagewatch makes one GET per page per hour, with robots honoured, an honest UA and conditional requests.
+
+    If a site later blocks us (403) or disallows the path, the shared client stops fetching it.
+  - **Re-check at fetch time.** The shared client still checks robots on every fetch (wildcard-aware after KF-04). KF-25 and KF-26 re-run the robots check offline against the planner-recorded robots bodies (fixtures) and add no URL outside this list.
+
+- **D-246 Trap 1: the unpaid check moves after triage.**
+  - **Choice.**
+    - The cheap filter no longer checks unpaid keywords.
+    - A new post-triage step (KF-09) checks them only when the effective `opportunity_type` is `job` or `internship`, then sets `filtered` / `unpaid` before scoring.
+    - With triage disabled, for triage-exempt sources (pagewatch) and for cached old verdicts that carry no type, the step uses the provisional type (D-247).
+  - **Reason.** The type comes from triage, so checking before triage would filter summer schools that a source labelled `job`, and miss jobs labelled `other`. The cost is small: D-170 counted 5 unpaid filters out of 4526 postings, so at most a handful of extra cheap triage calls.
+
+- **D-247 Trap 2: `kind` and `opportunity_type` coexist.**
+  - **Two fields.** `Posting.kind` (the source's coarse label, the `Kind` enum) is unchanged, so no source module changes. A new `postings.opportunity_type` column (schema v13) holds one of the 12 brief values (`OpportunityType` StrEnum in `src/models.py`), and `postings.type_source` says which of `kind|config|triage|scorer` set it.
+  - **Precedence:** scorer > triage > pagewatch `type` config > `map(kind)`. The effective type is the column.
+    - Each later stage overwrites the column only with a valid value.
+    - The scorer sees 4000 description characters, triage sees 500.
+  - **Map:** job→job, internship→internship, hackathon→hackathon, competition→competition, fellowship→fellowship, research→research, startup→startup_role, other→other.
+  - **Backfill.** v13 sets `opportunity_type = map(kind)` and `type_source='kind'` on every existing row. Nothing is re-triaged or rescored.
+  - **Triage schema.** `TriageVerdict` (extra="forbid") gains fields, so the triage prompt changes and `triage_prompt_version()` changes.
+    - An invalid `type` in a triage reply is not a parse failure. It falls back to the provisional type, with no retry, the same choice as the scorer (D-251), because a retry costs a call. Unknown keys or a non-bool `relevant` still fail as before.
+    - The verdict cache key stays `(posting_id, content_hash)`, so an old cached verdict without a type is reused and keeps the mapped type.
+    - The triage eval (`src.evals.run --triage`) adds a type-accuracy figure.
+  - **Extraction scope.** Title, company, location, contact, deadline and scam are requested only for free-text items (telegram_channels, forwarded and `/add`). Structured ATS items return relevant, reason, type and language only.
+    - Triage `MAX_TOKENS` rises from 150 to 300. Cost follows the tokens actually produced, and structured replies stay short.
+
+- **D-248 Trap 3: KZ-first weights and the "bad KZ vs good intl" invariant.**
+  - **New defaults** (the brief): kz_startup +1.5, kz_employer +1.0, kz_program +1.0, intl_top_tier +0.5, intl_other 0, intl_onsite_visa_barrier −0.5. The largest KZ-over-intl uplift is 1.5 + 0.5 = 2.0.
+  - **Arithmetic.** A KZ startup at base 5.5 adjusts to 7.0. intl_other at 7.5, on-site with a visa barrier, also adjusts to 7.0. The existing test (`tests/test_quotas.py::test_bad_kz_never_outranks_good_intl`, kz bases up to 5.5, intl bases from 7.5) then passes only through the final `-base` tiebreak, a zero margin.
+  - **Freshness breaks it.** The digest key is `(-band, not fresh, -adjusted, deadline, -base)`. A fresh KZ 7.0 is listed above a non-fresh intl_other at 7.0 to 7.9 in band 7. Under the old weights that could not happen (5.5 + 1.0 = 6.5, band 6).
+  - **Decision, stated openly.** "Clearly bad" becomes base <= 5.0 (the digest floor) and "clearly good" stays base >= 7.5. With that gap of 2.5, the KZ item's band is always lower whatever its freshness.
+    - This is a narrowing of the test's "bad" range from 5.5 to 5.0. It reflects the strength of preference the user chose; it is not a silent loosening.
+    - KF-10 extends the test with a freshness dimension and kz_program.
+    - It keeps the old 5.5 cases for non-fresh items, where they still pass by the tiebreak, and adds a test that documents the 5.5-fresh case as the accepted exception.
+    - SPEC's new section defines both terms.
+  - **kz_program is exclusive.** The category is decided once: a KZ employer whose effective type is in PROGRAM_TYPES = {grant, scholarship, fellowship, hackathon, competition, accelerator, summer_school} gets `kz_program` (+1.0), never kz_employer or kz_startup, so +2.5 cannot stack.
+    - A program run by a KZ startup is kz_program, because the startup bonus is about working at a startup (SPEC goal 3).
+    - `research` is not a program type; a KZ research job is kz_employer, which is +1.0 either way.
+  - **Unknown-region fresh threshold.** Items whose region is unknown use the stricter intl threshold, 8.0.
+
+- **D-249 Trap 4: language plus location rule for unknown employers.**
+  - **Order inside `classify_employer`:**
+    1. watchlist;
+    2. a confident LLM region;
+    3. the source hint (hh, telegram_channels, D-194);
+    4. the new rule;
+    5. unknown.
+  - **The new rule.** If the employer is still unknown and the posting language is `ru` or `kk` and its location (or the triage-extracted location) matches a `locations.kz` cue, the result is KZ, with source `lang_loc`.
+  - **Language.** `postings.language` from triage when set. Otherwise a deterministic detector: any of `әғқңөұүһі` gives kk; at least 30% Cyrillic letters in title plus description gives ru; anything else is en.
+  - **English postings located in KZ stay unknown,** following the SPEC HQ rule: a foreign company's KZ office is intl. The rule never overrides a watchlist entry or a confident LLM "intl".
+
+- **D-250 Trap 5: snapshot discipline.**
+  - **Per-task list.** Each KF task lists the snapshot fixtures it may change (PLAN 12, "Snapshot ownership"). Every other snapshot must stay byte-identical in that commit.
+  - **Files covered:** `tests/fixtures/weights_snapshot/`, `config_repo_snapshot.toml`, `render_item_expected*.txt`, `stats_expected.txt`, `sources_expected.txt`, `filter_cases.json`, `score_responses.json`.
+  - **Reviewer check.** The reviewer checks `git show --stat` of each KF commit against that table.
+  - **Rule.** A snapshot changes only in the task that changes the behaviour it pins.
+
+- **D-251 Trap 6: scorer contract v2 (Part 7).**
+  - **Reply:**
+
+    `{"score", "reason", "type", "employer_region", "region_confidence", "employer_is_startup", "visa_barrier", "deadline", "red_flags"}`
+  - **Field limits:**
+    - `reason` <= 110 characters, in English, naming the concrete match or mismatch;
+    - `type` is one of the 12 values;
+    - `red_flags` is at most 3 items, each <= 40 characters.
+  - **Region keys kept.** "Region" in the brief keeps all four region keys because ranking needs them (SPEC employer-region section).
+  - **tags dropped.** They are no longer requested, which saves tokens. The feedback examples use the stored reason (clipped to 110) instead of tags. Old rows keep their tags column.
+  - **Too-long reason.** The parser truncates it cleanly at a word boundary to <= 110 characters, ending with "…". It is never rejected, because a retry costs a call.
+  - **Generic reasons are flagged, not rejected.** `src/scoring/reason.py::is_generic(reason)` is a deterministic rule: after stripping generic phrases and stopwords (good, great, strong, match, fit, profile, role, opportunity, candidate, skills, background, relevant, ...), fewer than 3 content words means generic. A generic reason sets `scores.reason_generic=1` and is counted in `/stats` and in the eval.
+    - Flag-only, because rejecting costs a retry against the cap.
+    - The rubric demands concreteness, and the eval and smoke test report the generic rate. Above 5%, the prompt is tightened (a reviewer item).
+  - **Tokens.** `MAX_TOKENS` goes from 400 to 250. The estimated worst case is about 160 tokens: a 110-character reason, 3 × 40-character flags and roughly 200 ASCII characters of keys. The rest is headroom, because truncated JSON costs a retry.
+    - A reply with `stop_reason == "max_tokens"` is logged and counted, and the parse failure follows the existing retry path.
+  - **Prompt version.** `rubric.md` changes, so `prompt_version()` changes. The scoring eval (`evals/labeled.jsonl`) gains expected types and a few RU/KK items.
+  - **Old rows.** Schema v13 adds `scores.contract` (1 for old rows, 2 for new ones). Old rows are rendered with a fallback (reason clipped to 110, type from the posting column) and are never rescored.
+
+- **D-252 Trap 7: tiers and the Telegram polling loop.**
+  - **Tiers:**
+    - tier1 `tier1_minutes = 10`, `tier1_jitter_s = 300`: 10 to 15 min, for watchlist boards and hh. hh moves from tier2 to tier1 with `min_poll_minutes = 10`, at most `[sources.hh] max_requests_per_run = 4`.
+    - tier2 `tier2_minutes = 60`, `tier2_jitter_s = 3600`: 1 to 2 h, because APScheduler jitter is uniform(0, jitter) and only delays (D-226 evidence).
+    - tier3 stays at 60 min with jitter 300.
+  - **The `tg` tier.** Telegram polling leaves tier2 for its own tier `tg` (`[scheduler] tg_minutes = 4`, `tg_jitter_s = 60`: 4 to 5 min). It is a fourth interval job and covers only channels without a live subscription.
+  - **Bounds.**
+    - At most `[sources.telegram_channels] max_channels_per_poll = 20` per run, chosen round-robin by oldest `last_polled_at`.
+    - `tg_minutes >= 3` and `max_channels_per_poll <= 30` are enforced by config validation.
+    - One GetHistory per channel per run (`limit=100, min_id=last_id`).
+    - Pause between channels: `pause_s = 4` for the `tg` path, validated at least 3. The old 1 s default (D-227) would send 20 requests in about 20 s, three times Telethon's own figure of "around 30 seconds per 10 requests", and would hit FloodWait on most runs. At 4 s, 20 channels take about 80 s, which fits the 4-minute loop.
+    - At the defaults that is at most 300 history requests per hour (20 per run, 15 runs).
+  - **Entity cache.** A new `tg_entities` table (schema v14) stores handle, channel_id, access_hash, title, status (`ok|private|invalid`), resolved_at and last_polled_at.
+    - A handle is resolved once with `get_input_entity` and then polled with `InputPeerChannel(channel_id, access_hash)`. It is re-resolved only after CHANNEL_INVALID or an access-hash error, at most once a day per handle.
+    - At most `max_resolves_per_poll = 3` new resolves per run.
+  - **FloodWait.** A `FloodWaitError(seconds)` stops the run (FIX-40 behaviour) and also persists `tg_flood_until = now + seconds × 1.1` in `state`. Every Telethon read (polling, discovery) is skipped until then and logged once.
+  - **Live events** only for channels the account has already joined (unchanged).
+
+- **D-253 Trap 8: latency from first seen to alert.**
+  - **Already exposed.** `record_delivery` stores `latency_s` and `/stats` shows median and p90 per source for alerts and digest (FC-13, D-210). Nothing is "only logged".
+  - **KF-30 adds:**
+    - separate lines for `alert` and `fresh_alert`;
+    - a KZ vs intl split (by employer bucket);
+    - a per-tier median including `tg`.
+  - **Snapshot.** `stats_expected.txt` changes in KF-30 only.
+
+- **D-254 Traps 9 and 15: daily caps.**
+  - **Existing caps:** `[scoring] daily_call_cap` (200), `[triage] daily_call_cap` (600) and `[outreach] daily_llm_call_cap` (40).
+  - **New cap.** `[telegram_discovery] daily_call_cap = 30` counts every discovery Telethon call: `contacts.search`, `GetFullChannelRequest` and each sample-history read. It is enforced before each call.
+    - It reuses `LlmBudget` and the `llm_usage` table with purposes `tg_search` and `tg_sample`. A new usage table for one counter is not worth a migration, and these purposes are excluded from every LLM cap by the existing per-purpose sums.
+  - **Warnings.** Each cap sends one Telegram warning per Asia/Almaty day (`cap_warned:<stage>:<day>`). Outreach keeps its inline reply.
+  - **All-fail.** "All triage or scoring calls in a run failed" keeps D-224 behaviour: a notice and a non-zero exit code. KF-34 re-pins it with tests, including the new post-triage step.
+  - **FIX-45 is resolved in KF-01.** `[triage] daily_call_cap = 0` with `enabled = true` is rejected at config load, with a message naming the key and pointing to `enabled = false`. The baseline sub-cap applies to every attempt, the retry included.
+
+- **D-255 Trap 10: hh User-Agent contact.** Already satisfied, see D-243. The contact comes from `HTTP_CONTACT` (env), never from code. The user's email is never written into the repo. Setting `HTTP_CONTACT` to an email is a user-provided item.
+
+- **D-256 Trap 11: Telethon safety, Add/Ignore, forwards and `/add`.**
+  - **Join code removed.** `auto_join` and `TelegramListener._join` (JoinChannelRequest) are deleted (KF-18). A leftover `auto_join` key in config.toml is rejected with a message, because the brief forbids joining outright.
+  - **Read-only wrapper.** Every Telethon use goes through `src/sources/telegram_ro.py::ReadOnlyTelegram`.
+    - Allowed methods: connect, disconnect, is_user_authorized, get_input_entity, iter_messages, iter_dialogs, `add_event_handler` for `events.NewMessage`.
+    - Allowed raw requests: `contacts.SearchRequest`, `channels.GetFullChannelRequest`, `messages.GetHistoryRequest`.
+    - Anything else raises `ReadOnlyViolation`. A test drives every Telegram code path with a recording fake and asserts that none of these was called: send_message, send_file, forward_messages, delete_messages, edit_message, send_read_acknowledge, any Join/Leave/Import request.
+  - **Add/Ignore storage.** The Add button writes the handle to the existing `tg_channels` overlay (state `added`, schema v10) inside the gitignored `data/oppo.db`. It does not create `data/telegram_channels.toml`: the overlay is already the runtime channel store used by `/channels add`, and it lives under the gitignored `data/` as the brief requires.
+  - **Ignore and candidates.** Ignore is stored in `tg_channel_candidates.status = 'ignored'` (schema v15), so the handle is never suggested again. No join call is ever made; a channel is added only by the user's button press.
+  - **Sample posts.** They are HTML-escaped and clipped to 200 characters before display.
+  - **Discovery caps.** Discovery searches and sample reads count against the D-254 cap.
+  - **Chat checks.**
+    - Every new handler (`/findchannels`, `tc:` callbacks, forwarded messages, `/add`, `/search`, `/cvreview`, `/boards`) relies on the existing `WhitelistMiddleware`, which drops any update not from TELEGRAM_CHAT_ID before handlers run.
+    - KF-35 adds one parametrized dispatcher test proving each is silent for another chat.
+  - **`/add`** did not exist, so it is built (KF-24). `/add <posting text>` stores a `manual` posting, runs triage for extraction, then the post-triage step, then scoring, and replies with the rendered item (delivery kind `manual`).
+    - A triage "not relevant" verdict does not drop a user-added item.
+    - The URL is the first http(s) URL in the text. Without one, the bot asks for the link. Nothing is fetched.
+  - **Forwards.** A forwarded channel post (`forward_origin` of type channel with a username) becomes `source=telegram_channels`, `external_id=<username>:<message_id>` and url `https://t.me/<username>/<message_id>`, so it dedupes against polling. Other forwards are handled like `/add`.
+  - **Handler order.** The forward handler is registered after the pending `/cv` and `/addcontact` text handlers, so it never takes their input.
+  - **Prepare.** It is now on every item (D-260). The liked/saved gate in `on_prepare_callback`, if any, is removed, because pressing Prepare is an explicit request that the outreach cap still bounds.
+
+- **D-257 Trap 12: `config/cues.toml`.**
+  - **Layout.** Groups by category, then language:
+    - `[types.<name>]`, `[fields.<name>]`, `[locations.kz]` and `[negative]`, each with `en`, `ru`, `kk` lists;
+    - `[seniority]`, `[junior]`, `[protect]`, `[spam]`, `[unpaid]`, `[hard_blockers]`, `[qualifications]`, also per language;
+    - `[hh]` (query groups and bounds);
+    - `[telegram_discovery]` (queries).
+  - **Entry syntax:**
+    - `word or phrase` matches on whole words at both ends, case-folded, with ё folded to е;
+    - `stem*` matches as a prefix (for Russian and Kazakh inflection);
+    - `re:<regex>` is allowed for rare cases, such as the existing intern regex that keeps "internal" and "international" out (FIX-04). It is compiled at load, and an invalid regex fails naming the entry.
+  - **Short tokens.** Entries of 3 characters or fewer (ai, ml, qa, c++) are always whole-word, even when written with `*`; that is a load error.
+  - **Counts.** At least 150 positive cues (types plus fields), with at least 35 in ru and 35 in kk. A test counts them.
+  - **Fixture.** `tests/fixtures/cue_titles.json` has at least 60 titles (at least 15 per language) with expected keep/drop, including "Maintenance Technician", "Email Marketing Manager", "Domain Expert", "Retail Assistant", "Chairperson", "Стажер-бухгалтер" (drop, negative "бухгалтер*") and "Air Astana cabin crew" (drop).
+  - **Single source.** The pre-filter, hh queries (KF-20), Telegram discovery queries and job-ratio estimate (KF-22), `/search` expansion (KF-29) and CV market aggregation (KF-31) all read this one file.
+  - **Migration.** `[filters]` in config.toml keeps only non-cue settings (`max_age_days`, `hard_blocker_action`, `hard_blocker_penalty`) plus `cues_file = "config/cues.toml"`.
+    - A leftover `[filters]` keyword list (positive_title_keywords, spam_keywords, unpaid_keywords, senior_only_keywords, hard_blocker_keywords, negative_title_keywords, protect_title_keywords) makes config loading fail with "<key> moved to config/cues.toml". There are no overrides, so there is one file to edit, as the brief asks.
+    - The repo config.toml is updated in the same task.
+  - **hh request bound.** One request per configured query group: an OR query built from up to 12 of that group's terms, skipping stems and regexes. There is never one request per cue. `max_requests_per_run` bounds the total.
+
+- **D-258 Trap 13: SmartRecruiters, Recruitee and Personio need nothing.** All three are OUT (D-240 to D-242). No discovery URL pattern or account list is built for them, and `src/discovery/extract.py` stays limited to greenhouse, lever, ashby and workable.
+
+- **D-259 Trap 14: CV review design (Part 8).**
+  - **Market aggregation is deterministic** (`src/cv/market.py`, no LLM).
+    - Inputs: postings first seen in the last 30 days that have base score >= `[cv_review] market_min_score` (7.0) or an active like.
+    - Each posting counts each `fields` / `qualifications` cue group once.
+    - Split by employer bucket: KZ = kz_*, intl = intl_*. Unknown-region postings are left out of both.
+    - Output: the top 10 groups per bucket with counts and shares. A bucket with fewer than 5 postings is reported as "not enough data".
+  - **One LLM call.** `[outreach] tailor_model` gets the parsed CV sections, `src/scoring/profile.md` (the SPEC target profile) and the market summary. The CV goes inside `wrap_untrusted("cv", ...)`; the market summary holds only cue labels and counts. With the `call_json` correction retry, that is at most 2 calls.
+    - Purpose `cv_review` is added to `OUTREACH_PURPOSES`, so the existing outreach daily cap applies.
+  - **Output schema:**
+    - `fit_summary`: 3 lines;
+    - `changes`: 5 items `{what, why}`, ranked;
+    - `gaps`: 3 items `{gap, bucket, mark: add_if_true|worth_learning, note}`;
+    - `report`: `{structure, length, ordering, bullets: [{original, suggestion}], keywords, kz_notes, intl_notes, formatting}`.
+  - **Verification** uses `src/outreach/verify.py`.
+    - Each `bullets[].suggestion` and each `changes[].what` goes through the same claim checks as tailoring: numbers, entities, credentials, skills not in the CV, and inflation stems.
+    - An unsupported bullet becomes a question ("Did you <claim>? If yes, add it.") and its unsupported tokens are listed.
+    - `keywords` not found in the CV text are dropped.
+    - A gap marked `add_if_true` is worded as a question; one already present in the CV is dropped.
+    - The counts of removed and converted items are shown.
+  - **Delivery.**
+    - The chat summary is under 3500 characters.
+    - The full report is Markdown, sent with aiogram `BufferedInputFile(bytes, filename="cv_review_v<N>.md")`. It is built in memory and never written to disk; it is cached only in `data/oppo.db`.
+  - **Cache.** `cv_reviews` (schema v16) is keyed by CV version and prompt version.
+    - The `on_new_cv_version` and `on_forget_cv` hooks delete rows, so a new upload or `/forgetcv` clears the cache.
+    - `/cvreview` shows the cached review (0 calls). `/cvreview refresh` regenerates it within the outreach cap.
+    - `/cv` runs the review automatically, but only when the version changed.
+  - **Tests:** the fictional `tests/fixtures/cv_fake.txt`, a fixture market sample, and fabrication-trap replies (an invented employer, an inflated number, a skill missing from the CV, an invented degree).
+
+- **D-260 Trap 16: the item format (Part 7) and its conflicts.**
+  - **Layout** (HTML parse mode, as the digest-format skill and D-16 require; everything escaped):
+    - line 1: `<flag> <b>title</b> — company · city · until YYYY-MM-DD` plus an optional ` · ⚠ <marker>`;
+    - line 2: `Relevance N/10: <reason>`;
+    - line 3: the link, plus ` · via <aggregator>` when required.
+  - **Buttons.** One row: Like, Dislike, Save, Applied, Prepare. Callback data stays under 64 bytes.
+  - **N is the base score,** the LLM relevance, formatted without a trailing `.0`. The adjusted score decides order only (SPEC: alerts and the floor use the base score).
+  - **Attribution vs "nothing more".** Remote OK threatens to suspend API access without a credit (D-178), and Arbeitnow's terms require a link back (D-238). The credit therefore stays, appended to the link line, not as an extra line.
+  - **Alert marker.** Alerts prefix line 1 with `<b>ALERT</b> · ` or `<b>NEW</b> · `, so the user can tell an instant alert from a digest item. This is the only addition.
+  - **Red-flag marker.** One short marker, clipped to 24 characters, chosen in this order: hard blocker > scam or personal-contact-only (triage) > visa barrier > the first model red flag. "⚠" (U+26A0) is the one new non-ASCII symbol (D-18 had allowed —, · and ✓; flags came with D-96).
+  - **Removed:** the old `Deadline:` line, the `Red flags:` paragraph and the `(base x, +1.0 KZ startup)` detail. `/prepare` still shows the detail.
+  - **Lengths.**
+    - Title clipped to 90 characters, company to 50, city to 30. Line 1 stays at or under 220 characters.
+    - Old rows: the reason is clipped to 110 characters at a word boundary (clean "…").
+    - The whole item stays at or under 600 characters plus the URL (URL capped at 1000 by `safe_url`).
+  - **Scope.** Used by the digest, alerts, `/top`, `/search` and `/add` replies.
+  - **The skill file.** `.claude/skills/digest-format/SKILL.md` still describes the old layout. It is agent configuration, which agents do not edit. SPEC and PLAN are the source of truth, and the README notes the new layout.
+
+- **D-261 "Search results" and "search parsing".** No search command existed. KF-29 adds `/search <words>`, a local search over scored postings from the last 30 days, with no LLM calls and no network.
+  - **Expansion.** Each query word that matches a cue expands to that cue's whole group across en, ru and kk; that is the "search parsing" use of the cue file.
+  - **Results.** The top 5 by adjusted score, in the new item format with keyboards.
+
+- **D-262 Triage extraction, scams and repost dedupe (Part 4).**
+  - **Extracted fields** (free-text items only) go into new columns `ex_title`, `ex_company`, `ex_location` and `ex_deadline`. The source's own `title` and `company` are never overwritten, so `fingerprint` and `content_hash` stay stable.
+    - Rendering prefers the `ex_*` value when the source value is empty or the source is free-text.
+    - Deadline precedence: source deadline > scorer deadline > triage deadline.
+  - **Contact.** Never stored raw: SPEC Contacts forbids storing emails and phones. Only `contact_key = sha256(normalized contact)[:16]` is kept.
+  - **Scams.** `scam` is one of `none|upfront_payment|personal_contact_only|other`.
+    - upfront_payment and other are filtered with reason `scam` before scoring, except for user-added items, which are scored with the marker.
+    - personal_contact_only is common in honest KZ channel posts, so it only gives the line-1 marker.
+  - **Repost dedupe** runs in the post-triage step, so it can use the extracted fields.
+    - `repost_key = sha1(norm(company or ex_company) | norm(title or ex_title) | contact_key)[:16]`, set only when the title is non-empty and company or contact is non-empty.
+    - A newer posting whose key equals that of an older non-duplicate posting from the last 30 days, in a different channel or from manual input, becomes `duplicate` (reason `repost`) before scoring.
+    - The global `fingerprint` is unchanged, so history is never re-deduped.
+
+- **D-263 Pagewatch `type` key.**
+  - **Config.** `[[sources.pagewatch.pages]]` gains an optional `type` (one of the 12 values), validated at load. Pagewatch is triage-exempt, so this is the only way its items get program types: `Kind` has no summer_school, grant or accelerator.
+  - **Rows.** Postings carry `type_source='config'`. The existing `kind` stays for backwards compatibility.
+
+- **D-264 FIX-50 closed by this planning commit.** SPEC "Delivery" gains an "Added 2026-11-08" bullet. It names baseline suppression (D-188), hard-blocker suppression (D-195), fresh alerts (score, window, daily cap; D-189, now regional per KF-13) and the digest band order (D-189, D-209). The FIX-50 acceptance asks for exactly that, so FIX-50 is marked `[x]` in the same commit.
+
+- **D-265 Schema versions for section 12.**
+  - **v13 (KF-07):**
+    - postings gains `opportunity_type`, `type_source`, `language`, `ex_title`, `ex_company`, `ex_location`, `ex_deadline`, `contact_key`, `scam` and `repost_key`;
+    - scores gains `contract` (default 1) and `reason_generic` (default 0);
+    - an index on `repost_key`;
+    - the backfill described in D-247.
+  - **v14 (KF-19):** `tg_entities`.
+  - **v15 (KF-22):** `tg_channel_candidates`.
+  - **v16 (KF-32):** `cv_reviews`.
+  - **Tests.** Each migration has a test that starts from the previous version and proves the backfill and idempotency.
+
+- **D-266 Threshold keys.**
+  - **New keys.** `[thresholds] fresh_alert_score` is replaced by `kz_fresh_alert_score = 7.0` and `intl_fresh_alert_score = 8.0`. `fresh_alert_max_per_day` becomes 6, a combined cap across regions.
+  - **Old key.** A leftover `fresh_alert_score` fails config loading, with a message naming the two new keys, rather than being silently ignored.
+  - **Region of an item.** The employer bucket: kz_* uses the kz threshold; intl_* and unknown use the intl threshold (D-248). The existing rules (base >= 9, deadline within 7 days) stay uncapped and are checked first.
+  - **Thresholds use the base score** (SPEC).
+
+- **D-267 Wildcard-aware robots matching (KF-04).**
+  - **Problem.** `PoliteClient._robots_allowed` uses `urllib.robotparser`, which ignores `*` and `$`.
+  - **Choice.** A small in-house matcher (`src/robots.py`) implementing RFC 9309 matching:
+    - `*` wildcard, `$` end anchor;
+    - longest match wins, and Allow wins ties;
+    - the group for our agent token `oppo-tg` else `*`.
+  - **Reason.** Every new source and page relies on robots being right, and two real files in this audit (enbek.kz, Remotive) use wildcard disallows the current parser would miss. No new dependency.
+
+- **D-268 Planner-captured fixtures committed with the plan (KF-00).**
+  - **Why.** The brief allows live calls only in the final smoke test. The previous round therefore hand-wrote the Workable and Remote OK fixtures, and the shapes had to be confirmed later (D-215, D-216).
+  - **What.** The planner was already making the source checks live, so it saved real, trimmed responses for later tasks:
+    - `tests/fixtures/arbeitnow_api.json` (4 jobs, see D-238 and its NOTE file);
+    - `tests/fixtures/robots_enbek.txt` and `tests/fixtures/robots_remotive.txt` (full bodies, D-235, D-237);
+    - `tests/fixtures/robots_pagewatch_seeds.json`: robots status and body for every seed host and every existing pagewatch host (D-245).
+  - **Content.** None of them contains personal data.
+  - **Who reads them.** No test reads them until KF-04, KF-25, KF-26 and KF-27, and implementers must not fetch these again.

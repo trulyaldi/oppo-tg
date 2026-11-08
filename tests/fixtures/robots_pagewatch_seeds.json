@@ -1,0 +1,113 @@
+{
+ "captured": "2026-11-08 by the planner (D-245), one GET per host with the honest planner UA",
+ "hosts": {
+  "job.kaspi.kz": {
+   "status": 200,
+   "body": "User-agent: *\nDisallow: /api/web/\nAllow: /\nSitemap: https://job.kaspi.kz/sitemap.xml"
+  },
+  "halykbank.kz": {
+   "status": 200,
+   "body": "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /backend\nDisallow: /*.pdf\nDisallow: /*.xls\nDisallow: /*.doc\nDisallow: /*.ppt\nDisallow: /*.txt\nDisallow: /*gclid=\nDisallow: /*utm_*\nDisallow: /*yclid=*\nDisallow: /*httpMethod\nDisallow: /*httpMethod*\nAllow: /*.jpg\nAllow: /*.css\nAllow: /*.js\nDisallow: /kz/*\nDisallow: /en/*\nDisallow: /halykclub/*\nDisallow: /about/press_center\nDisallow: /about/career/*\nDisallow: /map/*\nDisallow: /promo/*\nDisallow: /credits/kredit-gaz/*\nDisallow: /transfer\nSitemap: https://halykbank.kz/sitemap.xml\nHost: https://www.halykbank.kz\n\nUser-agent: Yandex\nAllow: /\nDisallow: /admin\nDisallow: /backend\nDisallow: /*.pdf\nDisallow: /*.xls\nDisallow: /*.doc\nDisallow: /*.ppt\nDisallow: /*.txt\nDisallow: /*gclid=\nDisallow: /*httpMethod\nDisallow: /*httpMethod*\nAllow: /*.jpg\nAllow: /*.css\nAllow: /*.js\nDisallow: /kz/*\nDisallow: /en/*\nDisallow: /halykclub/*\nDisallow: /about/press_center\nDisallow: /about/career/*\nDisallow: /map/*\nDisallow: /promo/*\nDisallow: /credits/kredit-gaz/*\nDisallow: /transfer/*\nSitemap: https://halykbank.kz/sitemap.xml\n\nUser-agent: Googlebot\nAllow: /\nDisallow: /admin\nDisallow: /backend\nDisallow: /*.pdf\nDisallow: /*.xls\nDisallow: /*.doc\nDisallow: /*.ppt\nDisallow: /*.txt\nDisallow: /*gclid=\nDisallow: /*httpMethod\nDisallow: /*httpMethod*\nAllow: /*.jpg\nAllow: /*.css\nAllow: /*.js\nDisallow: /kz/*\nDisallow: /en/*\nDisallow: /halykclub/*\nDisallow: /about/press_center\nDisallow: /about/career/*\nDisallow: /map/*\nDisallow: /promo/*\nDisallow: /credits/kredit-gaz/*\nDisallow: /transfer/*\nSitemap: https://halykbank.kz/sitemap.xml\n\n# AI Crawlers\nUser-agent: GPTBot\nDisallow: /index.php\nAllow: /\n\nUser-agent: OAI-SearchBot\nDisallow: /index.php\nAllow: /\n\nUser-agent: ClaudeBot\nDisallow: /index.php\nAllow: /\n\nUser-agent: Claude-User\nDisallow: /index.php\nAllow: /\n\nUser-agent: Claude-SearchBot\nDisallow: /index.php\nAllow: /\n\nUser-agent: PerplexityBot\nDisallow: /index.php\nAllow: /\n\nUser-agent: Perplexity-User\nDisallow: /index.php\nAllow: /\n\nUser-agent: Google-Extended\nDisallow: /index.php\nAllow: /\n\nUser-agent: meta-externalagent\nDisallow: /index.php\nAllow: /\n\nUser-agent: DeepSeekBot\nDisallow: /index.php\nAllow: /"
+  },
+  "kolesa.group": {
+   "status": 200,
+   "body": "User-agent: *\nDisallow: /welcome/\nSitemap: https://kolesa.group/sitemap.xml\n"
+  },
+  "btsdigital.kz": {
+   "status": 200,
+   "body": "User-Agent: *\nDisallow: /page104826266.html\nDisallow: /ru/moderation\nDisallow: /page106748786.html\nDisallow: /kz/moderationpolicy\nDisallow: /page63426393.html\nDisallow: /eng/business\nDisallow: /page30428481.html\nDisallow: /eng/partners\nDisallow: /page38615986.html\nDisallow: /testpage\nDisallow: /page113989333.html\nDisallow: /en/moderationpolicy\nDisallow: /page37588375.html\nDisallow: /page159560897\nDisallow: /page30202055.html\nDisallow: /page149560897\nDisallow: /page30202053.html\nDisallow: /page129560897\nDisallow: /page30202002.html\nDisallow: /page109560812\nDisallow: /page63162339.html\nDisallow: /kz/business\nDisallow: /page29598598.html\nDisallow: /page109560895\nDisallow: /page54579471.html\nDisallow: /business\nDisallow: /page29858246.html\nDisallow: /page109560899\nDisallow: /page37580819.html\nDisallow: /page109560898\nDisallow: /page88818366.html\nDisallow: /page67699885.html\nDisallow: /page67857731.html\nDisallow: /page67864949.html\nDisallow: /page67866493.html\nDisallow: /page67554391.html\nDisallow: /page109560896html\nDisallow: /page40642357.html\nDisallow: /kz/moderationold\nDisallow: /page40320015.html\nDisallow: /ru/moderationold\nDisallow: /page39080964.html\nDisallow: /page40289530.html\nDisallow: /page51158819.html\nDisallow: /page51159023.html\nDisallow: /tilda/form*\nDisallow: /tilda/rec*\nDisallow: /tilda/click*\nDisallow: /tilda/scroll*\nDisallow: /tilda/popup*\nDisallow: /tilda/cart*\nDisallow: /tilda/product*\nDisallow: /tilda/event*\nDisallow:\n\n\nSitemap: https://btsdigital.kz/sitemap.xml\nSitemap: https://btsdigital.kz/sitemap-store.xml\nSitemap: https://btsdigital.kz/sitemap-feeds.xml\n"
+  },
+  "career.forte.kz": {
+   "status": 200,
+   "body": "User-Agent: *\nAllow: /\nDisallow: /private/\n\nSitemap: https://career.forte.kz.xml\n"
+  },
+  "campus.epam.kz": {
+   "status": 200,
+   "body": "User-agent: *\r\nDisallow: /Registration/\r\nDisallow: /UserProfile/\r\nDisallow: /StudentLearning/\r\nDisallow: /Inbox/\r\nDisallow: /Learning/\r\nDisallow: /Attendance/\r\nDisallow: /Task/\r\nDisallow: /GraduateReport/\r\nDisallow: /Plan/\r\nDisallow: /Plan#!/\r\nDisallow: /AuditTrail/\r\nDisallow: /Export/\r\nDisallow: /PdfExport/\r\nDisallow: /GroupManagement/\r\nDisallow: /Reports/\r\nDisallow: /ActionPlan/\r\nDisallow: /Graduates/\r\nDisallow: /AdministrationUser/\r\nDisallow: /Admin/\r\nDisallow: /AdministrationRole/\r\nDisallow: /CheckRavenDB/\r\nDisallow: /Questionary/\r\nDisallow: /OnlineLearning/\r\nDisallow: /ChangeLog/\r\nDisallow: /Distribution/\r\nDisallow: /Room/\r\nDisallow: /PlanWorkflowType/\r\nDisallow: /Synchronization/\r\nDisallow: /JobsManagement/\r\nDisallow: /library/\r\nDisallow: /RegistrationWizard/\r\nDisallow: /Article/\r\nDisallow: /Home/\r\nDisallow: /File/\r\nDisallow: /Feedback\r\nDisallow: /Management\r\nDisallow: /api/attachment\r\nDisallow: /?loginWnd=login\r\nDisallow: /api/user-headers/request-program-link\r\nDisallow: /Auth\r\nDisallow: /Root\r\nDisallow: /PersonalDataAgreement\r\nDisallow: /login-callback\r\nDisallow: /logout-callback\r\nDisallow: /external-login\r\nDisallow: /event/not-posted\r\nDisallow: /*/PersonalDataAgreement\r\nDisallow: /*/login-callback\r\nDisallow: /*/logout-callback\r\nDisallow: /*/external-login\r\nDisallow: /*/event/not-posted\r\nDisallow: /400\r\nDisallow: /403\r\nDisallow: /404\r\nDisallow: /500\r\nDisallow: /en/400\r\nDisallow: /ru/400\r\nDisallow: /ua/400\r\nDisallow: /en/403\r\nDisallow: /ru/403\r\nDisallow: /ua/403\r\nDisallow: /en/404\r\nDisallow: /ru/404\r\nDisallow: /ua/404\r\nDisallow: /en/500\r\nDisallow: /ru/500\r\nDisallow: /ua/500\r\nAllow: /UserProfile/SetLocale"
+  },
+  "nu.edu.kz": {
+   "status": 200,
+   "body": "User-agent: *\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php\n\nSitemap: https://nu.edu.kz/sitemap_index.xml\n"
+  },
+  "issai.nu.edu.kz": {
+   "status": 200,
+   "body": "# START YOAST BLOCK\n# ---------------------------\nUser-agent: *\nDisallow:\n\nSitemap: https://issai.nu.edu.kz/sitemap_index.xml\n# ---------------------------\n# END YOAST BLOCK"
+  },
+  "research.nu.edu.kz": {
+   "status": 200,
+   "body": "User-Agent: *\nCrawl-Delay: 5\nDisallow: /*?*format=rss\nDisallow: /*?*export=xls\n\nSitemap: https://research.nu.edu.kz/sitemap.xml\n\n"
+  },
+  "science-fund.kz": {
+   "status": 200,
+   "body": "User-agent: *\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php\n\nSitemap: https://science-fund.kz/wp-sitemap.xml\n\nUser-agent: *\nDisallow: /wp-content/uploads/wpo-plugins-tables-list.json\n"
+  },
+  "summerstudents.desy.de": {
+   "status": 200,
+   "body": "# extended syntax, works for MODERN and SERIOUS CRAWLERS ONLY\nUser-agent: *\nDisallow: /*action=\nDisallow: /*manage\nDisallow: /*preview=\n# disallow URLs with query strings altogether\n#User-agent: *\n#Disallow: /*?*\n#\n# lock out ai-bots\n# https://github.com/ai-robots-txt/ai.robots.txt/blob/main/robots.txt\nUser-agent: AddSearchBot\nUser-agent: AgentTimes\nUser-agent: AI2Bot\nUser-agent: AI2Bot-DeepResearchEval\nUser-agent: Ai2Bot-Dolma\nUser-agent: aiHitBot\nUser-agent: AIWebIndex\nUser-agent: amazon-kendra\nUser-agent: amazon-QBusiness\nUser-agent: Amazonbot\nUser-agent: AmazonBuyForMe\nUser-agent: Amzn-SearchBot\nUser-agent: Amzn-User\nUser-agent: Andibot\nUser-agent: Anomura\nUser-agent: anthropic-ai\nUser-agent: ApifyBot\nUser-agent: ApifyWebsiteContentCrawler\nUser-agent: Applebot\nUser-agent: Applebot-Extended\nUser-agent: Aranet-SearchBot\nUser-agent: atlassian-bot\nUser-agent: Awario\nUser-agent: AzureAI-SearchBot\nUser-agent: bedrockbot\nUser-agent: bigsur.ai\nUser-agent: Bravebot\nUser-agent: Brightbot\nUser-agent: Brightbot 1.0\nUser-agent: BuddyBot\nUser-agent: Bytespider\nUser-agent: CCBot\nUser-agent: Channel3Bot\nUser-agent: ChatGLM-Spider\nUser-agent: ChatGPT Agent\nUser-agent: ChatGPT-User\nUser-agent: Claude-Code\nUser-agent: Claude-SearchBot\nUser-agent: Claude-User\nUser-agent: Claude-Web\nUser-agent: ClaudeBot\nUser-agent: Cloudflare-AutoRAG\nUser-agent: CloudVertexBot\nUser-agent: Code\nUser-agent: cohere-ai\nUser-agent: cohere-training-data-crawler\nUser-agent: Cotoyogi\nUser-agent: CragCrawler\nUser-agent: Crawl4AI\nUser-agent: Crawlspace\nUser-agent: Cursor\nUser-agent: Datenbank Crawler\nUser-agent: DeepSeekBot\nUser-agent: Devin\nUser-agent: Diffbot\nUser-agent: DuckAssistBot\nUser-agent: Echobot Bot\nUser-agent: EchoboxBot\nUser-agent: ExaBot\nUser-agent: ExaSearchBot\nUser-agent: FacebookBot\nUser-agent: facebookexternalhit\nUser-agent: Factset_spyderbot\nUser-agent: FirecrawlAgent\nUser-agent: FriendlyCrawler\nUser-agent: GeistHaus-PageFetcher\nUser-agent: Gemini-Deep-Research\nUser-agent: Google-Agent\nUser-agent: Google-CloudVertexBot\nUser-agent: Google-Extended\nUser-agent: Google-Firebase\nUser-agent: Google-Gemini-CLI\nUser-agent: Google-NotebookLM\nUser-agent: GoogleAgent-Mariner\nUser-agent: GoogleAgent-URLContext\nUser-agent: GoogleOther\nUser-agent: GoogleOther-Image\nUser-agent: GoogleOther-Video\nUser-agent: GPTBot\nUser-agent: HenkBot\nUser-agent: iAskBot\nUser-agent: iaskspider\nUser-agent: iaskspider/2.0\nUser-agent: ICC-Crawler\nUser-agent: ImagesiftBot\nUser-agent: imageSpider\nUser-agent: img2dataset\nUser-agent: ISSCyberRiskCrawler\nUser-agent: kagi-fetcher\nUser-agent: Kangaroo Bot\nUser-agent: Kimi-User\nUser-agent: KlaviyoAIBot\nUser-agent: KunatoCrawler\nUser-agent: laion-huggingface-processor\nUser-agent: LAIONDownloader\nUser-agent: LCC\nUser-agent: Lightpanda\nUser-agent: LinerBot\nUser-agent: Linguee Bot\nUser-agent: LinkupBot\nUser-agent: Manus-User\nUser-agent: meta-externalagent\nUser-agent: Meta-ExternalAgent\nUser-agent: meta-externalfetcher\nUser-agent: Meta-ExternalFetcher\nUser-agent: meta-webindexer\nUser-agent: MistralAI-User\nUser-agent: MistralAI-User/1.0\nUser-agent: Mozilla-Tabstack\nUser-agent: MyCentralAIScraperBot\nUser-agent: NagetBot\nUser-agent: netEstate Imprint Crawler\nUser-agent: newsai\nUser-agent: NotebookLM\nUser-agent: NovaAct\nUser-agent: OAI-SearchBot\nUser-agent: omgili\nUser-agent: omgilibot\nUser-agent: OpenAI\nUser-agent: opencode\nUser-agent: Operator\nUser-agent: PanguBot\nUser-agent: Panscient\nUser-agent: panscient.com\nUser-agent: Perplexity-User\nUser-agent: PerplexityBot\nUser-agent: PetalBot\nUser-agent: PhindBot\nUser-agent: Poggio-Citations\nUser-agent: Poseidon Research Crawler\nUser-agent: QualifiedBot\nUser-agent: Querit-SearchBot\nUser-agent: QueritBot\nUser-agent: QuillBot\nUser-agent: quillbot.com\nUser-agent: Reflectionbot\nUser-agent: SBIntuitionsBot\nUser-agent: Scrapy\nUser-agent: SemrushBot-OCOB\nUser-agent: SemrushBot-SWA\nUser-agent: Shap-User\nUser-agent: ShapBot\nUser-agent: Sidetrade indexer bot\nUser-agent: Spider\nUser-agent: TavilyBot\nUser-agent: Terra Cotta\nUser-agent: TerraCotta\nUser-agent: Thinkbot\nUser-agent: TikTokSpider\nUser-agent: Timpibot\nUser-agent: TongyiBot\nUser-agent: Trae\nUser-agent: TwinAgent\nUser-agent: UseAI\nUser-agent: VelenPublicWebCrawler\nUser-agent: WARDBot\nUser-agent: Webzio-Extended\nUser-agent: webzio-extended\nUser-agent: wpbot\nUser-agent: WRTNBot\nUser-agent: YaK\nUser-agent: YandexAdditional\nUser-agent: YandexAdditionalBot\nUser-agent: YiyanBot\nUser-agent: YouBot\nUser-agent: ZanistaBot\nDisallow: /"
+  },
+  "www.daad.de": {
+   "status": 200,
+   "body": "Sitemap: https://www.daad.de/sitemap.xml\nHost: https://www.daad.de\nCrawl-delay: 2\n\nUser-agent: *\nDisallow: *whitelabel=1*\nDisallow: /*?barrierUrl=\nDisallow: /*?js-unique\nDisallow: /*hec-fetch-offset=\nDisallow: /*memorisepage*\nDisallow: /adventskalender/\nDisallow: /alumni/netzwerke/vip-galerie/index_stipendiaten_en_xml.php5\nDisallow: /app-bsn/\nDisallow: /app-rise-pro/\nDisallow: /app-rise-ww/\nDisallow: /app-rise/\nDisallow: /app/bsa/api/\nDisallow: /ausland/*.pdf$\nDisallow: /ausland/intern/\nDisallow: /ausland/studieren/stipendium/de/34738-stipendiendatenbank-deutsche/\nDisallow: /csf-p/\nDisallow: /csf-r/\nDisallow: /csf-s/\nDisallow: /de/suche.html\nDisallow: /deutschland/*.pdf$\nDisallow: /deutschland/foerderung/stipendiendatenbank/00462.de.stage.html\nDisallow: /deutschland/foerderung/stipendiendatenbank/00462.en.stage.html\nDisallow: /deutschland/foerderung/stipendiendatenbank/00462.es.stage.html\nDisallow: /deutschland/foerderung/stipendiendatenbank/00462.obv.de.html\nDisallow: /deutschland/foerderung/stipendiendatenbank/00462.pdf.de.html\nDisallow: /deutschland/foerderung/stipendiendatenbank/00462.pdf.en.html\nDisallow: /deutschland/foerderung/stipendiendatenbank/00462.pdf.es.html\nDisallow: /deutschland/foerderung/stipendiendatenbank/00462.print.de.html\nDisallow: /deutschland/foerderung/stipendiendatenbank/00462.print.en.html\nDisallow: /deutschland/foerderung/stipendiendatenbank/00462.print.es.html\nDisallow: /download/DAAD_Hinweise_Sicherheitsvorsorge_Gefoerderte.pdf\nDisallow: /download/DAAD_Hinweise_Sicherheitsvorsorge_Projekte.pdf\nDisallow: /embedded/\nDisallow: /en/suche.html\nDisallow: /es/suche.html\nDisallow: /flash/\nDisallow: /imperia/\nDisallow: /import/\nDisallow: /js/\nDisallow: /laenderinformationen/*.pdf$\nDisallow: /md/content/lektoren/\nDisallow: /medien/lektoren/\nDisallow: /medien/portal-ortslektoren\nDisallow: /medien/portal-ortslektoren-public\nDisallow: /medien/portal-ortslektoren-public/\nDisallow: /medien/portal-ortslektoren/\nDisallow: /pdf/\nDisallow: /phd-portal/\nDisallow: /pics/\nDisallow: /portal-ortslektoren\nDisallow: /portal-ortslektoren/\nDisallow: /portrait/merkliste\nDisallow: /ruidp/\nDisallow: /sams/\nDisallow: /sapportal/\nDisallow: /schulung/\n"
+  },
+  "www.mitacs.ca": {
+   "status": 200,
+   "body": "# START YOAST BLOCK\n# ---------------------------\nUser-agent: *\nDisallow: /*?\nDisallow: /wp-admin/\n\nAllow: /wp-admin/admin-ajax.php\n\nSitemap: https://www.mitacs.ca/sitemap_index.xml\n\n# ---------------------------\n# END YOAST BLOCK\n"
+  },
+  "summerofcode.withgoogle.com": {
+   "status": 404,
+   "body": ""
+  },
+  "www.oxfordml.school": {
+   "status": 200,
+   "body": "User-Agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\nDisallow: /studio/\nDisallow: /2026/portal/\nDisallow: /a/\n\nSitemap: https://oxfordml.school/sitemap.xml\n"
+  },
+  "www.eeml.eu": {
+   "status": 404,
+   "body": ""
+  },
+  "www.m2lschool.org": {
+   "status": 404,
+   "body": ""
+  },
+  "prosperity.imc.com": {
+   "status": 200,
+   "body": "User-Agent: LinkedInBot\nUser-Agent: facebookexternalhit\nUser-Agent: Facebot\nUser-Agent: Twitterbot\nUser-Agent: WhatsApp\nUser-Agent: Slackbot\nUser-Agent: Discordbot\nUser-Agent: TelegramBot\nAllow: /\nAllow: /badges/share/\n\nUser-Agent: *\nAllow: /\nDisallow: /game/\nDisallow: /settings/\nDisallow: /onboarding/\nDisallow: /debug/\nDisallow: /calculating-scores/\nDisallow: /badges/\nDisallow: /winner-announcement\n\nSitemap: https://prosperity.imc.com/sitemap.xml\n"
+  },
+  "www.janestreet.com": {
+   "status": 200,
+   "body": "User-agent: *\nDisallow: /static/\nDisallow: /welcome-guide/\nDisallow: /benefits/\nDisallow: /welcome-guide/\nDisallow: /institutional-services/resources-for-volatile-markets/\nDisallow: /bonus-problems/\nDisallow: /quantitative-researcher/\nDisallow: /apply-quantitative-researcher/\nDisallow: /join-jane-street/exploding-offers/\nDisallow: /enigmatologist-description-nyc/\nDisallow: /enigmatologist-puzzle-nyc/\nDisallow: /apply-enigmatologist-nyc-b5d9kfs0i1/\nDisallow: /enigmatologist-description-ldn/\nDisallow: /enigmatologist-puzzle-ldn/\nDisallow: /apply-enigmatologist-ldn-agyl3jwr7n/\nDisallow: /what-we-do/global-capital-markets/\nDisallow: /puzzle-tutorials/\nDisallow: /party-puzzle/\nDisallow: /see-hkg-email.html\nDisallow: /see-ldn-email.html\nDisallow: /join-jane-street/position/7304961002/\nDisallow: /join-jane-street/apply/7304961002/\nDisallow: /tokens-puzzle/\nDisallow: /solved/\nDisallow: /curious/\nDisallow: /join-jane-street/interviewing-deep-dive/\nDisallow: /join-jane-street/ml-research-interviews\nDisallow: /join-jane-street/ml-engineer-interviews\nDisallow: /culture/artwork-catalog\n"
+  },
+  "deepmind.google": {
+   "status": 200,
+   "body": "User-agent: *\nAllow: /\n\nSitemap: https://deepmind.google/sitemap.xml\n"
+  },
+  "www.mpg.de": {
+   "status": 200,
+   "body": "# Generated by CMS-App (default)\nUser-agent: *\nSitemap: https://www.mpg.de/sitemap.xml\n"
+  },
+  "www.imc.com": {
+   "status": 200,
+   "body": "User-Agent: *\nAllow: /\n\nSitemap: https://www.imc.com/sitemap.xml\n"
+  },
+  "www.optiver.com": {
+   "status": 200,
+   "body": "User-agent: *\nDisallow: /externalContentView/\nSitemap: https://www.optiver.com/sitemap.xml\n"
+  },
+  "home.cern": {
+   "status": 200,
+   "body": "User-agent: *\n\n# Sitemap\nSitemap: /sitemap.xml\n\n# CSS, JS, Media\nAllow: /wp-content/*.css$\nAllow: /wp-content/*.css?\nAllow: /wp-content/*.js$\nAllow: /wp-content/*.js?\nAllow: /wp-content/*.avif\nAllow: /wp-content/*.bmp\nAllow: /wp-content/*.doc\nAllow: /wp-content/*.docx\nAllow: /wp-content/*.gif\nAllow: /wp-content/*.heic\nAllow: /wp-content/*.heif\nAllow: /wp-content/*.ico\nAllow: /wp-content/*.jpg\nAllow: /wp-content/*.jpeg\nAllow: /wp-content/*.md\nAllow: /wp-content/*.pdf\nAllow: /wp-content/*.png\nAllow: /wp-content/*.ppt\nAllow: /wp-content/*.pptx\nAllow: /wp-content/*.svg\nAllow: /wp-content/*.tif\nAllow: /wp-content/*.txt\nAllow: /wp-content/*.tiff\nAllow: /wp-content/*.webp\nAllow: /wp-content/*.xls\nAllow: /wp-content/*.xlsx\n\nAllow: /wp-includes/*.css$\nAllow: /wp-includes/*.css?\nAllow: /wp-includes/*.js$\nAllow: /wp-includes/*.js?\nAllow: /wp-includes/*.avif\nAllow: /wp-includes/*.bmp\nAllow: /wp-includes/*.doc\nAllow: /wp-includes/*.docx\nAllow: /wp-includes/*.gif\nAllow: /wp-includes/*.heic\nAllow: /wp-includes/*.heif\nAllow: /wp-includes/*.ico\nAllow: /wp-includes/*.jpg\nAllow: /wp-includes/*.jpeg\nAllow: /wp-includes/*.md\nAllow: /wp-includes/*.pdf\nAllow: /wp-includes/*.png\nAllow: /wp-includes/*.ppt\nAllow: /wp-includes/*.pptx\nAllow: /wp-includes/*.svg\nAllow: /wp-includes/*.tif\nAllow: /wp-includes/*.txt\nAllow: /wp-includes/*.tiff\nAllow: /wp-includes/*.webp\nAllow: /wp-includes/*.xls\nAllow: /wp-includes/*.xlsx\n\n# Directories\nDisallow: /wp-content/\nDisallow: /wp-includes/\n\n# Admin\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php\n\n# Files\nDisallow: /readme.html\nDisallow: /composer.json\nDisallow: /license.txt\n\n# Denied files\nDisallow: /xmlrpc.php\n"
+  },
+  "summer.epfl.ch": {
+   "status": 404,
+   "body": ""
+  },
+  "inf.ethz.ch": {
+   "status": 404,
+   "body": ""
+  },
+  "www.oist.jp": {
+   "status": 200,
+   "body": "#\n# robots.txt\n#\n# This file is to prevent the crawling and indexing of certain parts\n# of your site by web crawlers and spiders run by sites like Yahoo!\n# and Google. By telling these \"robots\" where not to go on your site,\n# you save bandwidth and server resources.\n#\n# This file will be ignored unless it is at the root of your host:\n# Used:    http://example.com/robots.txt\n# Ignored: http://example.com/site/robots.txt\n#\n# For more information about the robots.txt standard, see:\n# http://www.robotstxt.org/robotstxt.html\n\nUser-agent: *\n# CSS, JS, Images\nAllow: /core/*.css$\nAllow: /core/*.css?\nAllow: /core/*.js$\nAllow: /core/*.js?\nAllow: /core/*.avif\nAllow: /core/*.gif\nAllow: /core/*.jpg\nAllow: /core/*.jpeg\nAllow: /core/*.png\nAllow: /core/*.svg\nAllow: /core/*.webp\nAllow: /profiles/*.css$\nAllow: /profiles/*.css?\nAllow: /profiles/*.js$\nAllow: /profiles/*.js?\nAllow: /profiles/*.avif\nAllow: /profiles/*.gif\nAllow: /profiles/*.jpg\nAllow: /profiles/*.jpeg\nAllow: /profiles/*.png\nAllow: /profiles/*.svg\nAllow: /profiles/*.webp\n# Directories\nDisallow: /core/\nDisallow: /profiles/\n# Files\nDisallow: /README.md\nDisallow: /composer/Metapackage/README.txt\nDisallow: /composer/Plugin/ProjectMessage/README.md\nDisallow: /composer/Plugin/Scaffold/README.md\nDisallow: /composer/Plugin/VendorHardening/README.txt\nDisallow: /composer/Template/README.txt\nDisallow: /modules/README.txt\nDisallow: /sites/README.txt\nDisallow: /themes/README.txt\n# Paths (clean URLs)\nDisallow: /admin/\nDisallow: /comment/reply/\nDisallow: /filter/tips\nDisallow: /node/add/\nDisallow: /search/\nDisallow: /search?\nDisallow: /user/register\nDisallow: /user/password\nDisallow: /user/login\nDisallow: /user/logout\nDisallow: /media/oembed\nDisallow: /*/media/oembed\n# Paths (no clean URLs)\nDisallow: /index.php/admin/\nDisallow: /index.php/comment/reply/\nDisallow: /index.php/filter/tips\nDisallow: /index.php/node/add/\nDisallow: /index.php/search/\nDisallow: /index.php/search?\nDisallow: /index.php/user/password\nDisallow: /index.php/user/register\nDisallow: /index.php/user/login\nDisallow: /index.php/user/logout\nDisallow: /index.php/media/oembed\nDisallow: /index.php/*/media/oembed\n"
+  }
+ }
+}
