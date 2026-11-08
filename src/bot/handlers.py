@@ -18,7 +18,7 @@ from src import db
 from src.clock import Clock
 from src.config import TIERS, AppConfig, ScoringConfig, Settings, TriageConfig
 from src.delivery.digest import item_from_row, load_weights_checked
-from src.delivery.format import feedback_keyboard, render_item
+from src.delivery.format import SOURCE_ATTRIBUTION, feedback_keyboard, render_item
 from src.llm.budget import LlmBudget
 from src.outreach.render import CHUNK_LIMIT, chunk_lines
 from src.ranking.adjust import blocker_penalty, recompute_adjusted, region_hints
@@ -144,6 +144,9 @@ def reaction_items(rows: list[sqlite3.Row]) -> list[str]:
     lines = []
     for i, r in enumerate(rows, 1):
         line = f"{i}. <b>{_esc(_clip(r['title'], 200))}</b> — {_esc(_clip(r['company'], 100))}"
+        credit = SOURCE_ATTRIBUTION.get(r["source"])
+        if credit:  # aggregator credit, as in the digest (FIX-51, D-284)
+            line += f" (via {_esc(credit)})"
         line += f" /prepare_{r['id']}"
         url = r["url"]
         if url.startswith(("http://", "https://")):

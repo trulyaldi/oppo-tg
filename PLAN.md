@@ -3655,7 +3655,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - All callback data is 64 bytes or less, and the keyboard has 5 buttons in the brief's order.
   - The v1 fallback reason is 110 characters or fewer.
 
-### KF-16 [ ] /saved and /applied show the aggregator credit (closes FIX-51)
+### KF-16 [x] /saved and /applied show the aggregator credit (closes FIX-51)
 - Build: `reaction_items` appends ` (via <name>)` from `SOURCE_ATTRIBUTION`.
 - Files: `src/bot/handlers.py`, `tests/test_bot_commands.py`.
 - Acceptance:

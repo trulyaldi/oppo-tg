@@ -212,3 +212,24 @@ async def test_saved_long_items_split_into_chunks(conn):
         assert t.count("<b>") == t.count("</b>")
     for pid in ids:
         assert f"/prepare_{pid}" in joined
+
+
+async def test_saved_shows_aggregator_credit_only_for_aggregators(conn):
+    a = add(conn, 1, title="Remote one")
+    b = add(conn, 2, title="Board one")
+    conn.execute(
+        "UPDATE postings SET source='remoteok', url='https://remoteok.com/l/1' WHERE id=?", (a,)
+    )
+    conn.execute("UPDATE postings SET source='greenhouse' WHERE id=?", (b,))
+    db.set_reaction(conn, a, "save", NOW)
+    db.set_reaction(conn, b, "save", NOW + timedelta(minutes=1))
+    conn.commit()
+    m = FakeMessage()
+    await cmd_saved(m, conn)
+    blocks = "\n".join(m.texts).split("\n")
+    remote = [ln for ln in blocks if "Remote one" in ln]
+    assert "via Remote OK" in remote[0]
+    assert "https://remoteok.com/l/1" in "\n".join(m.texts)
+    board = [ln for ln in blocks if "Board one" in ln]
+    assert "via" not in board[0]
+    assert all(len(t) <= 4000 for t in m.texts)
