@@ -196,6 +196,36 @@ class OutreachConfig:
 
 
 @dataclass(frozen=True)
+class CvReviewConfig:
+    """Market summary for the CV review (D-259, KF-31)."""
+
+    market_days: int = 30
+    market_min_score: float = 7.0
+    top_n: int = 10
+    min_postings: int = 5
+
+    def __post_init__(self) -> None:
+        for name in ("market_days", "top_n", "min_postings"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                raise ValueError(f"[cv_review] {name} must be a positive integer")
+        score = self.market_min_score
+        if isinstance(score, bool) or not isinstance(score, int | float) or not 0 <= score <= 10:
+            raise ValueError("[cv_review] market_min_score must be a number from 0 to 10")
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> CvReviewConfig:
+        unknown = set(data) - set(cls.__dataclass_fields__)
+        if unknown:
+            raise ValueError(f"unknown cv_review keys: {sorted(unknown)}")
+        return cls(**data)
+
+    @classmethod
+    def from_cfg(cls, cfg: AppConfig) -> CvReviewConfig:
+        return cls.from_mapping(cfg.cv_review)
+
+
+@dataclass(frozen=True)
 class ScoringConfig:
     daily_call_cap: int = 200  # 0 means "no scoring" (D-184)
     baseline_max_share: float = 0.5
@@ -476,6 +506,7 @@ class AppConfig:
     thresholds: Thresholds = field(default_factory=Thresholds)
     ranking: dict[str, Any] = field(default_factory=dict)
     outreach: dict[str, Any] = field(default_factory=dict)
+    cv_review: dict[str, Any] = field(default_factory=dict)
     scoring: dict[str, Any] = field(default_factory=dict)
     triage: dict[str, Any] = field(default_factory=dict)
     telegram_discovery: dict[str, Any] = field(default_factory=dict)
@@ -507,6 +538,8 @@ class AppConfig:
         _check_arbeitnow(sources.get("arbeitnow", {}))
         outreach = dict(data.get("outreach", {}))
         OutreachConfig.from_mapping(outreach)  # fail fast at load (D-147)
+        cv_review = dict(data.get("cv_review", {}))
+        CvReviewConfig.from_mapping(cv_review)  # fail fast at load
         scoring = dict(data.get("scoring", {}))
         ScoringConfig.from_mapping(scoring)  # fail fast at load
         triage = dict(data.get("triage", {}))
@@ -523,6 +556,7 @@ class AppConfig:
             thresholds=Thresholds(**th),
             ranking=dict(data.get("ranking", {})),
             outreach=outreach,
+            cv_review=cv_review,
             scoring=scoring,
             triage=triage,
             telegram_discovery=tgd,

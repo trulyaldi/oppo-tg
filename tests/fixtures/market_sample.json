@@ -1,0 +1,263 @@
+[
+ {
+  "id": "kz1",
+  "category": "kz_employer",
+  "score": 8.0,
+  "days_ago": 3,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python, python, Python and SQL. 3 years of experience."
+ },
+ {
+  "id": "kz2",
+  "category": "kz_employer",
+  "score": 8.0,
+  "days_ago": 4,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python, python, Python and SQL. 3 years of experience."
+ },
+ {
+  "id": "kz3",
+  "category": "kz_employer",
+  "score": 8.0,
+  "days_ago": 5,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python, python, Python and SQL. 3 years of experience."
+ },
+ {
+  "id": "kz4",
+  "category": "kz_employer",
+  "score": 8.0,
+  "days_ago": 6,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python, python, Python and SQL. 3 years of experience."
+ },
+ {
+  "id": "kz5",
+  "category": "kz_employer",
+  "score": 8.0,
+  "days_ago": 7,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python, python, Python and SQL. 3 years of experience."
+ },
+ {
+  "id": "kz6",
+  "category": "kz_employer",
+  "score": 8.0,
+  "days_ago": 8,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python, python, Python and SQL. 3 years of experience."
+ },
+ {
+  "id": "kz7",
+  "category": "kz_startup",
+  "score": 7.0,
+  "days_ago": 5,
+  "liked": false,
+  "title": "Machine learning intern",
+  "description": "Python and machine learning. IELTS required. Master degree."
+ },
+ {
+  "id": "kz8",
+  "category": "kz_startup",
+  "score": 7.0,
+  "days_ago": 5,
+  "liked": false,
+  "title": "Machine learning intern",
+  "description": "Python and machine learning. IELTS required. Master degree."
+ },
+ {
+  "id": "kz9",
+  "category": "kz_program",
+  "score": 9.0,
+  "days_ago": 10,
+  "liked": false,
+  "title": "Data analyst",
+  "description": "Требуется магистр, английский язык, SQL."
+ },
+ {
+  "id": "kz10",
+  "category": "kz_program",
+  "score": 9.0,
+  "days_ago": 10,
+  "liked": false,
+  "title": "Data analyst",
+  "description": "Требуется магистр, английский язык, SQL."
+ },
+ {
+  "id": "kz11",
+  "category": "kz_program",
+  "score": 9.0,
+  "days_ago": 10,
+  "liked": false,
+  "title": "Data analyst",
+  "description": "Требуется магистр, английский язык, SQL."
+ },
+ {
+  "id": "kz12",
+  "category": "kz_employer",
+  "score": 5.0,
+  "days_ago": 20,
+  "liked": true,
+  "title": "Backend engineer",
+  "description": "Python and Docker. Қазақ тілі."
+ },
+ {
+  "id": "in1",
+  "category": "intl_top_tier",
+  "score": 8.5,
+  "days_ago": 3,
+  "liked": false,
+  "title": "Research engineer",
+  "description": "PyTorch and Python. PhD preferred. 5+ years of experience."
+ },
+ {
+  "id": "in2",
+  "category": "intl_top_tier",
+  "score": 8.5,
+  "days_ago": 3,
+  "liked": false,
+  "title": "Research engineer",
+  "description": "PyTorch and Python. PhD preferred. 5+ years of experience."
+ },
+ {
+  "id": "in3",
+  "category": "intl_top_tier",
+  "score": 8.5,
+  "days_ago": 3,
+  "liked": false,
+  "title": "Research engineer",
+  "description": "PyTorch and Python. PhD preferred. 5+ years of experience."
+ },
+ {
+  "id": "in4",
+  "category": "intl_top_tier",
+  "score": 8.5,
+  "days_ago": 3,
+  "liked": false,
+  "title": "Research engineer",
+  "description": "PyTorch and Python. PhD preferred. 5+ years of experience."
+ },
+ {
+  "id": "in5",
+  "category": "intl_top_tier",
+  "score": 8.5,
+  "days_ago": 3,
+  "liked": false,
+  "title": "Research engineer",
+  "description": "PyTorch and Python. PhD preferred. 5+ years of experience."
+ },
+ {
+  "id": "in6",
+  "category": "intl_other",
+  "score": 7.5,
+  "days_ago": 15,
+  "liked": false,
+  "title": "Quant developer",
+  "description": "C++ and Linux. Bachelor degree."
+ },
+ {
+  "id": "in7",
+  "category": "intl_other",
+  "score": 7.5,
+  "days_ago": 15,
+  "liked": false,
+  "title": "Quant developer",
+  "description": "C++ and Linux. Bachelor degree."
+ },
+ {
+  "id": "in8",
+  "category": "intl_other",
+  "score": 7.5,
+  "days_ago": 15,
+  "liked": false,
+  "title": "Quant developer",
+  "description": "C++ and Linux. Bachelor degree."
+ },
+ {
+  "id": "in9",
+  "category": "intl_other",
+  "score": 4.0,
+  "days_ago": 1,
+  "liked": true,
+  "title": "Software engineer",
+  "description": "Python, Docker, Git."
+ },
+ {
+  "id": "un1",
+  "category": "unknown",
+  "score": 9.5,
+  "days_ago": 1,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python and SQL"
+ },
+ {
+  "id": "un2",
+  "category": "unknown",
+  "score": 9.5,
+  "days_ago": 1,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python and SQL"
+ },
+ {
+  "id": "un3",
+  "category": "unknown",
+  "score": 9.5,
+  "days_ago": 1,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python and SQL"
+ },
+ {
+  "id": "lowkz1",
+  "category": "kz_employer",
+  "score": 6.9,
+  "days_ago": 2,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python SQL"
+ },
+ {
+  "id": "lowkz2",
+  "category": "kz_startup",
+  "score": 3.0,
+  "days_ago": 2,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python SQL"
+ },
+ {
+  "id": "lowin1",
+  "category": "intl_top_tier",
+  "score": 6.0,
+  "days_ago": 2,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python SQL"
+ },
+ {
+  "id": "lowin2",
+  "category": "intl_other",
+  "score": 2.0,
+  "days_ago": 2,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python SQL"
+ },
+ {
+  "id": "old1",
+  "category": "kz_employer",
+  "score": 9.0,
+  "days_ago": 31,
+  "liked": false,
+  "title": "Python developer",
+  "description": "Python SQL"
+ }
+]

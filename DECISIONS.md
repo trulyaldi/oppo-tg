@@ -1703,3 +1703,10 @@ Branch `feature/kz-first-fresh-cv`, created from `main` at 9eb48fe. The brief is
 - **D-298 KF-30: /stats latency lines.**
   - **Lines added** (alert kinds only, 7 days, from `deliveries.latency_s`): `Latency alert`, `Latency fresh_alert`, `Latency kz` and `Latency intl` (via `ranking.weights.bucket` on `scores.employer_category`; unknown is in neither), and `Latency tier <t>` per tier with data, always showing `tg` and `manual`. A delivery of source `manual` counts as tier `manual`; other postings take `target_state.tier`.
   - **Also:** `Generic reasons (7 days): N` (`scores.reason_generic`) and `Telegram flood wait until HH:MM` (owner timezone) only while a flood wait is active. The FC-13 per-source lines are unchanged. No schema change, so `src/db.py` is untouched.
+
+- **D-299 KF-31: market summary of requested skills.**
+  - **Source rows:** postings joined to `scores` (so the bucket comes from `scores.employer_category` via `ranking.weights.bucket`; unknown is in neither bucket). Counted when first seen within `[cv_review] market_days` of the clock, and `base_score >= market_min_score` or an active `like` reaction. The window is checked in Python on the parsed timestamp, so stored UTC offsets cannot skew it.
+  - **Groups:** every `fields.*` and `qualifications.*` cue group, matched once per posting on title plus description. Labels are the group name without the table. Ties sort by label. Share is count / bucket postings, rounded to 4 places.
+  - **Cues:** `qualifications.experience_years` added (digits plus years/лет/жыл) and `upper-intermediate` added to `english`. The other degree, English, Kazakh and Russian groups already existed.
+  - **Config:** `[cv_review]` is validated at load (`CvReviewConfig`); an unknown key fails. `src/cv/market.py` is allowed to use the cue file in the `test_cues` guard.
+  - **Fixture reading:** the 2 liked-below-threshold postings (one KZ, one intl) are inside the 12 KZ and 9 intl.

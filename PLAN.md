@@ -3941,7 +3941,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 
 ### Part J: CV review
 
-### KF-31 [ ] Deterministic market summary of requested skills (D-259)
+### KF-31 [x] Deterministic market summary of requested skills (D-259)
 - Build:
   - `[cv_review]` config, validated: `market_days = 30`, `market_min_score = 7.0`, `top_n = 10`, `min_postings = 5`.
   - `src/cv/market.py::market_summary(conn, cues, cfg, clock) -> MarketSummary(kz, intl)`. Each bucket is a list of `(group_label, count, share)` plus `n_postings` and an `enough` flag.

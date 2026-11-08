@@ -382,7 +382,7 @@ ru = ["phd", "кандидат* наук", "доктор* наук", "аспир
 kk = ["phd", "ғылым кандидаты", "ғылым докторы", "докторантура*"]
 
 [qualifications.english]
-en = ["english", "fluent english", "ielts", "toefl", "advanced english"]
+en = ["english", "fluent english", "ielts", "toefl", "advanced english", "upper-intermediate"]
 ru = ["английск*", "ielts", "toefl"]
 kk = ["ағылшын*", "ielts", "toefl"]
 
@@ -400,6 +400,12 @@ kk = ["қазақ тіл*", "мемлекеттік тіл*"]
 en = ["no experience required", "no prior experience", "no experience needed"]
 ru = ["без опыта", "опыт не требуется", "без опыта работы"]
 kk = ["тәжірибесіз", "тәжірибе талап етілмейді"]
+
+# Years of experience: "3+ years", "от 3 лет", "3 жыл".
+[qualifications.experience_years]
+en = ['re:(?<!\w)\d{1,2}\s*\+?\s*(?:years?|yrs?)(?!\w)']
+ru = ['re:(?<!\w)\d{1,2}\s*\+?\s*(?:лет|года?)(?!\w)', "опыт* работы от*"]
+kk = ['re:(?<!\w)\d{1,2}\s*\+?\s*жыл', "жұмыс тәжірибесі*"]
 
 [qualifications.git]
 en = ["git", "github", "gitlab"]

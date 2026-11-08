@@ -413,6 +413,12 @@ max_candidates_per_query = 5
 sample_window = 20           # recent messages read per candidate
 sample_posts = 3             # sample posts shown per candidate
 
+[cv_review]
+market_days = 30          # D-259: look-back window for the requested-skills summary
+market_min_score = 7.0    # base score a posting needs (or an active like) to count
+top_n = 10                # groups reported per bucket
+min_postings = 5          # fewer postings in a bucket means "not enough data"
+
 [outreach]
 cheap_model = "claude-haiku-4-5"     # CV parsing, pasted-contact extraction
 tailor_model = "claude-sonnet-4-6"   # /prepare and /draft
