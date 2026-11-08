@@ -3764,7 +3764,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - The scoring and triage caps are unaffected by 10 `tg_search` rows.
   - Defaults load; an unknown key fails.
 
-### KF-22 [ ] Channel discovery service (schema v15, D-256)
+### KF-22 [x] Channel discovery service (schema v15, D-256)
 - Build:
   - `SCHEMA_15`: `tg_channel_candidates(handle TEXT PRIMARY KEY, title TEXT, subscribers INTEGER, job_ratio REAL, samples TEXT NOT NULL DEFAULT '[]', found_by TEXT, found_at TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('new','added','ignored')))`.
   - `src/discovery/telegram.py::discover_channels(conn, client, cues, cfg, clock, queries=None)`:

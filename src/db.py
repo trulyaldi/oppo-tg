@@ -16,7 +16,7 @@ from src.text import content_hash
 
 log = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 MAX_SCORE_ATTEMPTS = 3
 MAX_TRIAGE_ATTEMPTS = 3
 REACTION_ACTIONS = ("like", "dislike", "save", "applied")
@@ -241,6 +241,14 @@ CREATE TABLE tg_entities (
 )
 """
 
+SCHEMA_15 = """
+CREATE TABLE tg_channel_candidates (
+  handle TEXT PRIMARY KEY, title TEXT, subscribers INTEGER, job_ratio REAL,
+  samples TEXT NOT NULL DEFAULT '[]', found_by TEXT, found_at TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('new','added','ignored'))
+)
+"""
+
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat()
@@ -272,6 +280,7 @@ _MIGRATIONS = (
     SCHEMA_12,
     SCHEMA_13,
     SCHEMA_14,
+    SCHEMA_15,
 )
 
 
@@ -809,6 +818,45 @@ def set_tg_channel(conn: sqlite3.Connection, handle: str, state: str, now: datet
         "INSERT INTO tg_channels (handle, state, updated_at) VALUES (?,?,?)"
         " ON CONFLICT(handle) DO UPDATE SET state=excluded.state, updated_at=excluded.updated_at",
         (handle, state, _iso(now)),
+    )
+    conn.commit()
+
+
+def tg_candidate_known(conn: sqlite3.Connection, handle: str) -> bool:
+    """True if the handle is already a candidate in any status (case-insensitive)."""
+    row = conn.execute(
+        "SELECT 1 FROM tg_channel_candidates WHERE lower(handle)=lower(?)", (handle,)
+    ).fetchone()
+    return row is not None
+
+
+def add_tg_candidate(
+    conn: sqlite3.Connection,
+    handle: str,
+    *,
+    title: str | None,
+    subscribers: int | None,
+    job_ratio: float,
+    samples: list[str],
+    found_by: str,
+    now: datetime,
+) -> bool:
+    """Store a `new` candidate; False (nothing written) when the handle is already known."""
+    if tg_candidate_known(conn, handle):
+        return False
+    conn.execute(
+        "INSERT INTO tg_channel_candidates"
+        " (handle, title, subscribers, job_ratio, samples, found_by, found_at, status)"
+        " VALUES (?,?,?,?,?,?,?,'new')",
+        (handle, title, subscribers, job_ratio, json.dumps(samples), found_by, _iso(now)),
+    )
+    conn.commit()
+    return True
+
+
+def set_tg_candidate_status(conn: sqlite3.Connection, handle: str, status: str) -> None:
+    conn.execute(
+        "UPDATE tg_channel_candidates SET status=? WHERE lower(handle)=lower(?)", (status, handle)
     )
     conn.commit()
 

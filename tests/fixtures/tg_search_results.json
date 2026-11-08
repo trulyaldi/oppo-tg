@@ -1,0 +1,69 @@
+{
+ "searches": {
+  "vakansii kz": [
+   {
+    "username": "kzjobs_news",
+    "title": "KZ Jobs",
+    "broadcast": true,
+    "megagroup": false,
+    "participants_count": 12345
+   },
+   {
+    "username": "kzjobs_chat",
+    "title": "KZ Jobs Chat",
+    "broadcast": false,
+    "megagroup": true,
+    "participants_count": 900
+   }
+  ],
+  "jobs_kz": [
+   {
+    "username": "configured_ch",
+    "title": "Already",
+    "broadcast": true,
+    "megagroup": false,
+    "participants_count": 10
+   },
+   {
+    "username": "kzjobs_news",
+    "title": "KZ Jobs",
+    "broadcast": true,
+    "megagroup": false,
+    "participants_count": 12345
+   }
+  ]
+ },
+ "messages": {
+  "kzjobs_news": [
+   "Вакансия: стажировка backend developer Алматы",
+   "Новости дня номер 0",
+   "Новости дня номер 1",
+   "internship ML engineer Kazakhstan",
+   "Новости дня номер 2",
+   "Новости дня номер 3",
+   "Hackathon registration open",
+   "Новости дня номер 4",
+   "Новости дня номер 5",
+   "Вакансия Python developer",
+   "Новости дня номер 6",
+   "Новости дня номер 7",
+   "Internship at Kaspi",
+   "Новости дня номер 8",
+   "Новости дня номер 9",
+   "Стажировка data analyst",
+   "Новости дня номер 10",
+   "Новости дня номер 11",
+   "Open vacancy: junior developer",
+   "Новости дня номер 12",
+   ""
+  ]
+ },
+ "no_count": {
+  "username": "nocount_ch",
+  "title": "No Count",
+  "broadcast": true,
+  "megagroup": false,
+  "participants_count": null,
+  "full_count": 777
+ }
+}
