@@ -92,6 +92,7 @@ Commands (only your chat, `TELEGRAM_CHAT_ID`, can use them):
 
 - `/cv`: the bot asks for your CV; send a PDF or paste the text within 15 minutes. `/cancel`
   clears any pending input.
+- After a new CV is saved the bot sends a short review (fit, top changes, gaps marked "add if true" or "worth learning") and the full report as a Markdown file. `/cvreview` shows it again from cache; `/cvreview refresh` regenerates it. CLI: `python -m src.main cvreview [--cv-file PATH]` (set `DB_PATH` to a scratch database for a test CV).
 - `/forgetcv`: deletes the stored CV and what was derived from it.
 - `/prepare <id>`: tailoring advice for one posting (an id or a prefix of at least 6 characters,
   or tap the `/prepare_<id>` link or the Prepare button): keywords, what to emphasize from your CV
@@ -446,7 +447,7 @@ render "via Remote OK", "via Jobicy" or "via Arbeitnow" and link to the aggregat
 
 `run` collects per tier (see "Coverage and freshness"; `COLLECT_CRON_HOURS` is ignored), sends the daily digest at `DIGEST_TIME`
 (`TIMEZONE`), sends instant alerts and prunes old cache rows at 04:00. Bot commands: `/top`,
-`/saved`, `/applied`, `/sources`, `/stats`, `/boards`, `/channels`, `/pause`, `/resume`, plus `/cv`, `/forgetcv`, `/cancel`,
+`/saved`, `/applied`, `/sources`, `/stats`, `/boards`, `/channels`, `/pause`, `/resume`, plus `/cv`, `/cvreview`, `/forgetcv`, `/cancel`,
 `/prepare`, `/contacts`, `/addcontact` and `/draft` (see "CV, prepare and drafts"). Each item has
 feedback buttons.
 

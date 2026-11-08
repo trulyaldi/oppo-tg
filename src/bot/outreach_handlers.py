@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import io
+import logging
 import sqlite3
 from typing import Any
+
+from aiogram.types import BufferedInputFile
 
 from src.bot.handlers import _esc, _say
 from src.bot.pending import clear_pending, peek_pending, set_pending, take_pending
@@ -15,8 +18,10 @@ from src.contacts.discover import discover_contacts
 from src.contacts.links import linkedin_search_urls, yc_company_url
 from src.contacts.pasted import extract_with_llm, parse_pasted
 from src.contacts.store import RawContact, add_contact, contacts_for
+from src.cv import review as _review
 from src.cv.extract import CvInputError, cv_sha, normalize_cv_text, pdf_to_text
 from src.cv.parse import parse_cv_sections
+from src.cv.review import ReviewError, ReviewResult, review_cv
 from src.cv.store import current_cv, forget_cv, save_cv
 from src.delivery.digest import load_weights_checked
 from src.llm.budget import OUTREACH_PURPOSES, LlmBudget
@@ -25,7 +30,15 @@ from src.outreach import prepare as _prepare  # noqa: F401  (registers cache hoo
 from src.outreach.draft import FALLBACK_REPLY, DraftError, DraftResult
 from src.outreach.draft import draft as make_draft
 from src.outreach.prepare import PrepareError, prepare
-from src.outreach.render import prepare_keyboard, render_contacts, render_draft, render_prepare
+from src.outreach.render import (
+    chunk_lines,
+    prepare_keyboard,
+    render_contacts,
+    render_draft,
+    render_prepare,
+)
+
+log = logging.getLogger(__name__)
 
 MIN_CV_CHARS = 200
 TOO_SHORT = "That looks too short for a CV; send the full text or a PDF."
@@ -62,6 +75,7 @@ async def cmd_forgetcv(message: Any, conn: sqlite3.Connection, clock: Clock) -> 
     clear_pending(conn)
     _prepare.register_hooks()
     _draft.register_hooks()
+    _review.register_hooks()
     counts = forget_cv(conn)
     if not counts["cv_versions"]:
         await _say(message, NO_CV)
@@ -86,6 +100,7 @@ async def ingest_cv_text(
     client: Any,
     raw_text: str,
     source_kind: str = "text",
+    auto_review: bool = True,
 ) -> None:
     """Shared by pasted text (C4) and PDF (C5). Never logs CV content."""
     oc = OutreachConfig.from_cfg(cfg)
@@ -119,6 +134,7 @@ async def ingest_cv_text(
     sec = res.sections
     _prepare.register_hooks()
     _draft.register_hooks()
+    _review.register_hooks()
     before = conn.execute("SELECT COUNT(*) FROM tailoring_cache").fetchone()[0]
     version, changed = save_cv(
         conn, text, sec.model_dump_json(), source_kind, oc.cheap_model, clock.now()
@@ -134,6 +150,110 @@ async def ingest_cv_text(
         f"projects {len(sec.projects)}, skills {len(sec.skills)}. "
         "The CV text was sent to the Anthropic API for parsing." + cleared,
     )
+    if auto_review:
+        await run_review(message, conn, clock, cfg, client)
+
+
+# --- CV review (KF-33, D-259) ----------------------------------------------
+
+SUMMARY_LIMIT = 3500
+LINE_CLIP = 300
+REVIEW_FAILED = "Could not review the CV right now; try /cvreview refresh later."
+
+
+def review_error_text(kind: str, cap: int) -> str:
+    if kind == "no_cv":
+        return "Upload your CV first with /cv."
+    if kind == "budget":
+        return (
+            f"Daily outreach LLM limit reached ({cap} calls). "
+            "Try tomorrow or raise [outreach].daily_llm_call_cap."
+        )
+    return REVIEW_FAILED
+
+
+def _line(text: object) -> str:
+    t = " ".join(str(text).split())
+    return _esc(t if len(t) <= LINE_CLIP else t[: LINE_CLIP - 1] + "…")
+
+
+def review_summary_chunks(res: ReviewResult) -> list[str]:
+    """Chat summary: 3 fit lines, 5 numbered changes, 3 gaps; each chunk under 3500 chars."""
+    s = res.summary
+    lines = [f"<b>CV review (v{res.cv_version})</b>"]
+    fit = s.get("fit_summary") or []
+    lines += [_line(x) for x in fit[:3]] or ["Nothing in the fit summary could be verified."]
+    lines += ["", "<b>Top changes</b>"]
+    for i, c in enumerate((s.get("changes") or [])[:5], 1):
+        lines.append(f"{i}. {_line(c.get('what', ''))}")
+    if not s.get("changes"):
+        lines.append("None verified.")
+    lines += ["", "<b>Gaps</b>"]
+    for g in (s.get("gaps") or [])[:3]:
+        tag = "[add if true]" if g.get("mark") == "add_if_true" else "[worth learning]"
+        lines.append(f"{_esc(tag)} {_line(g.get('question') or g.get('gap', ''))}")
+    if not s.get("gaps"):
+        lines.append("None.")
+    lines += ["", "Full report attached."]
+    return chunk_lines(lines, SUMMARY_LIMIT)
+
+
+async def send_review(message: Any, res: ReviewResult) -> None:
+    for chunk in review_summary_chunks(res):
+        await _say(message, chunk)
+    doc = BufferedInputFile(res.report_md.encode(), filename=f"cv_review_v{res.cv_version}.md")
+    await message.answer_document(doc)  # in memory only, never written to disk
+
+
+async def run_review(
+    message: Any,
+    conn: sqlite3.Connection,
+    clock: Clock,
+    cfg: AppConfig,
+    client: Any,
+    *,
+    refresh: bool = False,
+) -> ReviewResult | ReviewError:
+    """Review the current CV and send summary plus document. Never raises, never logs CV text."""
+    oc = OutreachConfig.from_cfg(cfg)
+    if client is None and current_cv(conn) is not None:
+        await _say(message, REVIEW_FAILED)
+        return ReviewError("api")
+    try:
+        res = await review_cv(conn, client, cfg, clock, refresh=refresh)
+    except Exception as e:
+        log.warning("cv review failed (%s)", type(e).__name__)
+        await _say(message, REVIEW_FAILED)
+        return ReviewError("api")
+    if isinstance(res, ReviewError):
+        await _say(message, review_error_text(res.kind, oc.daily_llm_call_cap))
+        return res
+    await send_review(message, res)
+    log.info(
+        "cv review sent: v%d cached=%s removed=%d questions=%d",
+        res.cv_version,
+        res.cached,
+        res.removed,
+        res.questions,
+    )
+    return res
+
+
+async def cmd_cvreview(
+    message: Any,
+    conn: sqlite3.Connection,
+    clock: Clock,
+    cfg: AppConfig,
+    client: Any,
+    args: str | None,
+) -> None:
+    """/cvreview shows the cached review (0 calls); /cvreview refresh regenerates it."""
+    _review.register_hooks()
+    arg = (args or "").strip().lower()
+    if arg not in ("", "refresh"):
+        await _say(message, "Usage: /cvreview or /cvreview refresh")
+        return
+    await run_review(message, conn, clock, cfg, client, refresh=arg == "refresh")
 
 
 async def on_text(

@@ -3988,7 +3988,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
   - The CV text appears in no log record (caplog).
   - The CV reaches the model only inside `<cv>` tags.
 
-### KF-33 [ ] CV review in the bot: automatic after /cv, /cvreview, the Markdown document, a CLI (D-259)
+### KF-33 [x] CV review in the bot: automatic after /cv, /cvreview, the Markdown document, a CLI (D-259)
 - Build:
   - After `ingest_cv_text` saves a changed version, run `review_cv` and send:
     - (a) the chat summary: 3 fit lines, 5 numbered changes, 3 gaps with `[add if true]` / `[worth learning]`; under 3500 characters, escaped, chunked through `chunk_lines` if needed;

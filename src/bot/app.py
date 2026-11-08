@@ -244,6 +244,17 @@ def build_dispatcher(
     async def _cv(m: Message, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig) -> None:
         await outreach_handlers.cmd_cv(m, conn, clock, cfg)
 
+    @dp.message(Command("cvreview"))
+    async def _cvreview(
+        m: Message,
+        command: CommandObject,
+        conn: sqlite3.Connection,
+        clock: Clock,
+        cfg: AppConfig,
+        client: Any,
+    ) -> None:
+        await outreach_handlers.cmd_cvreview(m, conn, clock, cfg, client, command.args)
+
     @dp.message(Command("forgetcv"))
     async def _forgetcv(m: Message, conn: sqlite3.Connection, clock: Clock) -> None:
         await outreach_handlers.cmd_forgetcv(m, conn, clock)

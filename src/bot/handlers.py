@@ -97,6 +97,7 @@ START_TEXT = (
     "/addcontact &lt;id&gt; - add a contact from pasted text\n"
     "/draft &lt;contact id&gt; - outreach draft to copy (never sent)\n"
     "/cv - upload or paste your CV\n"
+    "/cvreview - review of your stored CV (/cvreview refresh to redo)\n"
     "/forgetcv - delete the stored CV\n"
     "/cancel - cancel a pending input"
 )

@@ -98,6 +98,9 @@ class Msg:
     async def answer(self, text, parse_mode=None, **kw):
         self.sent.append(text)
 
+    async def answer_document(self, document, **kw):
+        self.sent.append(document.filename)
+
 
 @pytest.fixture(autouse=True)
 def _hooks():
@@ -166,7 +169,7 @@ async def test_full_flow_leaks_nothing(tmp_path, monkeypatch, caplog):
     conn, client, m, seen, cid = await run_flow(tmp_path)
 
     # the flow really ran end to end
-    assert len(client.calls) == 3
+    assert len(client.calls) == 4
     assert any(s.startswith("Draft for") for s in m.sent), m.sent
     assert conn.execute("SELECT COUNT(*) FROM outreach_drafts").fetchone()[0] == 1
     assert conn.execute("SELECT COUNT(*) FROM contacts").fetchone()[0] >= 2

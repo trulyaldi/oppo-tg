@@ -122,7 +122,7 @@ async def test_prepare_real_client_no_canary(tmp_path, caplog):
     msgs = ps.Msg()
     await ingest_cv_text(msgs, conn, ps.CLOCK, ps.CFG, client, ps.CV)
     await cmd_prepare(msgs, conn, ps.CLOCK, ps.CFG, client, p.id, None)
-    assert len(seen) == 2
+    assert len(seen) == 3
     blob = b"".join(r.content for r in seen)
     assert b"CANARY-CV" in blob and b"CANARY-POSTING" in blob
     for c in ("CANARY-CV", "CANARY-POSTING", "CANARY-REPLY"):

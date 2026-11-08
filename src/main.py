@@ -16,7 +16,14 @@ from typing import Any
 from src import config as config_mod
 from src import db
 from src.clock import SystemClock
-from src.config import AppConfig, ScoringConfig, Settings, TelegramDiscoveryConfig, TriageConfig
+from src.config import (
+    AppConfig,
+    OutreachConfig,
+    ScoringConfig,
+    Settings,
+    TelegramDiscoveryConfig,
+    TriageConfig,
+)
 from src.delivery.digest import send_digest
 from src.http import build_client
 from src.lock import AlreadyRunning, InstanceLock
@@ -43,6 +50,8 @@ def _parser() -> argparse.ArgumentParser:
     sub.add_parser("once", help="collect, score, alert and send the digest")
     sub.add_parser("discover", help="find new ATS boards in collected postings and validate them")
     sub.add_parser("run", help="unattended mode: scheduler plus bot polling")
+    cvr = sub.add_parser("cvreview", help="review the stored CV (or --cv-file) and send it")
+    cvr.add_argument("--cv-file", default=None, help="ingest this text or PDF file first")
     probe = sub.add_parser("probe", help="run every enabled source once against the live network")
     probe.add_argument("--db", default="data/probe.db", help="separate probe DB path")
     return p
@@ -256,6 +265,91 @@ async def _serve(settings: Settings) -> None:
         log.info("shut down")
 
 
+def _read_bytes(path: str) -> bytes:
+    return Path(path).read_bytes()
+
+
+class _ChatTarget:
+    """Message-like adapter so the bot handlers' senders work for the CLI (one chat)."""
+
+    def __init__(self, bot: Any, chat_id: int) -> None:
+        self.bot, self.chat_id = bot, chat_id
+
+    async def answer(self, text: str, **kw: Any) -> None:
+        await self.bot.send_message(self.chat_id, text, **kw)
+
+    async def answer_document(self, document: Any, **kw: Any) -> None:
+        await self.bot.send_document(self.chat_id, document, **kw)
+
+
+class _Sink:
+    def __init__(self) -> None:
+        self.sent: list[str] = []
+
+    async def answer(self, text: str, **kw: Any) -> None:
+        self.sent.append(text)
+
+
+async def run_cvreview(
+    settings: Settings, cv_file: str | None, bot: Any, client: Any, clock: Any = None
+) -> int:
+    """CLI: optionally ingest a CV file, then send the review to the chat. Prints only counts.
+
+    Use DB_PATH to point at a scratch database so a fictional CV never enters the real one.
+    """
+    from src.bot import outreach_handlers as oh
+    from src.cv.extract import CvInputError, pdf_to_text
+    from src.cv.store import current_cv
+
+    clock = clock or SystemClock()
+    cfg = AppConfig.load(settings.oppo_config)
+    conn = db.connect(settings.db_path)
+    db.migrate(conn)
+    try:
+        if cv_file:
+            is_pdf = cv_file.lower().endswith(".pdf")
+            try:
+                raw = await asyncio.to_thread(_read_bytes, cv_file)
+                if is_pdf:
+                    oc = OutreachConfig.from_cfg(cfg)
+                    text, kind = pdf_to_text(raw, oc.cv_max_pages), "pdf"
+                else:
+                    text, kind = raw.decode("utf-8"), "text"
+            except (OSError, UnicodeDecodeError, CvInputError) as e:
+                print(f"cannot read CV file: {type(e).__name__}", file=sys.stderr)
+                return 1
+            sink = _Sink()
+            await oh.ingest_cv_text(
+                sink, conn, clock, cfg, client, text, source_kind=kind, auto_review=False
+            )
+            for line in sink.sent:
+                print(line)
+        if current_cv(conn) is None:
+            print("no CV stored", file=sys.stderr)
+            return 1
+        target = _ChatTarget(bot, settings.telegram_chat_id)
+        res = await oh.run_review(target, conn, clock, cfg, client)
+        if isinstance(res, oh.ReviewError):
+            print(f"review failed: {res.kind}", file=sys.stderr)
+            return 1
+        print(f"cv review v{res.cv_version}: removed {res.removed}, questions {res.questions}")
+        return 0
+    finally:
+        conn.close()
+
+
+async def _cvreview(settings: Settings, cv_file: str | None) -> int:
+    from aiogram import Bot
+    from anthropic import AsyncAnthropic
+
+    bot = Bot(settings.telegram_bot_token)
+    try:
+        client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+        return await run_cvreview(settings, cv_file, bot, client)
+    finally:
+        await bot.session.close()
+
+
 async def _probe(settings: Settings, db_path: str) -> int:
     import src.sources  # noqa: F401,I001  (registers the sources)
     from src.pipeline.probe import reset_probe_state, run_probe
@@ -291,6 +385,8 @@ def main(argv: Sequence[str] | None = None, environ: Mapping[str, str] | None = 
     configure_logging(settings.log_level)
     if is_probe:
         return asyncio.run(_probe(settings, args.db))
+    if args.command == "cvreview":
+        return asyncio.run(_cvreview(settings, args.cv_file))
     if args.command == "run":
         lock = InstanceLock(Path(settings.db_path).with_suffix(".lock"))
         try:

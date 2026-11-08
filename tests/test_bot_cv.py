@@ -56,6 +56,9 @@ class Msg:
     async def answer(self, text, reply_markup=None, parse_mode=None, **kw):
         self.sent.append(text)
 
+    async def answer_document(self, document, **kw):
+        self.sent.append(document)
+
 
 @pytest.fixture
 def conn():
@@ -180,7 +183,8 @@ async def test_dispatcher_ingests_and_other_chat_not_consumed(conn, clock, monke
     assert await run_dispatch(conn, clock, client, 99, CV, monkeypatch) == []
     assert not client.calls and peek_pending(conn, NOW) is not None
     out = await run_dispatch(conn, clock, client, 42, CV, monkeypatch)
-    assert len(out) == 1 and "CV v1 saved" in out[0]
+    # saved note, review summary, then the document (SendDocument has no text)
+    assert len(out) == 3 and "CV v1 saved" in out[0] and "CV review" in out[1] and out[2] is None
 
 
 async def test_dispatcher_cv_command(conn, clock, monkeypatch):
