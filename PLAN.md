@@ -4082,7 +4082,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 - Files: `PLAN.md`, `DECISIONS.md`, plus fixes.
 - Acceptance: the reviewer records "no blocking issues" with evidence in DECISIONS; `pytest`, `ruff check`, `ruff format --check` and the clean-venv run are green.
 
-### KF-38 [ ] Capped live smoke test and final report
+### KF-38 [x] Capped live smoke test and final report
 - Build:
   - Back up `data/oppo.db` to the session scratchpad.
   - Make a scratch copy of `config.toml` with these caps (total LLM calls at most 20, D-197 rule extended to CV calls):
@@ -4305,3 +4305,14 @@ Verified with evidence, no FIX needed:
 - Where: `src/cv/review.py` `_ADVICE_NUMBERS` (D-306). It strips any "1-2 page(s)", "one line" or "2-6 bullets/lines/sentences" phrase before the number check, wherever the phrase appears.
 - Failure: `changes[].what` "Say you wrote 2 pages of research papers in Python" and "Say you maintained 4 lines of business in SQL" both pass `verify_review` on `cv_fake.txt`. The trap is contrived: a real model reply is unlikely to phrase an invented fact this way, and every case in the FIX-53 acceptance is rejected.
 - Acceptance: allowlisted numbers count only in formatting context ("keep it to one page", "3-5 bullets per role"), for example only in `length`/`formatting`/`structure` notes, or only when no "you"/"your" claim verb precedes them. Both strings above are removed, and "Keep it to one page with 3-5 bullets per role" still passes.
+
+### FIX-65 [ ] Triage loads at most `daily_call_cap` rows, so exempt and cached rows can starve under a small cap (non-blocking, found in KF-38)
+- Where: `src/scoring/triage.py` `triage_pending` passes `max(daily_call_cap, 1)` as the row limit to `db.pending_for_triage`; exempt (`pagewatch`) and cached rows use up that limit without a call, and baseline rows sort last.
+- Failure: in the KF-38 smoke run (cap 8) the 8 rows loaded were all non-baseline and used the 8 calls; 23 new pagewatch rows (triage-exempt) were never loaded, so they were not scored, and `capped` stayed 0, under-reporting the backlog. At the default cap of 600 this rarely matters.
+- Acceptance: exempt and cached rows are handled without counting toward the row limit (or exempt rows are moved to `triaged` before the capped loop), and rows left unloaded because of the cap are counted as `capped`.
+
+### FIX-66 [ ] The CV review verifier drops too much useful advice (non-blocking, found in KF-38)
+- Where: `src/cv/review.py` `verify_review` (D-300, D-306).
+- Failure: on the fictional fixture CV live, 10 statements were removed and 2 turned into questions; what survived was 1 fit line (brief: 3), 3 changes (brief: 5) of which 2 lost their "why", and 2 gaps (brief: 3). Nothing fabricated survived, but legitimate advice wording (for example "why" lines naming market terms or generic resume practice) is cleared.
+- Acceptance: on `cv_fake.txt` plus a recorded live reply, at least 3 fit lines, 5 changes with a "why" and 3 gaps survive, while every FIX-53 and FIX-64 fabrication trap is still removed or turned into a question.
+

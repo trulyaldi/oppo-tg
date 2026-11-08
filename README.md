@@ -28,14 +28,20 @@ Read this first. Be honest about what has and has not been checked.
   alert fired), the long-running tiered scheduler, and the triage eval (`--triage`). The review
   fixes FIX-40..43 were tested offline but not re-reviewed. FIX-44, 45, 46, 49, 50 and 51 were
   folded into the KZ-first branch below and closed there (D-233, D-264, D-269 to D-271, D-284, D-296).
-- Branch kz-first-fresh-cv (KF-01..KF-33): everything below is tested offline only, with fixtures
-  and fakes for Telethon, Anthropic and the Bot. No live smoke run has happened on this branch yet.
-  NOT verified live: the KZ-first ranking and 6/3/1 digest on real data, the two-line item format in
-  a real chat, the cue-driven hh queries (needs `HH_ACCESS_TOKEN` and an email in `HTTP_CONTACT`),
-  the Telethon entity cache, flood-wait handling and channel discovery (`/findchannels`), Add and
-  Ignore, `/add` and forwards, `/search`, the Arbeitnow parser (its fixture is a trimmed copy of one
-  real response, D-238), the new pagewatch pages against live sites, and the CV review (`/cvreview`)
-  against the real Claude API.
+- Branch kz-first-fresh-cv: tested offline (1597 tests, fixtures and fakes for Telethon, Anthropic
+  and the Bot), plus one capped live smoke run on 2026-11-08 (KF-38, D-310; 16 LLM calls of the 20
+  allowed). Verified live: 12 source runs with 0 failures (Arbeitnow parsed a real response, 100
+  items; all 30 pagewatch pages fetched and baselined), triage on 8 postings, scorer contract v2 on 6
+  postings (valid JSON, concrete reasons of at most 110 characters, 0 generic), the two-line item
+  format and five buttons rendered from real rows, a 10-item digest delivered (all international:
+  no scored Kazakhstan items exist yet, so the 6/3/1 quotas fell through as designed), and the CV
+  review on the fictional fixture CV on a scratch database copy (2 calls, summary and Markdown
+  document delivered). NOT verified live: hh (needs `HH_ACCESS_TOKEN` and an email in
+  `HTTP_CONTACT`), Telegram channel polling, the entity cache, flood-wait handling, `/findchannels`,
+  Add and Ignore (no Telethon session), Workable, fresh and instant alerts and their latency (none
+  fired), `/add`, forwards, `/search` and the bot commands in a real chat, the long-running
+  scheduler, KZ-first ordering on real Kazakhstan data, and the triage and scoring evals after the
+  prompt changes.
 - NOT verified, outreach and weights: the CV, `/prepare`, `/contacts` and `/draft` features and the
   LLM region fields (`employer_region` and friends) were built and tested offline only (fakes and
   fixtures). They have never been run against the real Anthropic or Telegram APIs, and the scoring

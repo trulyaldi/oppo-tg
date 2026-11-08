@@ -184,7 +184,7 @@ def test_kz_first_readme():
         "flood wait",
         "`auto_join` was removed",
         "NOT verified live",
-        "No live smoke run has happened on this branch yet",
+        "one capped live smoke run on 2026-11-08 (KF-38, D-310",
     ):
         assert needle in text, needle
     for n in range(235, 246):
