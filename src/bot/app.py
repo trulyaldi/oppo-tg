@@ -154,6 +154,16 @@ def build_dispatcher(
     async def _top(m: Message, conn: sqlite3.Connection, clock: Clock, cfg: AppConfig) -> None:
         await handlers.cmd_top(m, conn, clock, cfg)
 
+    @dp.message(Command("search"))
+    async def _search(
+        m: Message,
+        command: CommandObject,
+        conn: sqlite3.Connection,
+        clock: Clock,
+        cfg: AppConfig,
+    ) -> None:
+        await handlers.cmd_search(m, conn, clock, cfg, command.args)
+
     @dp.message(Command("saved"))
     async def _saved(m: Message, conn: sqlite3.Connection) -> None:
         await handlers.cmd_saved(m, conn)

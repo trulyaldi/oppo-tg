@@ -3903,7 +3903,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 
 ### Part I: search and stats
 
-### KF-29 [ ] /search over scored postings with cue expansion (D-261)
+### KF-29 [x] /search over scored postings with cue expansion (D-261)
 - Build:
   - `/search <words>`:
     - `cues.expand(word)` returns the whole cue group's plain terms when a word matches a cue, else the word;

@@ -212,6 +212,7 @@ def test_nothing_else_in_src_uses_cues():
             "employer.py",
             "adjust.py",
             "hh.py",
+            "handlers.py",  # src/bot/handlers.py: /search folds terms like the cue matcher (KF-29)
             "telegram.py",  # src/discovery/telegram.py: discovery queries and job ratio (KF-22)
         ):
             continue

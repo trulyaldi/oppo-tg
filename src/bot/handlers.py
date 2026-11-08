@@ -17,6 +17,7 @@ import src.sources  # noqa: F401  (registers the sources for /sources)
 from src import db
 from src.clock import Clock
 from src.config import TIERS, AppConfig, ScoringConfig, Settings, TriageConfig
+from src.cues import fold
 from src.delivery.digest import item_from_row, load_weights_checked
 from src.delivery.format import SOURCE_ATTRIBUTION, feedback_keyboard, render_item
 from src.llm.budget import LlmBudget
@@ -79,6 +80,7 @@ RESUMED_TEXT = "Resumed."
 START_TEXT = (
     "oppo-tg is running. Commands:\n"
     "/top - best recent opportunities\n"
+    "/search &lt;words&gt; - search scored postings from the last 30 days\n"
     "/saved - saved items\n"
     "/applied - items marked applied\n"
     "/sources - source status\n"
@@ -135,6 +137,74 @@ async def cmd_top(
     ).fetchall()
     if not rows:
         await _say(message, NOTHING_SCORED)
+        return
+    for row in rows:
+        await _say(
+            message,
+            render_item(item_from_row(row, weights)),
+            reply_markup=feedback_keyboard(row["id"], db.active_reactions(conn, row["id"])),
+        )
+
+
+SEARCH_DAYS = 30
+SEARCH_LIMIT = 5
+SEARCH_MAX_TERMS = 30
+SEARCH_USAGE = "Usage: /search &lt;words&gt;, for example /search internship"
+NOTHING_FOUND = "Nothing found."
+
+
+def search_terms(cues: Any, args: str) -> list[str]:
+    """Query words, each expanded to its cue group (D-261), de-duplicated, at most 30 terms."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for word in args.split():
+        for term in cues.expand(word):
+            key = fold(term)
+            if key and key not in seen:
+                seen.add(key)
+                out.append(key)
+    return out[:SEARCH_MAX_TERMS]
+
+
+def _like_escape(term: str) -> str:
+    return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+async def cmd_search(
+    message: Any,
+    conn: sqlite3.Connection,
+    clock: Clock,
+    cfg: AppConfig | None = None,
+    args: str | None = None,
+) -> None:
+    """Local search over scored postings of the last 30 days; no LLM, no network (KF-29)."""
+    c = cfg or AppConfig.from_dict({})
+    terms = search_terms(load_filter_cues(c), args or "")
+    if not terms:
+        await _say(message, SEARCH_USAGE)
+        return
+    weights = load_weights_checked(c)[0]
+    recompute_adjusted(conn, weights, region_hints(c), blocker_penalty(c))
+    conn.create_function("fold_text", 1, lambda v: fold(v) if v else "", deterministic=True)
+    hay = (
+        "fold_text(p.title) || char(10) || fold_text(p.company) || char(10) ||"
+        " fold_text(p.ex_title) || char(10) || fold_text(p.description)"
+    )
+    where = " OR ".join(f"{hay} LIKE ? ESCAPE '\\'" for _ in terms)
+    since = (clock.now() - timedelta(days=SEARCH_DAYS)).isoformat()
+    rows = conn.execute(
+        "SELECT p.*, s.base_score AS base_score, s.adjusted_score AS adjusted_score,"
+        " s.adjusted_score AS score, s.employer_category AS employer_category,"
+        " s.adjustment_detail AS adjustment_detail, s.reason AS reason,"
+        " s.deadline AS llm_deadline, s.red_flags AS red_flags,"
+        " s.visa_barrier AS visa_barrier, s.contract AS contract"
+        " FROM postings p JOIN scores s ON s.posting_id=p.id"
+        f" WHERE p.first_seen_at >= ? AND ({where})"
+        " ORDER BY s.adjusted_score DESC, p.rowid LIMIT ?",
+        (since, *[f"%{_like_escape(t)}%" for t in terms], SEARCH_LIMIT),
+    ).fetchall()
+    if not rows:
+        await _say(message, NOTHING_FOUND)
         return
     for row in rows:
         await _say(
