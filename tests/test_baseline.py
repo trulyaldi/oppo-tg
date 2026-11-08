@@ -215,6 +215,7 @@ HH_SETTINGS = Settings.from_env(
         "TELEGRAM_CHAT_ID": "1",
         "ANTHROPIC_API_KEY": "k",
         "HH_ACCESS_TOKEN": "tok",
+        "HTTP_CONTACT": "me@example.com",
     }
 )
 
@@ -224,7 +225,12 @@ class HHEnv:
 
     def __init__(self):
         self.cfg = AppConfig.from_dict(
-            {"sources": {"hh": {"enabled": True, "queries": ["q1", "q2"]}}}
+            {
+                "sources": {"hh": {"enabled": True}},
+                "filters": {
+                    "cues_file": str(Path(__file__).parent / "fixtures" / "cues_hh_two.toml")
+                },
+            }
         )
         self.conn = dbm.connect(":memory:")
         dbm.migrate(self.conn)

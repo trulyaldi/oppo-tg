@@ -260,6 +260,7 @@ async def test_kf17_hh_is_tier1_with_a_10_minute_floor():
             "TELEGRAM_CHAT_ID": "1",
             "ANTHROPIC_API_KEY": "k",
             "HH_ACCESS_TOKEN": "tok",
+            "HTTP_CONTACT": "me@example.com",
         }
     )
     hh_calls: list[str] = []
@@ -276,7 +277,7 @@ async def test_kf17_hh_is_tier1_with_a_10_minute_floor():
 
     conn, http, cfg, clock, _ = make(
         {
-            "hh": {"enabled": True, "queries": ["q1"]},
+            "hh": {"enabled": True},
             "greenhouse": {"enabled": True, "boards": ["a"]},
         },
         handler=handler,
@@ -284,10 +285,10 @@ async def test_kf17_hh_is_tier1_with_a_10_minute_floor():
     await collect_tier(conn, http, settings, cfg, clock, "tier2")
     assert not hh_calls  # not a tier2 source any more
     await collect_tier(conn, http, settings, cfg, clock, "tier1")
-    assert len(hh_calls) == 1 and len(gh_calls) == 1  # hh and the config board
+    assert len(hh_calls) == 4 and len(gh_calls) == 1  # hh (4 group queries) and the config board
     clock.set(T0 + timedelta(minutes=5))
     await collect_tier(conn, http, settings, cfg, clock, "tier1")
-    assert len(hh_calls) == 1  # inside the 10 minute floor
+    assert len(hh_calls) == 4  # inside the 10 minute floor
     clock.set(T0 + timedelta(minutes=11))
     await collect_tier(conn, http, settings, cfg, clock, "tier1")
-    assert len(hh_calls) == 2  # not held back by the 60 minute no-validator wait
+    assert len(hh_calls) == 8  # not held back by the 60 minute no-validator wait

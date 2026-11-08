@@ -28,7 +28,8 @@ DEFAULT_PATH = Path(__file__).resolve().parent.parent / "config" / "cues.toml"
 # Top-level tables. "flat" tables are one group; "nested" tables hold named sub-groups.
 _FLAT = ("negative", "seniority", "junior", "protect", "spam", "unpaid", "hard_blockers")
 _FLAT_OTHER = ("telegram_discovery",)
-_NESTED = ("types", "fields", "locations", "qualifications", "hh")
+_HH_KEYS = ("groups", "max_terms_per_query", "max_requests_per_run")
+_NESTED = ("types", "fields", "locations", "qualifications")
 _ALLOWED_SUBGROUPS = {"locations": ("kz",)}
 _POSITIVE_TABLES = ("types", "fields")
 _SHORT_ENTRY = 3
@@ -218,9 +219,24 @@ def _build_group(name: str, table: Any) -> Group:
     return Group(name, entries)
 
 
+def _parse_hh(table: dict[str, Any], settings: dict[str, Any]) -> None:
+    """[hh]: the ordered query groups and the two bounds (KF-20)."""
+    for key, value in table.items():
+        if key not in _HH_KEYS:
+            raise CueError(f"[hh]: unknown key {key!r} (expected {', '.join(_HH_KEYS)})")
+        if key == "groups":
+            if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+                raise CueError("[hh].groups must be a list of cue group names")
+            settings["hh.groups"] = list(value)
+        elif isinstance(value, int) and not isinstance(value, bool) and value >= 1:
+            settings[f"hh.{key}"] = value
+        else:
+            raise CueError(f"[hh].{key} must be a positive integer, got {value!r}")
+
+
 def parse_cues(data: dict[str, Any]) -> Cues:
     """Validate and compile a parsed cue document."""
-    known = _FLAT + _FLAT_OTHER + _NESTED
+    known = _FLAT + _FLAT_OTHER + _NESTED + ("hh",)
     groups: dict[str, Group] = {}
     settings: dict[str, Any] = {}
     for key, table in data.items():
@@ -231,12 +247,10 @@ def parse_cues(data: dict[str, Any]) -> Cues:
             continue
         if not isinstance(table, dict):
             raise CueError(f"[{key}] must be a table of named groups")
+        if key == "hh":
+            _parse_hh(table, settings)
+            continue
         for sub, value in table.items():
-            if key == "hh" and not isinstance(value, dict):
-                if sub == "max_terms_per_query" and isinstance(value, int) and value >= 1:
-                    settings["hh.max_terms_per_query"] = value
-                    continue
-                raise CueError(f"[hh]: bad setting {sub!r} = {value!r}")
             allowed = _ALLOWED_SUBGROUPS.get(key)
             if allowed is not None and sub not in allowed:
                 raise CueError(f"unknown table [{key}.{sub}] (expected {', '.join(allowed)})")
@@ -244,6 +258,9 @@ def parse_cues(data: dict[str, Any]) -> Cues:
             groups[name] = _build_group(name, value)
     for table in _FLAT:
         groups.setdefault(table, Group(table))
+    for name in settings.get("hh.groups", []):
+        if name not in groups:
+            raise CueError(f"[hh].groups: unknown cue group {name!r}")
     return Cues(groups, settings)
 
 

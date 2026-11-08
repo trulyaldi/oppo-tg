@@ -12,14 +12,18 @@ from typing import Any
 from src import db
 from src.clock import Clock
 from src.config import AppConfig, Settings
+from src.cues import Cues
 from src.llm.budget import TZ
 from src.models import Kind, Posting
+from src.pipeline.filters import load_filter_cues
 from src.sources.base import RequestTally, SourceContext, SourceUnavailable, register
 from src.text import INTERN_RE, html_to_text
 
 API = "https://api.hh.ru/vacancies"
 CACHE_TTL_S = 300.0  # below the 10 min tier1 cadence, so every run is fresh (D-285)
 NEEDS_TOKEN = "needs HH_ACCESS_TOKEN"
+NEEDS_CONTACT = "set HTTP_CONTACT to your email (hh requires it in the User-Agent)"
+NEXT_GROUP_KEY = "hh:next_group"
 PENDING_KEY = "hh_auth_error_pending"
 NOTICE_DAY_KEY = "hh_auth_notice_day"
 UA_ERROR = (
@@ -121,15 +125,54 @@ def parse_vacancies(data: Any) -> list[Posting]:
     return out
 
 
-def _queries(cfg: AppConfig) -> list[str]:
-    return [str(q) for q in cfg.source("hh").get("queries") or [] if str(q).strip()]
+def _term(term: str) -> str:
+    """One OR operand: multi-word terms are quoted (hh query language, hh.ru/article/1175)."""
+    return f'"{term}"' if " " in term.strip() else term.strip()
+
+
+def build_query(cues: Cues, group: str, max_terms: int) -> str:
+    """An OR query of the group's plain terms, round-robin across en, ru and kk so a cut at
+    max_terms keeps every language. Stems and regexes are never sent."""
+    per_lang = [
+        [e.raw for e in cues[group].entries.get(lang, ()) if e.plain] for lang in ("en", "ru", "kk")
+    ]
+    terms: list[str] = []
+    for i in range(max((len(lst) for lst in per_lang), default=0)):
+        for lst in per_lang:
+            if i < len(lst) and lst[i] not in terms:
+                terms.append(lst[i])
+    return " OR ".join(_term(t) for t in terms[:max_terms])
+
+
+def _hh_settings(cues: Cues) -> tuple[list[str], int, int]:
+    st = cues.settings
+    return (
+        list(st.get("hh.groups", [])),
+        int(st.get("hh.max_terms_per_query", 12)),
+        int(st.get("hh.max_requests_per_run", 4)),
+    )
+
+
+def _run_queries(cues: Cues, conn: sqlite3.Connection | None) -> tuple[list[str], int]:
+    """This run's queries and the next rotation index (state `hh:next_group`)."""
+    groups, max_terms, max_req = _hh_settings(cues)
+    if not groups:
+        return [], 0
+    try:
+        start = int(db.get_state(conn, NEXT_GROUP_KEY, "0") or 0) if conn is not None else 0
+    except ValueError:
+        start = 0
+    n = min(max_req, len(groups))
+    picked = [groups[(start + i) % len(groups)] for i in range(n)]
+    queries = [q for q in (build_query(cues, g, max_terms) for g in picked) if q]
+    return queries, (start + n) % len(groups)
 
 
 @register("hh")
 class HHSource:
     name = "hh"
     default_tier = "tier1"  # D-252: Kazakhstan source, polled every 10 to 15 min
-    min_poll_minutes = 10  # politeness floor: 5 queries per run, at most 30 requests/hour
+    min_poll_minutes = 10  # politeness floor: 4 queries per run, at most 24 requests/hour
     credentials = ("HH_ACCESS_TOKEN",)
     description = "hh.kz vacancies (HeadHunter API, needs HH_ACCESS_TOKEN)"
 
@@ -139,7 +182,9 @@ class HHSource:
             return "disabled in config"
         if not settings.hh_access_token:
             return NEEDS_TOKEN  # D-07: api.hh.ru refuses anonymous calls with 403
-        if not _queries(cfg):
+        if "@" not in (settings.http_contact or ""):
+            return NEEDS_CONTACT
+        if not _hh_settings(load_filter_cues(cfg))[0]:
             return "no queries configured"
         return None
 
@@ -153,14 +198,19 @@ class HHSource:
             headers["Authorization"] = f"Bearer {ctx.settings.hh_access_token}"
         tally = RequestTally()
         seen: dict[str, Posting] = {}
-        for query in _queries(ctx.cfg):
+        queries, next_index = _run_queries(load_filter_cues(ctx.cfg), ctx.http.db)
+        if ctx.http.db is not None:
+            db.set_state(ctx.http.db, NEXT_GROUP_KEY, str(next_index))
+        for query in queries:
             try:
                 res = await ctx.http.fetch(
                     API,
                     params={
                         "area": int(cfg.get("area", 40)),
                         "text": query,
-                        "per_page": 50,
+                        "per_page": 100,
+                        "page": 0,
+                        "order_by": "publication_time",
                         "period": int(cfg.get("period", 14)),
                     },
                     headers=headers,

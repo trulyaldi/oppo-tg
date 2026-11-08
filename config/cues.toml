@@ -16,16 +16,16 @@
 
 [types.internship]
 en = [
-  're:(?<!\w)intern(?:ship)?s?(?!\w)',
+"internship", "intern",   're:(?<!\w)intern(?:ship)?s?(?!\w)',
   "traineeship*", "trainee*", "apprentice*", "co-op", "work placement", "placement year",
   "summer analyst", "summer associate", "off-cycle", "industrial placement",
 ]
 ru = [
-  "стажир*", "стажер*", "стажёр*", "практикант*", "студенческ* практик*",
+"стажировка", "стажер", "студенческая практика",   "стажир*", "стажер*", "стажёр*", "практикант*", "студенческ* практик*",
   "производственн* практик*", "трейни*",
 ]
 kk = [
-  "тағылымдам*", "стажер*", "практикант*", "кәсіптік практика*", "өндірістік практика*",
+"тағылымдама", "стажер",   "тағылымдам*", "стажер*", "практикант*", "кәсіптік практика*", "өндірістік практика*",
 ]
 
 [types.job]
@@ -35,8 +35,8 @@ kk = ["бос орын*", "вакансия*", "жұмысқа шақыр*"]
 
 [types.junior]
 en = ["junior", "graduate programme*", "graduate program*", "new grad*", "entry level", "early career"]
-ru = ["junior", "джуниор*", "начинающ* специалист*", "молод* специалист*", "выпускник*"]
-kk = ["junior", "джуниор*", "жас маман*", "түлек*"]
+ru = ["начинающий специалист", "junior", "джуниор*", "начинающ* специалист*", "молод* специалист*", "выпускник*"]
+kk = ["жас маман", "junior", "джуниор*", "жас маман*", "түлек*"]
 
 [types.research_assistant]
 en = ["research assistant*", "research associate*", "graduate researcher*", "student researcher*", "lab assistant*"]
@@ -101,10 +101,10 @@ en = [
   "nlp", "computer vision", "llm", "llms", "statistical learning", "representation learning",
 ]
 ru = [
-  "машинн* обучени*", "глубок* обучени*", "нейронн* сет*", "нейросет*", "компьютерн* зрени*",
+"машинное обучение", "нейронные сети", "глубокое обучение",   "машинн* обучени*", "глубок* обучени*", "нейронн* сет*", "нейросет*", "компьютерн* зрени*",
   "обработк* естественн* язык*", "ml", "mlops",
 ]
-kk = ["машиналық оқыту*", "терең оқыту*", "нейрондық желі*", "компьютерлік көру*", "ml"]
+kk = ["машиналық оқыту", "терең оқыту", "машиналық оқыту*", "терең оқыту*", "нейрондық желі*", "компьютерлік көру*", "ml"]
 
 [fields.ai]
 en = ["ai", "artificial intelligence", "genai", "generative ai", "prompt engineer*", "applied scientist*"]
@@ -117,19 +117,19 @@ en = [
   "data engineering", "big data", "data mining", "etl", "business intelligence",
 ]
 ru = [
-  "data science", "дата сайентист*", "дата-сайентист*", "датасайентист*", "аналитик* данных",
+"аналитик данных", "специалист по данным",   "data science", "дата сайентист*", "дата-сайентист*", "датасайентист*", "аналитик* данных",
   "анализ* данных", "наук* о данных", "специалист* по данным", "данны*", "дата-инженер*",
   "дата инженер*", "большие данные", "больши* данны*",
 ]
 kk = [
-  "деректер*", "деректер ғылым*", "деректер талдаушы*", "деректер инженер*", "үлкен деректер*",
+"деректер талдаушы", "деректер ғалымы",   "деректер*", "деректер ғылым*", "деректер талдаушы*", "деректер инженер*", "үлкен деректер*",
   "деректерді талда*", "деректер ғалым*", "дата сайентист*", "датасайентист*",
 ]
 
 [fields.quant]
 en = ["quant", "quants", "quantitative", "quantitative researcher*", "quant developer*", "financial engineering"]
-ru = ["квант*", "количественн* аналитик*", "количественн* исследовател*", "финансов* инженери*"]
-kk = ["квант*", "сандық талдаушы*", "қаржылық инженерия*"]
+ru = ["квант", "количественный аналитик", "квант*", "количественн* аналитик*", "количественн* исследовател*", "финансов* инженери*"]
+kk = ["квант", "сандық талдаушы", "квант*", "сандық талдаушы*", "қаржылық инженерия*"]
 
 [fields.trading]
 en = ["trading", "trader*", "algorithmic trading", "algo trading", "market making", "market maker*", "hft", "high frequency", "high-frequency"]
@@ -142,9 +142,9 @@ ru = ["риск-менеджер*", "риск менеджер*", "кредит�
 kk = ["тәуекел*", "тәуекелдерді басқар*", "тәуекел менеджер*"]
 
 [fields.analytics]
-en = ["analyst*", "analytic*", "business analyst*", "product analyst*", "insights analyst*"]
-ru = ["аналитик*", "бизнес-аналитик*", "продуктов* аналитик*", "системн* аналитик*"]
-kk = ["аналитик*", "талдаушы*", "талдамалық*", "сарапшы*"]
+en = ["analyst", "business analyst", "analyst*", "analytic*", "business analyst*", "product analyst*", "insights analyst*"]
+ru = ["аналитик", "бизнес-аналитик", "аналитик*", "бизнес-аналитик*", "продуктов* аналитик*", "системн* аналитик*"]
+kk = ["аналитик", "талдаушы", "аналитик*", "талдаушы*", "талдамалық*", "сарапшы*"]
 
 [fields.statistics]
 en = ["statistic*", "statistician*", "biostatistic*", "econometric*", "stochastic*", "probability", "bayesian"]
@@ -422,31 +422,17 @@ ru = ["aws", "azure", "gcp", "облачн*"]
 kk = ["aws", "azure", "бұлтты*"]
 
 # ---------------------------------------------------------------- hh.kz queries (KF-20)
-# One request per group: an OR query of up to max_terms_per_query plain terms (stems and
-# regexes are skipped for queries). area 40 is set in config.toml, not here.
+# One request per group per run: an OR query of up to max_terms_per_query plain terms (stems and
+# regexes are skipped) taken round-robin across en, ru and kk. Groups rotate across runs and at
+# most max_requests_per_run requests are sent per run. area 40 is set in config.toml.
 
 [hh]
+groups = [
+  "types.internship", "fields.ml", "fields.data_science", "fields.quant", "fields.analytics",
+  "types.junior",
+]
 max_terms_per_query = 12
-
-[hh.internships]
-en = ["internship", "intern", "trainee", "junior"]
-ru = ["стажировка", "стажер", "практика", "джуниор", "начинающий специалист"]
-kk = ["тағылымдама", "стажер"]
-
-[hh.data_ml]
-en = ["machine learning", "data science", "data analyst", "data scientist", "python developer"]
-ru = ["машинное обучение", "аналитик данных", "data science", "исследователь данных", "python разработчик"]
-kk = ["машиналық оқыту", "деректер талдаушы"]
-
-[hh.quant_risk]
-en = ["quant", "quantitative analyst", "risk analyst", "trader", "fintech"]
-ru = ["квант", "риск-аналитик", "трейдер", "финтех", "количественный аналитик"]
-kk = ["трейдер", "финтех"]
-
-[hh.research]
-en = ["research assistant", "research scientist", "computational physics", "numerical optimization", "monte carlo"]
-ru = ["научный сотрудник", "лаборант", "исследователь", "физик", "математик"]
-kk = ["зерттеуші", "ғылыми қызметкер"]
+max_requests_per_run = 4
 
 # ---------------------------------------------------------------- Telegram discovery (KF-22)
 

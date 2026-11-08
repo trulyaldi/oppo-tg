@@ -192,7 +192,7 @@ in `src/config.py`; this table is checked against it by a test.
 
 - `[sources.greenhouse] boards`, `[sources.lever] companies`, `[sources.ashby] boards`: the ATS
   company watchlists (board slugs); the matching `.names` tables give display names.
-- `[sources.hh]`: `area` (40 = Kazakhstan), `period` in days and search `queries`. Needs `HH_ACCESS_TOKEN`.
+- `[sources.hh]`: `area` (40 = Kazakhstan), `period` in days. Search queries come from `config/cues.toml` `[hh]` (an old `queries` key is rejected). Needs `HH_ACCESS_TOKEN` and `HTTP_CONTACT` set to your email.
 - `[[sources.rss.feeds]]`: `url`, `name`, `kind` (job, internship, research, ...).
 - `[[sources.pagewatch.pages]]`: pages to watch for changes (`url`, `name`, `kind`, optional
   `css_selector`, optional `company`: the employer name used for weighting, e.g. `IMC`). Only add pages whose robots.txt allows it.

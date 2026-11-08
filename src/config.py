@@ -429,6 +429,8 @@ class AppConfig:
         sources = {k: dict(v) for k, v in dict(data.get("sources", {})).items()}
         if "auto_join" in sources.get("telegram_channels", {}):
             raise ValueError("joining is never automatic; join channels yourself in Telegram")
+        if "queries" in sources.get("hh", {}):
+            raise ValueError("[sources.hh] queries moved to config/cues.toml [hh]")
         _check_telegram_poll(sources.get("telegram_channels", {}))
         outreach = dict(data.get("outreach", {}))
         OutreachConfig.from_mapping(outreach)  # fail fast at load (D-147)

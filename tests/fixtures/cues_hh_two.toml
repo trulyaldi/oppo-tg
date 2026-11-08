@@ -1,0 +1,11 @@
+# Two one-term hh query groups, for tests that need exactly "q1" and "q2" (KF-20).
+[types.internship]
+en = ["q1"]
+
+[fields.ml]
+en = ["q2"]
+
+[hh]
+groups = ["types.internship", "fields.ml"]
+max_terms_per_query = 12
+max_requests_per_run = 2

@@ -14,12 +14,22 @@ from src.sources.base import REGISTRY, SourceContext, run_source
 from src.sources.hh import HHSource, parse_vacancies
 
 FIXTURE = (Path(__file__).parent / "fixtures" / "hh_vacancies.json").read_text()
-ENV = {"TELEGRAM_BOT_TOKEN": "t", "TELEGRAM_CHAT_ID": "1", "ANTHROPIC_API_KEY": "k"}
+ENV = {
+    "TELEGRAM_BOT_TOKEN": "t",
+    "TELEGRAM_CHAT_ID": "1",
+    "ANTHROPIC_API_KEY": "k",
+    "HTTP_CONTACT": "me@example.com",
+}
 
 
-def _cfg(queries=("a",)):
+CUES_TWO = str(Path(__file__).parent / "fixtures" / "cues_hh_two.toml")
+
+
+def _cfg(cues_file=CUES_TWO):
+    """Default: two one-term groups, q1 and q2. None uses the repo cue file."""
+    filters = {"cues_file": cues_file} if cues_file else {}
     return AppConfig.from_dict(
-        {"sources": {"hh": {"enabled": True, "area": 40, "queries": list(queries)}}}
+        {"sources": {"hh": {"enabled": True, "area": 40}}, "filters": filters}
     )
 
 
@@ -63,10 +73,12 @@ async def test_fixture_parses_and_request_shape():
     assert res.items[1].kind == Kind.JOB
     assert res.items[3].kind == Kind.INTERNSHIP  # "Intern" in title
     api = [r for r in requests if r.url.path == "/vacancies"]
-    assert len(api) == 1
+    assert len(api) == 2
     assert api[0].headers["HH-User-Agent"].startswith("oppo-tg/")
     assert api[0].headers["Authorization"] == "Bearer tok"
-    assert api[0].url.params["area"] == "40" and api[0].url.params["per_page"] == "50"
+    p = api[0].url.params
+    assert p["area"] == "40" and p["per_page"] == "100" and p["page"] == "0"
+    assert p["order_by"] == "publication_time"
 
 
 async def test_no_token_means_no_auth_header():
@@ -77,7 +89,7 @@ async def test_no_token_means_no_auth_header():
 
 
 async def test_duplicate_across_queries_once():
-    ctx, requests = _ctx(httpx.Response(200, text=FIXTURE), _cfg(["a", "b"]))
+    ctx, requests = _ctx(httpx.Response(200, text=FIXTURE), _cfg())
     res = await run_source(HHSource(), ctx)
     assert len([r for r in requests if r.url.path == "/vacancies"]) == 2
     assert len(res.items) == 5
@@ -123,14 +135,14 @@ def test_registered_and_disabled_without_token():
     assert not src.enabled(no_tok, _cfg())
     assert src.disabled_reason(no_tok, _cfg()) == "needs HH_ACCESS_TOKEN"
     assert src.enabled(tok, _cfg())
-    assert not src.enabled(tok, _cfg([]))
+    assert src.disabled_reason(tok, _cfg()) is None
 
 
 async def test_auth_and_user_agent_errors_exact_text_and_header():
     from src.sources.hh import UA_ERROR, token_error
 
     for status, text in ((400, UA_ERROR), (401, token_error(401)), (403, token_error(403))):
-        ctx, requests = _ctx(httpx.Response(status, json={}), _cfg(["a", "b"]), token="tok")
+        ctx, requests = _ctx(httpx.Response(status, json={}), _cfg(), token="tok")
         res = await run_source(HHSource(), ctx)
         assert not res.ok and res.error == f"SourceUnavailable: {text}"
         assert len([r for r in requests if r.url.path == "/vacancies"]) == 1
@@ -171,3 +183,65 @@ async def test_one_notice_per_day():
     later = FixedClock(ctx.clock.now() + timedelta(days=1))
     assert await notify_auth_error_once(bot, 1, conn, later)
     assert len(bot.sent) == 2 and "HH_ACCESS_TOKEN" in bot.sent[0]
+
+
+def _api(requests):
+    return [r for r in requests if r.url.path == "/vacancies"]
+
+
+async def test_repo_cues_bound_cyrillic_kazakh_and_no_stems():
+    ctx, requests = _ctx(httpx.Response(200, text=FIXTURE), _cfg(None), token="tok")
+    await run_source(HHSource(), ctx)
+    api = _api(requests)
+    assert len(api) == 4
+    assert all(r.url.params["area"] == "40" for r in api)
+    assert all(r.headers["Authorization"] == "Bearer tok" for r in api)
+    assert all(r.headers["HH-User-Agent"] == "oppo-tg/0.1 (me@example.com)" for r in api)
+    first = api[0].url.params["text"]  # types.internship
+    assert " OR " in first
+    assert any("а" <= ch <= "я" for ch in first)
+    assert "*" not in "".join(r.url.params["text"] for r in api)
+    assert "тағылымдама" in first  # kk term
+    assert "internship" in first
+
+
+async def test_groups_rotate_across_runs():
+    ctx, requests = _ctx(httpx.Response(200, text=FIXTURE), _cfg(None), token="tok")
+    await run_source(HHSource(), ctx)
+    await run_source(HHSource(), ctx)
+    texts = [r.url.params["text"] for r in _api(requests)]
+    # 6 groups, 4 per run: run 2 starts at group 4 and wraps to groups 0 and 1, which are still
+    # in the response cache, so only groups 4 and 5 hit the transport.
+    assert len(texts) == 6 and len(set(texts)) == 6
+    assert "junior" in texts[5] and "analyst" in texts[4]
+
+
+def test_build_query_quotes_cuts_and_interleaves():
+    from src.cues import parse_cues_text
+    from src.sources.hh import build_query
+
+    cues = parse_cues_text(
+        '[types.job]\nen = ["data science", "quant", "x1", "x2"]\n'
+        'ru = ["аналитик*", "аналитик данных"]\nkk = ["талдаушы"]\n'
+    )
+    q = build_query(cues, "types.job", 4)
+    assert q == '"data science" OR "аналитик данных" OR талдаушы OR quant'
+    assert "*" not in build_query(cues, "types.job", 12)
+
+
+def test_contact_without_at_disables_source():
+    src = HHSource()
+    env = {k: v for k, v in ENV.items() if k != "HTTP_CONTACT"}
+    s = Settings.from_env(dict(env, HH_ACCESS_TOKEN="x"))
+    reason = src.disabled_reason(s, _cfg())
+    assert reason == "set HTTP_CONTACT to your email (hh requires it in the User-Agent)"
+    assert not src.enabled(s, _cfg())
+    # the token check stays first
+    assert src.disabled_reason(Settings.from_env(env), _cfg()) == "needs HH_ACCESS_TOKEN"
+
+
+def test_leftover_queries_key_rejected():
+    import pytest
+
+    with pytest.raises(ValueError, match="moved to config/cues.toml"):
+        AppConfig.from_dict({"sources": {"hh": {"enabled": True, "queries": ["a"]}}})

@@ -49,7 +49,7 @@ def test_expected_tables_present(cues: Cues):
     for name in (
         "types.internship", "types.hackathon", "fields.ml", "fields.cpp", "locations.kz",
         "negative", "seniority", "junior", "protect", "spam", "unpaid", "hard_blockers",
-        "hh.internships", "telegram_discovery",
+        "telegram_discovery",
     ):  # fmt: skip
         assert name in cues.groups
     assert len(cues.names("types")) == 14
@@ -155,6 +155,19 @@ def test_expand_and_group_terms(cues: Cues):
 
 def test_hh_settings(cues: Cues):
     assert cues.settings["hh.max_terms_per_query"] == 12
+    assert cues.settings["hh.max_requests_per_run"] == 4
+    assert "types.internship" in cues.settings["hh.groups"]
+    assert all(g in cues.groups for g in cues.settings["hh.groups"])
+
+
+def test_hh_bad_settings_rejected():
+    for text, needle in (
+        ('[hh]\ngroups = ["nope"]', "nope"),
+        ("[hh]\nmax_requests_per_run = 0", "max_requests_per_run"),
+        ("[hh]\nbogus = 1", "bogus"),
+    ):
+        with pytest.raises(CueError, match=needle):
+            parse_cues_text(text)
 
 
 @pytest.mark.parametrize(
@@ -198,6 +211,7 @@ def test_nothing_else_in_src_uses_cues():
             "run.py",
             "employer.py",
             "adjust.py",
+            "hh.py",
         ):
             continue
         text = path.read_text(encoding="utf-8")

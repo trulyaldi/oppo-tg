@@ -54,11 +54,7 @@ area = 40 # Kazakhstan
 period = 14 # days
 region_hint = "kz" # D-194: unknown-region employers on hh.kz count as KZ
 # tier1 (D-252): polled every 10 to 15 min, never more often than every 10 min (min_poll_minutes in
-# code); one request per query, so 5 queries = at most about 30 requests per hour.
-queries = [
-  "data scientist", "machine learning", "quant",
-  "аналитик данных стажер", "стажировка python",
-]
+# code). Queries come from config/cues.toml [hh] (KF-20); at most max_requests_per_run per run.
 
 [sources.rss]
 enabled = true

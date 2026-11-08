@@ -3726,7 +3726,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 
 ### Part G: Kazakhstan sources and discovery
 
-### KF-20 [ ] hh: cue-driven queries in ru/kk/en, a per-run request bound, the contact check (D-243, D-257)
+### KF-20 [x] hh: cue-driven queries in ru/kk/en, a per-run request bound, the contact check (D-243, D-257)
 - Build:
   - `[hh]` in `cues.toml`:
     - `groups`: an ordered list of cue-group names, e.g. `types.internship`, `fields.ml`, `fields.data_science`, `fields.quant`, `fields.analytics`, `types.junior`;
