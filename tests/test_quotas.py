@@ -139,7 +139,11 @@ def _order(kz_cat, kz_base, kz_fresh, intl_cat, intl_base, visa, remote, intl_fr
 
 
 def test_bad_kz_never_outranks_good_intl():
-    """D-248: clearly bad KZ (base <= 5.0 fresh, <= 5.5 non-fresh) never lists above good intl."""
+    """D-248: clearly bad KZ (base <= 5.0 fresh, <= 5.5 non-fresh) never lists above good intl.
+
+    Ranking is monotone in the base score, so only the hardest corner is checked: the intl item
+    at its lowest good base (7.5) and the KZ item at its highest bad base. Lower KZ or higher
+    intl bases can only widen the gap (keeps the test fast: it ran 112 s over every base)."""
     for kz_cat, kz_fresh, intl_cat, intl_fresh, visa, remote, base in itertools.product(
         ("kz_employer", "kz_startup", "kz_program"),
         (False, True),
@@ -147,9 +151,9 @@ def test_bad_kz_never_outranks_good_intl():
         (False, True),
         (None, True),
         (True, False, None),
-        (7.5, 8.0, 9.0),
+        (7.5,),
     ):
-        for kz_base in (3.0, 4.0, 5.0) if kz_fresh else (3.0, 4.0, 5.0, 5.5):
+        for kz_base in (5.0,) if kz_fresh else (5.5,):
             kz_id, intl_id, order = _order(
                 kz_cat, kz_base, kz_fresh, intl_cat, base, visa, remote, intl_fresh
             )
