@@ -107,7 +107,11 @@ def _plan_tier(
             t = replace(t, tier=target_tier(source, cfg, t))
             if t.tier != tier:
                 continue
-            if tier == "tier1" and _validator_wait(conn, source, t, cfg, clock):
+            if (
+                tier == "tier1"
+                and not getattr(source, "min_poll_minutes", None)  # own floor (hh, D-252)
+                and _validator_wait(conn, source, t, cfg, clock)
+            ):
                 continue
             mine.append(t)
         if mine and not _source_due(conn, source, clock):

@@ -53,6 +53,8 @@ enabled = true
 area = 40 # Kazakhstan
 period = 14 # days
 region_hint = "kz" # D-194: unknown-region employers on hh.kz count as KZ
+# tier1 (D-252): polled every 10 to 15 min, never more often than every 10 min (min_poll_minutes in
+# code); one request per query, so 5 queries = at most about 30 requests per hour.
 queries = [
   "data scientist", "machine learning", "quant",
   "аналитик данных стажер", "стажировка python",
@@ -179,12 +181,15 @@ fresh_window_hours = 48     # an item is fresh for this long after first_seen_at
 digest_score_band = 1.0     # digest ranks by band = floor(score / this), then freshness
 
 [scheduler]
-tier1_minutes = 15          # watchlist boards
-tier2_minutes = 90          # discovered boards, aggregators, feeds, hh, channels
+# Jitter only delays a run (uniform 0..jitter), so tier1 runs every 10 to 15 min, tier2 every 1 to 2 h.
+tier1_minutes = 10          # watchlist boards, hh (never faster than hh's 10 min floor)
+tier2_minutes = 60          # discovered boards, aggregators, feeds
 tier3_minutes = 60          # pagewatch pages
-tier1_jitter_s = 60
-tier2_jitter_s = 300
+tg_minutes = 4              # Telegram channel polling, at least 3
+tier1_jitter_s = 300
+tier2_jitter_s = 3600
 tier3_jitter_s = 300
+tg_jitter_s = 60
 no_validator_min_minutes = 60  # tier1 hosts without ETag/Last-Modified
 
 [discovery]

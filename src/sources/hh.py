@@ -18,7 +18,7 @@ from src.sources.base import RequestTally, SourceContext, SourceUnavailable, reg
 from src.text import INTERN_RE, html_to_text
 
 API = "https://api.hh.ru/vacancies"
-CACHE_TTL_S = 3600.0
+CACHE_TTL_S = 300.0  # below the 10 min tier1 cadence, so every run is fresh (D-285)
 NEEDS_TOKEN = "needs HH_ACCESS_TOKEN"
 PENDING_KEY = "hh_auth_error_pending"
 NOTICE_DAY_KEY = "hh_auth_notice_day"
@@ -128,6 +128,8 @@ def _queries(cfg: AppConfig) -> list[str]:
 @register("hh")
 class HHSource:
     name = "hh"
+    default_tier = "tier1"  # D-252: Kazakhstan source, polled every 10 to 15 min
+    min_poll_minutes = 10  # politeness floor: 5 queries per run, at most 30 requests/hour
     credentials = ("HH_ACCESS_TOKEN",)
     description = "hh.kz vacancies (HeadHunter API, needs HH_ACCESS_TOKEN)"
 

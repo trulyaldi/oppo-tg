@@ -251,3 +251,43 @@ async def test_two_tier_jobs_score_one_after_another():
 
 async def test_pipeline_lock_is_shared():
     assert pipeline_lock() is pipeline_lock()
+
+
+async def test_kf17_hh_is_tier1_with_a_10_minute_floor():
+    settings = Settings.from_env(
+        {
+            "TELEGRAM_BOT_TOKEN": "t",
+            "TELEGRAM_CHAT_ID": "1",
+            "ANTHROPIC_API_KEY": "k",
+            "HH_ACCESS_TOKEN": "tok",
+        }
+    )
+    hh_calls: list[str] = []
+    gh_calls: list[str] = []
+
+    def handler(req):
+        if req.url.path == "/robots.txt":
+            return httpx.Response(200, text="")
+        if "hh.ru" in req.url.host:
+            hh_calls.append(str(req.url))
+            return httpx.Response(200, json={"items": [], "found": 0})
+        gh_calls.append(str(req.url))
+        return httpx.Response(200, text=GH)
+
+    conn, http, cfg, clock, _ = make(
+        {
+            "hh": {"enabled": True, "queries": ["q1"]},
+            "greenhouse": {"enabled": True, "boards": ["a"]},
+        },
+        handler=handler,
+    )
+    await collect_tier(conn, http, settings, cfg, clock, "tier2")
+    assert not hh_calls  # not a tier2 source any more
+    await collect_tier(conn, http, settings, cfg, clock, "tier1")
+    assert len(hh_calls) == 1 and len(gh_calls) == 1  # hh and the config board
+    clock.set(T0 + timedelta(minutes=5))
+    await collect_tier(conn, http, settings, cfg, clock, "tier1")
+    assert len(hh_calls) == 1  # inside the 10 minute floor
+    clock.set(T0 + timedelta(minutes=11))
+    await collect_tier(conn, http, settings, cfg, clock, "tier1")
+    assert len(hh_calls) == 2  # not held back by the 60 minute no-validator wait

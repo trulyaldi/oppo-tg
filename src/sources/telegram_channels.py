@@ -174,6 +174,7 @@ def live_channels() -> set[str]:
 @register("telegram_channels")
 class TelegramChannelsSource:
     name = "telegram_channels"
+    default_tier = "tg"  # D-252: own 4 min loop
     credentials = ("TG_API_ID", "TG_API_HASH")
     description = "Kazakh Telegram job channels (Telethon, needs TG_API_ID/TG_API_HASH + session)"
 
@@ -181,7 +182,7 @@ class TelegramChannelsSource:
         self,
         client_factory: ClientFactory | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
-        pause_s: float = 1.0,
+        pause_s: float = 4.0,  # D-252: 20 channels in about 80 s, FloodWait-safe
         require_session_file: bool = True,
     ) -> None:
         self._factory = client_factory or default_client_factory

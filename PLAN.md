@@ -3665,7 +3665,7 @@ All of them sit behind the existing `WhitelistMiddleware`.
 
 ### Part F: tiers and Telegram
 
-### KF-17 [ ] Tier cadence for Kazakhstan sources; hh in tier1; a `tg` tier (D-252)
+### KF-17 [x] Tier cadence for Kazakhstan sources; hh in tier1; a `tg` tier (D-252)
 - Build:
   - `SchedulerConfig` defaults:
     - `tier1_minutes = 10`, `tier1_jitter_s = 300`;

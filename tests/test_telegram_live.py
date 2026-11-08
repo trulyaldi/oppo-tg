@@ -400,12 +400,12 @@ async def test_collector_runs_hook_after_store_and_records_unauthorized_as_faile
     http = build_client(conn, CLOCK)
     settings = SETTINGS
     monkeypatch.setattr(tgc, "session_exists", lambda s: True)
-    stats = await collect_tier(conn, http, settings, cfg, CLOCK, "tier2")
+    stats = await collect_tier(conn, http, settings, cfg, CLOCK, "tg")
     assert stats["new"] == 1 and last_id(conn, "job_kz") == 4
     # unauthorized: the run is recorded failed, not ok (second D-172 defect)
     client.authorized = False
     conn.execute("DELETE FROM target_state")
-    stats = await collect_tier(conn, http, settings, cfg, CLOCK, "tier2")
+    stats = await collect_tier(conn, http, settings, cfg, CLOCK, "tg")
     assert stats["failed"] == 1
     run = conn.execute(
         "SELECT ok, error FROM source_runs WHERE source='telegram_channels' ORDER BY id DESC"
@@ -463,3 +463,25 @@ async def test_live_state_keeps_an_existing_baseline_time(conn):
     await lst.start()
     row = db.get_target_state(conn, "telegram_channels", "job_kz")
     assert row["baselined_at"].startswith("2026-11-01")
+
+
+async def test_kf17_tg_tier_runs_only_telegram_channels(conn, monkeypatch):
+    client = FakeClient()
+    client.history = {"job_kz": [(4, "Dev one")]}
+    monkeypatch.setattr(tgc, "default_client_factory", lambda s: client)
+    monkeypatch.setattr(tgc, "session_exists", lambda s: True)
+    cfg = AppConfig.from_dict(
+        {
+            "sources": {
+                "telegram_channels": {"enabled": True, "channels": ["job_kz"]},
+                "greenhouse": {"enabled": True, "boards": ["a"]},
+            }
+        }
+    )
+    http = build_client(conn, CLOCK)
+    await collect_tier(conn, http, SETTINGS, cfg, CLOCK, "tier2")  # nothing is tg-tier here
+    assert last_id(conn, "job_kz") == 0
+    await collect_tier(conn, http, SETTINGS, cfg, CLOCK, "tg")
+    assert last_id(conn, "job_kz") == 4
+    sources = {r["source"] for r in conn.execute("SELECT source FROM target_state")}
+    assert sources == {"telegram_channels"}

@@ -7,5 +7,5 @@ Digest: median 10m, p90 60m (n=7)
 Fresh alerts today: 1/6
 Scoring calls today: 12/200
 Triage today: yes 0, no 0, errors (all time) 0, calls 0/600
-New postings, 24h: tier1 6, tier2 0, tier3 0, unknown 2
+New postings, 24h: tier1 6, tier2 0, tier3 0, tg 0, unknown 2
 Source lag: median 1.5h (n=1)

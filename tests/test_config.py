@@ -123,7 +123,7 @@ def test_outreach_valid_and_snapshot_load():
 
 def test_fc06_defaults_when_sections_absent():
     cfg = AppConfig.from_dict({})
-    assert cfg.scheduler.tier1_minutes == 15 and cfg.scheduler.no_validator_min_minutes == 60
+    assert cfg.scheduler.tier1_minutes == 10 and cfg.scheduler.no_validator_min_minutes == 60
     assert cfg.politeness.max_concurrent_requests == 4 and cfg.politeness.hosts == {}
     th = cfg.thresholds
     assert (th.kz_fresh_alert_score, th.intl_fresh_alert_score) == (7.0, 8.0)
@@ -153,6 +153,12 @@ def test_fc06_source_tier():
     cfg = AppConfig.from_dict({"sources": {"hn": {"tier": "tier1"}, "x": {"tier": "fast"}}})
     assert cfg.source_tier("hn", "tier2") == "tier1"
     assert cfg.source_tier("rss", "tier2") == "tier2"
+    assert (
+        AppConfig.from_dict({"sources": {"telegram_channels": {"tier": "tg"}}}).source_tier(
+            "telegram_channels", "tier2"
+        )
+        == "tg"
+    )
     with pytest.raises(ValueError, match="tier"):
         cfg.source_tier("x", "tier2")
 
@@ -163,6 +169,7 @@ def test_fc06_source_tier():
         ({"scheduler": {"tier1_minutes": -1}}, "tier1_minutes"),
         ({"scheduler": {"tier2_minutes": 0}}, "tier2_minutes"),
         ({"scheduler": {"tier9_minutes": 5}}, "tier9_minutes"),
+        ({"scheduler": {"tg_minutes": 2}}, "tg_minutes"),
         ({"politeness": {"jitter_fraction": 1.5}}, "jitter_fraction"),
         ({"politeness": {"default_min_interval_s": -2}}, "default_min_interval_s"),
         ({"politeness": {"bogus": 1}}, "bogus"),

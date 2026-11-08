@@ -37,14 +37,21 @@ def make(calls, **over):
 
 def test_jobs_and_policy():
     jobs = {j.id: j for j in make([]).get_jobs()}
-    assert set(jobs) == {"collect_tier1", "collect_tier2", "collect_tier3", "daily_digest", "prune"}
+    assert set(jobs) == {
+        "collect_tier1",
+        "collect_tier2",
+        "collect_tier3",
+        "collect_tg",
+        "daily_digest",
+        "prune",
+    }
     for j in jobs.values():
         assert j.coalesce is True
         assert j.max_instances == 1
 
 
 def test_tier_jobs_use_configured_minutes_jitter_and_stagger():
-    tiers = {"tier1": (15, 60), "tier2": (90, 300), "tier3": (45, 120)}
+    tiers = {"tier1": (15, 60), "tier2": (90, 300), "tier3": (45, 120), "tg": (4, 60)}
     sched = make([], tiers=tiers)
     start = datetime(2026, 11, 6, 8, 0, tzinfo=TZ)
     for i, (tier, (minutes, jitter)) in enumerate(tiers.items()):
@@ -274,3 +281,23 @@ def test_discovery_job_is_optional_and_daily():
     job = make([], discover=d, discover_time="05:30").get_job("board_discovery")
     assert job is not None and job.max_instances == 1
     assert "hour='5'" in str(job.trigger) and "minute='30'" in str(job.trigger)
+
+
+def test_kf17_default_cadence_four_jobs_tg_staggered_at_6_minutes():
+    from src.config import SchedulerConfig
+
+    c = SchedulerConfig()
+    assert (c.tier1_minutes, c.tier1_jitter_s) == (10, 300)
+    assert (c.tier2_minutes, c.tier2_jitter_s) == (60, 3600)
+    assert (c.tg_minutes, c.tg_jitter_s) == (4, 60)
+    sched = make([])
+    start = datetime(2026, 11, 6, 8, 0, tzinfo=TZ)
+    got = {
+        t: (j.trigger.interval, j.trigger.jitter, j.next_run_time)
+        for t in ("tier1", "tier2", "tier3", "tg")
+        for j in [sched.get_job(f"collect_{t}")]
+    }
+    assert got["tier1"][:2] == (timedelta(minutes=10), 300)
+    assert got["tier2"][:2] == (timedelta(minutes=60), 3600)
+    assert got["tg"][:2] == (timedelta(minutes=4), 60)
+    assert got["tg"][2] == start + timedelta(minutes=6)

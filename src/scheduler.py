@@ -21,7 +21,7 @@ Job = Callable[[], Awaitable[object]]
 
 
 TierRunner = Callable[[str], Awaitable[object]]
-TIER_STAGGER_MINUTES = 2  # first runs of tier1/2/3 start 0, 2 and 4 minutes after start
+TIER_STAGGER_MINUTES = 2  # first runs of tier1/2/3/tg start 0, 2, 4 and 6 minutes after start
 
 
 def default_tiers() -> dict[str, tuple[int, int]]:
@@ -31,6 +31,7 @@ def default_tiers() -> dict[str, tuple[int, int]]:
         "tier1": (c.tier1_minutes, c.tier1_jitter_s),
         "tier2": (c.tier2_minutes, c.tier2_jitter_s),
         "tier3": (c.tier3_minutes, c.tier3_jitter_s),
+        "tg": (c.tg_minutes, c.tg_jitter_s),
     }
 
 
@@ -39,6 +40,7 @@ def tiers_from_config(c: SchedulerConfig) -> dict[str, tuple[int, int]]:
         "tier1": (c.tier1_minutes, c.tier1_jitter_s),
         "tier2": (c.tier2_minutes, c.tier2_jitter_s),
         "tier3": (c.tier3_minutes, c.tier3_jitter_s),
+        "tg": (c.tg_minutes, c.tg_jitter_s),
     }
 
 

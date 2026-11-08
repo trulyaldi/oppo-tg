@@ -118,7 +118,8 @@ class Settings:
 
 
 _FRESH_INTS = {"fresh_alert_max_per_day", "fresh_window_hours"}
-TIERS = ("tier1", "tier2", "tier3")
+TG_MIN_MINUTES = 3  # D-252: Telegram polling floor
+TIERS = ("tier1", "tier2", "tier3", "tg")
 
 
 def _check_number(label: str, value: Any, *, integer: bool = False) -> None:
@@ -276,17 +277,23 @@ class TriageConfig:
 
 @dataclass(frozen=True)
 class SchedulerConfig:
-    tier1_minutes: int = 15
-    tier2_minutes: int = 90
+    tier1_minutes: int = 10
+    tier2_minutes: int = 60
     tier3_minutes: int = 60
-    tier1_jitter_s: int = 60
-    tier2_jitter_s: int = 300
+    tier1_jitter_s: int = 300
+    tier2_jitter_s: int = 3600
     tier3_jitter_s: int = 300
+    tg_minutes: int = 4
+    tg_jitter_s: int = 60
     no_validator_min_minutes: int = 60
 
     def __post_init__(self) -> None:
         for name in self.__dataclass_fields__:
             _check_number(f"[scheduler] {name}", getattr(self, name), integer=True)
+        if self.tg_minutes < TG_MIN_MINUTES:
+            raise ValueError(
+                f"[scheduler] tg_minutes must be at least {TG_MIN_MINUTES} (Telegram politeness)"
+            )
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> SchedulerConfig:
